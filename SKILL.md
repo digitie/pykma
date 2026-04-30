@@ -1,63 +1,79 @@
 ---
 name: kma-api-python-builder
-description: Use this skill when building, extending, debugging, or testing a Python client for the Korean Meteorological Administration public weather APIs. Trigger on KMA, 기상청, 단기예보, 초단기실황, 초단기예보, 동네예보, VilageFcstInfoService_2.0, nx/ny grid conversion, base_time calculation, serviceKey encoding, SKY/PTY codes, or apis.data.go.kr/1360000 URLs.
+description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, 확장, 디버그, 테스트할 때 사용한다. KMA, 기상청, 단기예보, 초단기실황, 초단기예보, 동네예보, VilageFcstInfoService_2.0, APIHub, data.go.kr, nx/ny 격자 변환, base_time 계산, serviceKey/authKey 인코딩, SKY/PTY 코드, apis.data.go.kr/1360000, apihub.kma.go.kr 관련 작업에 적용한다.
 ---
 
-# KMA Python Library Builder
+# KMA Python 라이브러리 빌더
 
-You are helping build and maintain `pykma`, a Python client for KMA public weather APIs. Read `README.md`, `kma-api.md`, and `AGENTS.md` before changing public behavior.
+`pykma`는 기상청 공공 날씨 API를 위한 Python 클라이언트입니다. public 동작을 바꾸기 전 `README.md`, `kma-api.md`, `docs/api-coverage.md`, `docs/apihub.md`, `docs/apihub-endpoints.md`, `docs/datagokr.md`, `AGENTS.md`를 확인합니다.
 
-## Project Invariants
+## 프로젝트 불변조건
 
-1. **Primary service**: `VilageFcstInfoService_2.0`.
-2. **Base URL**: `http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0`.
-3. **Auth parameter**: `serviceKey`.
-4. **Recommended key form**: Decoding key when using `requests` `params=`.
-5. **Output format**: always request `dataType=JSON` for user-facing methods.
-6. **Timezone**: KMA forecast times are KST(UTC+9). Naive datetimes are interpreted as KST.
-7. **Coordinates**: public API accepts WGS84 `lat`/`lon` or KMA grid `nx`/`ny`; never treat `nx`/`ny` as latitude/longitude.
-8. **No silent empty success**: non-`00` KMA result codes must surface as typed exceptions.
-9. **Offline tests by default**: normal test runs must not call the real KMA API.
-10. **Gateway separation**: data.go.kr uses `serviceKey`; APIHub uses `authKey`.
+1. 타입화된 클라이언트의 1차 대상은 `VilageFcstInfoService_2.0`입니다.
+2. data.go.kr 기본 URL은 `http://apis.data.go.kr/1360000`입니다.
+3. data.go.kr 인증 파라미터는 `serviceKey`입니다.
+4. data.go.kr에서 `requests params=`를 쓸 때는 Decoding 키를 권장합니다.
+5. data.go.kr user-facing 메서드는 기본적으로 `dataType=JSON`을 요청합니다.
+6. APIHub 기본 URL은 `https://apihub.kma.go.kr`입니다.
+7. APIHub 인증 파라미터는 `authKey`입니다.
+8. KMA 예보 시간은 KST(UTC+9)입니다. naive `datetime`은 KST로 해석합니다.
+9. public API는 WGS84 `lat`/`lon` 또는 KMA 격자 `nx`/`ny`를 받습니다. `nx`/`ny`를 위도/경도로 취급하지 않습니다.
+10. KMA `resultCode != "00"`은 typed exception으로 surface합니다.
+11. 기본 테스트는 실제 KMA API를 호출하지 않습니다.
+12. APIHub 응답은 JSON, XML, 텍스트, 이미지, 바이너리가 섞여 있으므로 하나의 모델로 강제하지 않습니다.
+13. APIHub legacy 그래픽 URL의 이름 없는 query string은 순서가 의미이므로 `arg1`, `arg2` 순서를 보존합니다.
 
-## Supported Endpoints
+## 현재 구현 범위
 
-Start with these endpoints:
+정확한 구현 개수는 `docs/api-coverage.md`를 기준으로 합니다.
 
-| Public method | Endpoint | Purpose |
+- 개별 타입화 KMA endpoint: 4개
+- data.go.kr 범용 호출 계층: 임의 `{service}/{operation}` 호출 가능
+- APIHub 범용 호출 계층: 임의 `/api/...` path 호출 가능
+- APIHub 함수형 래퍼: 공식 목록 기반 470개 endpoint
+- APIHub 탐색 기능: 공식 페이지에서 서비스 목록과 sample endpoint signature 추출 가능
+
+## 지원 endpoint
+
+타입화된 클라이언트가 직접 모델링한 endpoint:
+
+| public method | endpoint | 목적 |
 |---|---|---|
 | `KmaClient.now()` | `getUltraSrtNcst` | 초단기실황 |
 | `KmaClient.forecast_short()` | `getUltraSrtFcst` | 초단기예보 |
 | `KmaClient.forecast()` | `getVilageFcst` | 단기예보 |
-| `KmaClient.version()` | `getFcstVersion` | 예보 버전 |
+| `KmaClient.version()` | `getFcstVersion` | 예보버전 |
 
-Other KMA services such as 중기예보, 기상특보, AWS 관측, or APIHub datasets must be added as separate modules or explicitly scoped extensions.
+그 외 KMA 서비스는 우선 범용 클라이언트로 호출합니다. 안정적인 응답 schema와 사용례가 쌓이면 타입화된 wrapper를 추가합니다.
 
-## Required Deliverables When Implementing From Scratch
+## 처음부터 구현할 때 필요한 산출물
 
 ```text
 pykma/
-├── __init__.py          # re-export public client, models, exceptions, coordinate helpers
-├── client.py            # KmaClient
-├── grid.py              # to_grid, to_latlon using KMA LCC DFS formula
-├── time_utils.py        # KST-aware latest base time helpers
-├── codes.py             # SKY/PTY maps, category units, parse_amount
-├── models.py            # frozen dataclasses
-├── exceptions.py        # KmaError hierarchy
-├── _http.py             # requests session and retry setup
+├── __init__.py          # public client, model, exception, 좌표 helper export
+├── client.py            # KmaClient 타입화 단기예보 client
+├── datagokr.py          # DataGoKrClient data.go.kr 범용 client
+├── apihub.py            # ApiHubClient APIHub 범용 client, 탐색, TXT/이미지 helper
+├── apihub_endpoints.py  # 생성된 APIHub 함수형 endpoint 래퍼
+├── grid.py              # KMA LCC DFS 변환
+├── time_utils.py        # KST 기준 base time helper
+├── codes.py             # SKY/PTY map, category unit, parse_amount
+├── models.py            # frozen dataclass
+├── exceptions.py        # KmaError 계층
+├── _http.py             # requests session과 retry 설정
 └── cli.py               # console entrypoint
 tests/
 ├── test_client.py
+├── test_datagokr.py
+├── test_apihub.py
+├── test_apihub_endpoints.py
 ├── test_codes.py
 ├── test_grid.py
-└── test_time_utils.py
-pyproject.toml
-README.md
-kma-api.md
-AGENTS.md
+├── test_time_utils.py
+└── test_cli.py
 ```
 
-## Public API Rules
+## Public API 규칙
 
 ### `KmaClient`
 
@@ -66,38 +82,86 @@ KmaClient(service_key, *, timeout=10, retries=3, base_url=None, session=None)
 KmaClient.from_env(name="KMA_SERVICE_KEY")
 ```
 
-Every location-aware method accepts exactly one coordinate mode:
+위치 인자는 둘 중 하나만 받습니다.
 
 ```python
 kma.now(lat=37.5665, lon=126.9780)
 kma.now(nx=60, ny=127)
 ```
 
-Reject mixed or partial coordinates:
+거부해야 하는 입력:
 
-- `lat` without `lon`: `ValueError`
-- `nx` without `ny`: `ValueError`
-- both `lat/lon` and `nx/ny`: `ValueError`
+- `lat`만 있고 `lon` 없음
+- `nx`만 있고 `ny` 없음
+- `lat/lon`과 `nx/ny`를 동시에 전달
 
-## Type Conversion Policy
+### `DataGoKrClient`
 
-KMA responses are string-heavy. Convert at the model boundary, but preserve semantically important labels.
+```python
+DataGoKrClient(service_key)
+client.request("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202605010600"})
+client.items("MidFcstInfoService", "getMidFcst", {...})
+```
 
-| Source field/value | Python surface | Rule |
+규칙:
+
+- `serviceKey`를 자동으로 보냅니다.
+- 기본값은 `pageNo=1`, `numOfRows=10`, `dataType=JSON`입니다.
+- `items()`는 단일 dict를 list로 감쌉니다.
+
+### `ApiHubClient`
+
+```python
+ApiHubClient(auth_key)
+hub.request_path("/api/typ01/url/wrn_reg.php", {"tmfc": "0"})
+hub.open_api("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202605010600"})
+```
+
+규칙:
+
+- `/api/`로 시작하는 path만 허용합니다.
+- `authKey`를 자동으로 보냅니다.
+- JSON으로 확정된 endpoint가 아니면 `response.text` 또는 `response.content`를 사용합니다.
+- TXT 응답은 `response.text_table()`로 Python row 구조를 만들 수 있습니다.
+- 이미지 응답은 `response.image()`로 bytes, format, width, height를 얻을 수 있습니다.
+
+### `ApiHubGeneratedClient`
+
+```python
+from pykma import ApiHubGeneratedClient
+
+hub = ApiHubGeneratedClient.from_env()
+hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
+hub.aws3_nph_awsm_tms_h06(use_sample=True)
+```
+
+규칙:
+
+- 함수형 wrapper 목록은 `tools/update_apihub_endpoints.py`로 생성합니다.
+- 생성 결과는 `pykma/apihub_endpoints.py`와 `docs/apihub-endpoints.md`가 함께 바뀌어야 합니다.
+- 포맷정보/예제/코드표 첨부 링크는 `APIHUB_ATTACHMENTS`에 metadata로 남깁니다.
+- 예제 URL의 `authKey`는 버리고 사용자의 `authKey`만 붙입니다.
+- 이름 없는 query string은 `request_query_parts()`를 통해 순서를 보존합니다.
+
+## 타입 변환 정책
+
+KMA 응답은 문자열 중심입니다. 모델 경계에서 변환하되 의미 있는 라벨은 보존합니다.
+
+| 원본 필드/값 | Python 표면 | 규칙 |
 |---|---|---|
 | `baseDate` + `baseTime` | aware `datetime` | KST timezone |
 | `fcstDate` + `fcstTime` | aware `datetime` | KST timezone |
-| numeric categories | `float` | use `float()` when safe |
-| humidity/wind direction in snapshot | `int | None` | parse via float then int |
-| `SKY` | raw value plus label | `1`, `3`, `4` only |
-| `PTY` | raw value plus endpoint-aware label | observed and forecast maps differ |
-| `PCP`, `SNO` | `str` | preserve range/category labels |
-| `RN1` in current observation | `float | None` | use `parse_amount()` |
-| malformed numeric values | raw string or `None` by field | do not crash during optional parsing |
+| 일반 수치 category | `float` | 안전할 때 `float()` |
+| snapshot의 습도/풍향 | `int | None` | float 파싱 후 int |
+| `SKY` | raw 값과 label | `1`, `3`, `4` |
+| `PTY` | endpoint-aware label | 실황과 예보 map이 다름 |
+| `PCP`, `SNO` | `str` | 범주 라벨 보존 |
+| 실황 `RN1` | `float | None` | `parse_amount()` 사용 |
+| 잘못된 수치 | field별 raw string 또는 `None` | optional 파싱에서 crash하지 않음 |
 
-### Do Not Blindly Float These Values
+## `PCP`, `SNO`를 무조건 float로 바꾸지 말 것
 
-`PCP` and `SNO` can be category strings:
+예시:
 
 - `강수없음`
 - `적설없음`
@@ -105,37 +169,35 @@ KMA responses are string-heavy. Convert at the model boundary, but preserve sema
 - `30.0~50.0mm`
 - `50.0mm 이상`
 
-Keep these as strings in `ForecastItem.value`. Provide `parse_amount()` for callers who want representative numeric values.
+`ForecastItem.value`에서는 문자열을 보존합니다. 대표값이 필요할 때만 `parse_amount()`를 제공합니다.
 
-## Time Rules
+## 발표시각 규칙
 
 ### `getUltraSrtNcst`
 
-- Published every hour at `HH00`.
-- Usually available after 40 minutes.
-- At KST `14:35`, use `13:00`.
-- At KST `14:45`, use `14:00`.
+- 매시 `HH00` 발표.
+- 보통 발표 후 40분부터 조회 가능.
+- KST `14:35`에는 `13:00` 사용.
+- KST `14:45`에는 `14:00` 사용.
 
 ### `getUltraSrtFcst`
 
-- Published every hour at `HH30`.
-- Usually available after 15 minutes, so `HH45`.
-- At KST `14:44`, use `13:30`.
-- At KST `14:50`, use `14:30`.
+- 매시 `HH30` 발표.
+- 보통 발표 후 15분, 즉 `HH45`부터 조회 가능.
+- KST `14:44`에는 `13:30` 사용.
+- KST `14:50`에는 `14:30` 사용.
 
 ### `getVilageFcst`
 
-- Published at `0200`, `0500`, `0800`, `1100`, `1400`, `1700`, `2000`, `2300`.
-- Usually available after 10 minutes.
-- Before `02:10`, use previous day `2300`.
+- `0200`, `0500`, `0800`, `1100`, `1400`, `1700`, `2000`, `2300` 발표.
+- 보통 발표 후 10분부터 조회 가능.
+- `02:10` 이전에는 전날 `2300` 사용.
 
-All helpers belong in `pykma/time_utils.py` and must have midnight/previous-day tests.
+## 격자 변환 규칙
 
-## Grid Conversion Rules
+KMA는 Lambert Conformal Conic DFS 격자를 사용합니다.
 
-KMA uses Lambert Conformal Conic DFS grid coordinates.
-
-Constants:
+상수:
 
 ```python
 RE = 6371.00877
@@ -148,18 +210,18 @@ XO = 43
 YO = 136
 ```
 
-Verification points:
+검증점:
 
-| Location | WGS84 | KMA grid |
+| 위치 | WGS84 | KMA 격자 |
 |---|---|---|
-| Seoul City Hall | `(37.5665, 126.9780)` | `(60, 127)` |
-| Busan City Hall | `(35.1796, 129.0756)` | `(98, 76)` |
-| Jeju City Hall | `(33.4996, 126.5312)` | `(53, 38)` |
-| Gangnam Station | `(37.4979, 127.0276)` | `(61, 125)` |
+| 서울시청 | `(37.5665, 126.9780)` | `(60, 127)` |
+| 부산시청 | `(35.1796, 129.0756)` | `(98, 76)` |
+| 제주시청 | `(33.4996, 126.5312)` | `(53, 38)` |
+| 강남역 | `(37.4979, 127.0276)` | `(61, 125)` |
 
-Do not change constants unless there is a source-backed reason and test fixtures are updated.
+근거 없이 상수를 바꾸지 않습니다.
 
-## Code Mapping Rules
+## 코드 매핑 규칙
 
 ### `SKY`
 
@@ -167,11 +229,11 @@ Do not change constants unless there is a source-backed reason and test fixtures
 {"1": "맑음", "3": "구름많음", "4": "흐림"}
 ```
 
-Do not invent `2`.
+`2`를 임의로 만들지 않습니다.
 
 ### `PTY`
 
-Observed current conditions (`getUltraSrtNcst`):
+초단기실황(`getUltraSrtNcst`):
 
 ```python
 {
@@ -185,7 +247,7 @@ Observed current conditions (`getUltraSrtNcst`):
 }
 ```
 
-Forecasts (`getUltraSrtFcst`, `getVilageFcst`):
+예보(`getUltraSrtFcst`, `getVilageFcst`):
 
 ```python
 {
@@ -197,9 +259,9 @@ Forecasts (`getUltraSrtFcst`, `getVilageFcst`):
 }
 ```
 
-Mapping must be endpoint-aware.
+반드시 endpoint-aware로 매핑합니다.
 
-## Exception Hierarchy
+## 예외 계층
 
 ```text
 KmaError
@@ -209,11 +271,11 @@ KmaError
 └── KmaParseError
 ```
 
-Result-code mapping:
+대표 result code 처리:
 
-| Code | Handling |
+| 코드 | 처리 |
 |---|---|
-| `00` | success |
+| `00` | 성공 |
 | `03` | `KmaRequestError` |
 | `04` | `KmaServerError` |
 | `12` | `KmaRequestError` |
@@ -223,74 +285,64 @@ Result-code mapping:
 | `31` | `KmaAuthError` |
 | `99` | `KmaServerError` |
 
-Malformed JSON or unexpected response structure raises `KmaParseError`.
+잘못된 JSON이나 예상과 다른 응답 구조는 `KmaParseError`입니다.
 
-## HTTP Layer Rules
+## HTTP 계층 규칙
 
-- Use one place for session and retry setup: `pykma/_http.py`.
-- Retry only transient GET failures such as `429`, `500`, `502`, `503`, `504`.
-- Do not retry authentication failures.
-- Do not log or print service keys.
-- Keep `http://` as the default base URL unless docs/tests intentionally change it.
-- Allow dependency injection via `session=` for tests.
+- session/retry 설정은 `pykma/_http.py` 한 곳에서 관리합니다.
+- transient GET 실패(`429`, `500`, `502`, `503`, `504`)만 retry합니다.
+- 인증 실패를 retry하지 않습니다.
+- 인증키를 로그로 남기지 않습니다.
+- 테스트를 위해 `session=` 주입을 허용합니다.
 
-## Docstring Rules
+## 테스트 규칙
 
-Every public method should document:
+필수 오프라인 테스트:
 
-- endpoint name
-- coordinate mode
-- time selection behavior
-- return type
-- exceptions that commonly occur
+- 격자 변환 검증점
+- 격자 역변환 허용 오차
+- base time helper와 자정 경계
+- `SKY`/`PTY` endpoint-aware 라벨
+- `PCP`/`SNO` 보존
+- `parse_amount()` 범위 문자열
+- fake session 기반 요청 파라미터
+- result code 예외 매핑
+- data.go.kr 범용 envelope 처리
+- APIHub sample URL parser와 탐색 parser
+- APIHub 생성 래퍼 개수, 함수 호출, 이름 없는 query string 보존
+- TXT table parser와 이미지 header parser
 
-## Testing Rules
+실제 API 테스트:
 
-Required offline tests:
+- `integration` marker 사용
+- `KMA_SERVICE_KEY` 또는 `KMA_APIHUB_AUTH_KEY`가 없으면 skip
+- 정확한 날씨값이 아니라 응답 구조와 타입만 검증
 
-- grid conversion known points
-- grid reverse conversion tolerance
-- latest base time helpers, including midnight
-- `SKY`/`PTY` endpoint-aware labels
-- `PCP`/`SNO` preservation
-- `parse_amount()` ranges
-- `KmaClient` request param shape with fake session
-- result-code exception mapping
+## 흔한 함정
 
-Optional live tests:
+1. Encoding service key를 `params=`에 넣으면 이중 인코딩될 수 있습니다.
+2. 현재 시각을 그대로 `base_time`으로 쓰면 빈 데이터가 자주 나옵니다.
+3. `nx`/`ny`를 WGS84 좌표로 취급하면 안 됩니다.
+4. `PCP`/`SNO`에 `float()`를 직접 적용하면 한국어 범주 라벨에서 실패합니다.
+5. `PTY=4`의 의미는 endpoint마다 다릅니다.
+6. raw API dict를 그대로 반환하면 KMA 응답 구조가 사용자 코드로 새어 나갑니다.
+7. PowerShell mojibake만 보고 UTF-8 파일이 깨졌다고 판단하면 불필요한 변경이 생깁니다.
+8. APIHub와 data.go.kr의 인증 파라미터를 섞으면 인증 실패가 납니다.
+9. APIHub endpoint가 항상 JSON이라고 가정하면 텍스트/이미지/파일 endpoint에서 실패합니다.
+10. APIHub의 이름 없는 query string을 `params=` mapping으로 바꾸면 그래픽 endpoint URL이 달라집니다.
+11. `apiList.do` 본문만 긁으면 `generateAPIUrl.do`나 텍스트 예제 첨부에만 있는 endpoint를 놓칠 수 있습니다.
 
-- must be marked `integration` or `live`
-- must require `KMA_SERVICE_KEY`
-- must skip cleanly when the key is absent
-- must not assert unstable weather values, only response shape and types
+함정을 수정하면 `docs/repeated-mistakes.md`에 증상, 규칙, 방지 테스트를 기록합니다.
 
-## Common Pitfalls
+## 문서 갱신 규칙
 
-1. Passing an already encoded service key through `params=` can double-encode it and trigger `SERVICE_KEY_IS_NOT_REGISTERED_ERROR`.
-2. Using the current clock time directly as `base_time` often returns empty data.
-3. Treating `nx`/`ny` as WGS84 coordinates is incorrect.
-4. Calling `float()` on `PCP`/`SNO` can fail because they are often Korean range labels.
-5. Assuming `PTY=4` means the same thing in all endpoints is wrong.
-6. Returning raw API dictionaries directly leaks KMA quirks into user code.
-7. Trusting mojibake in PowerShell as proof that UTF-8 files are broken can lead to unnecessary churn. Verify Korean text with Python UTF-8 reads or assertions.
-
-When one of these mistakes is fixed, update `docs/repeated-mistakes.md` with the symptom, rule, and guardrail test.
-
-## Documentation Update Rules
-
-- Update `README.md` for user-facing API changes.
-- Update `kma-api.md` for endpoint details, response fields, or KMA behavior.
-- Update `docs/apihub.md` for APIHub categories, discovery, or response-format behavior.
-- Update `docs/datagokr.md` for generic data.go.kr service support.
-- Update `docs/testing.md` when test strategy, markers, or fixture policy changes.
-- Update `docs/troubleshooting.md` when a user-visible error gets a known fix.
-- Update `docs/repeated-mistakes.md` when a recurring trap is discovered or prevented.
-- Update `CHANGELOG.md` for release-facing additions, fixes, and breaking changes.
-
-## When Adding A New Endpoint
-
-1. Add a concise section to `kma-api.md`.
-2. Add or update models only if the shape is stable.
-3. Add mock response tests before live tests.
-4. Keep the public method name Pythonic and endpoint-agnostic where possible.
-5. Preserve raw response fields in `raw` only when useful for debugging.
+- 사용자-facing API가 바뀌면 `README.md`를 갱신합니다.
+- endpoint 세부 사항이나 KMA 동작이 바뀌면 `kma-api.md`를 갱신합니다.
+- APIHub 분류, 탐색 기능, 응답 형식 규칙이 바뀌면 `docs/apihub.md`를 갱신합니다.
+- APIHub 함수형 endpoint 목록이 바뀌면 `tools/update_apihub_endpoints.py`를 실행하고 `docs/apihub-endpoints.md`를 함께 갱신합니다.
+- data.go.kr 범용 처리 방식이 바뀌면 `docs/datagokr.md`를 갱신합니다.
+- 구현 범위나 API 개수가 바뀌면 `docs/api-coverage.md`를 갱신합니다.
+- 테스트 전략, marker, fixture 정책이 바뀌면 `docs/testing.md`를 갱신합니다.
+- 사용자에게 보이는 오류 해결책이 생기면 `docs/troubleshooting.md`를 갱신합니다.
+- 반복 실수가 발견되거나 예방되면 `docs/repeated-mistakes.md`를 갱신합니다.
+- 릴리스 관점의 추가/수정/호환성 변경은 `CHANGELOG.md`에 기록합니다.

@@ -2,7 +2,7 @@
 
 > 이 문서는 `pykma` 구현자를 위한 API 레퍼런스입니다. 사용자용 빠른 설명은 `README.md`, 에이전트 구현 규칙은 `SKILL.md`를 보세요.
 
-APIHub 전체 범위와 generic 호출 방식은 [docs/apihub.md](docs/apihub.md), data.go.kr generic 호출 방식은 [docs/datagokr.md](docs/datagokr.md)를 함께 보세요.
+APIHub 전체 범위와 generic 호출 방식은 [docs/apihub.md](docs/apihub.md), APIHub 함수형 endpoint 목록은 [docs/apihub-endpoints.md](docs/apihub-endpoints.md), data.go.kr generic 호출 방식은 [docs/datagokr.md](docs/datagokr.md)를 함께 보세요.
 
 ## 1. 개요
 
@@ -47,7 +47,7 @@ URL 문자열에 직접 붙여야 하는 디버깅 상황에서는 Encoding 키�
 | `nx` | 예 | KMA 격자 X |
 | `ny` | 예 | KMA 격자 Y |
 
-## 4. Endpoint
+## 4. Endpoint 목록
 
 ### 4.1 `getUltraSrtNcst`
 
@@ -290,7 +290,7 @@ YO = 136
 - `items.item`이 dict 하나로 오면 list로 감쌉니다.
 - `items.item`이 없거나 예상과 다르면 `KmaParseError`입니다.
 
-## 10. Result Code 처리
+## 10. Result code 처리
 
 | 코드 | 의미 | 처리 |
 |---|---|---|
@@ -312,5 +312,5 @@ YO = 136
 - [ ] 모든 datetime은 KST aware로 만든다.
 - [ ] `lat/lon`과 `nx/ny`를 동시에 받지 않는다.
 - [ ] `PCP`/`SNO`를 무조건 float로 변환하지 않는다.
-- [ ] `PTY` mapping은 endpoint-aware로 처리한다.
+- [ ] `PTY` 매핑은 endpoint-aware로 처리한다.
 - [ ] 실제 네트워크 호출 없는 단위 테스트를 먼저 작성한다.

@@ -58,5 +58,5 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-  "integration: tests that call the real KMA API and require KMA_SERVICE_KEY",
+  "integration: tests that call real KMA/APIHub servers and require local API keys",
 ]

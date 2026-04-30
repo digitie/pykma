@@ -1,188 +1,203 @@
 # AGENTS.md
 
-## Role
+## 역할
 
-This file is the operational guide for agents working on `pykma`. It is intentionally shorter than `SKILL.md`; use it to orient quickly, then read the more detailed documents for the task at hand.
+이 문서는 `pykma`에서 작업하는 에이전트를 위한 운영 가이드입니다. 빠르게 방향을 잡는 문서이며, 세부 구현 규칙은 `SKILL.md`, API 세부 내용은 `kma-api.md`와 `docs/` 아래 문서를 함께 확인합니다.
 
-## Instruction Priority
+## 지시 우선순위
 
-1. User request
-2. This `AGENTS.md`
+1. 사용자 요청
+2. 이 `AGENTS.md`
 3. `kma-api.md`
 4. `SKILL.md`
 5. `README.md`
-6. Existing code and tests
-7. Minimal, reversible assumptions
+6. 기존 코드와 테스트
+7. 최소한의 되돌릴 수 있는 가정
 
-If documents conflict, prefer the higher-priority source and update lower-priority docs when appropriate.
+문서가 충돌하면 더 높은 우선순위의 문서를 따르고, 필요하면 낮은 우선순위 문서를 갱신합니다.
 
-## Project Baseline
+## 프로젝트 기준
 
-- `pykma` is a Python client for KMA public weather APIs.
-- The first supported service is `VilageFcstInfoService_2.0`.
-- The stable public endpoints are 초단기실황, 초단기예보, 단기예보, and 예보버전.
-- Python support starts at 3.9.
-- Runtime dependency is `requests`.
-- Default tests must run without real KMA network calls.
+- `pykma`는 기상청 공공 날씨 API용 Python 클라이언트입니다.
+- 타입화된 클라이언트의 1차 대상은 `VilageFcstInfoService_2.0`입니다.
+- 안정적으로 모델링한 endpoint는 초단기실황, 초단기예보, 단기예보, 예보버전입니다.
+- data.go.kr의 다른 KMA REST 서비스는 `DataGoKrClient`로 범용 호출합니다.
+- APIHub는 `ApiHubClient`로 `authKey` 기반 path 호출과 탐색 기능을 제공하고, `ApiHubGeneratedClient`로 공식 목록 endpoint의 함수형 래퍼를 제공합니다.
+- Python 지원 기준은 3.10 이상입니다.
+- 런타임 의존성은 `requests`입니다.
+- 기본 테스트는 실제 KMA 네트워크 호출 없이 동작해야 합니다.
 
-## Documentation Layout
+## 문서 구성
 
-- `README.md`: user-facing overview, install, examples, model summary.
-- `kma-api.md`: endpoint details, KMA quirks, base-time rules, category codes.
-- `SKILL.md`: implementation invariants and detailed rules for agents.
-- `AGENTS.md`: task routing, ownership, and verification checklist.
-- `docs/repeated-mistakes.md`: mistakes that have already happened or are likely to recur.
-- `docs/apihub.md`: APIHub authKey client, discovery, and response-format rules.
-- `docs/datagokr.md`: generic data.go.kr client and service/operation examples.
-- `docs/testing.md`: test design, live-test constraints, and regression workflow.
-- `docs/troubleshooting.md`: symptom-to-fix guide for user and maintainer issues.
-- `CONTRIBUTING.md`: contributor setup and workflow.
-- `CHANGELOG.md`: release-facing changes.
-- `pyproject.toml`: packaging, dependencies, lint/test config.
+- `README.md`: 사용자용 개요, 설치, 예제, 모델 요약.
+- `kma-api.md`: 단기예보 endpoint 세부 사항과 KMA 응답 규칙.
+- `docs/apihub.md`: APIHub 인증키, 범용 호출, 탐색 기능, 응답 형식 규칙.
+- `docs/apihub-endpoints.md`: APIHub 함수형 endpoint 목록.
+- `docs/datagokr.md`: data.go.kr 범용 클라이언트와 서비스/operation 예시.
+- `docs/api-coverage.md`: 현재 구현 범위와 API 개수.
+- `docs/testing.md`: 테스트 설계, live test 제한, 회귀 테스트 절차.
+- `docs/troubleshooting.md`: 증상별 원인과 해결책.
+- `docs/repeated-mistakes.md`: 이미 겪었거나 반복되기 쉬운 실수.
+- `SKILL.md`: 구현 불변조건과 에이전트용 세부 규칙.
+- `AGENTS.md`: 작업 라우팅, 모듈 소유권, 검증 체크리스트.
+- `CONTRIBUTING.md`: 기여 절차.
+- `CHANGELOG.md`: 릴리스 관점 변경 이력.
+- `pyproject.toml`: 패키징, 의존성, lint/test 설정.
 
-## Module Map
+## 모듈 지도
 
-- `pykma/client.py`: `KmaClient`, endpoint methods, response parsing.
-- `pykma/_http.py`: session construction and retry setup.
-- `pykma/grid.py`: LCC DFS grid conversion.
-- `pykma/time_utils.py`: KST-aware base date/time selection.
-- `pykma/codes.py`: category maps, labels, unit hints, precipitation parsing.
-- `pykma/models.py`: frozen dataclasses returned to users.
-- `pykma/exceptions.py`: exception hierarchy.
-- `pykma/cli.py`: JSON CLI entrypoint.
-- `tests/`: network-free unit tests.
+- `pykma/client.py`: `KmaClient`, 타입화된 단기예보 endpoint, 응답 파싱.
+- `pykma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
+- `pykma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
+- `pykma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
+- `pykma/_http.py`: session 생성과 retry 설정.
+- `pykma/grid.py`: LCC DFS 격자 변환.
+- `pykma/time_utils.py`: KST 기준 base date/time 계산.
+- `pykma/codes.py`: category map, 라벨, 단위 힌트, 강수량 문자열 파싱.
+- `pykma/models.py`: 사용자에게 반환하는 frozen dataclass.
+- `pykma/exceptions.py`: 예외 계층.
+- `pykma/cli.py`: JSON CLI와 APIHub path 호출.
+- `tests/`: 네트워크 없는 단위 테스트.
 
-## Non-Negotiables
+## 반드시 지킬 것
 
-- Do not print, log, commit, or fixture real service keys.
-- Do not perform real API calls in default tests.
-- Do not treat `nx`/`ny` as latitude/longitude.
-- Do not use naive local timezone assumptions; KMA times are KST.
-- Do not convert `PCP` and `SNO` range labels blindly to floats.
-- Do not return silent empty lists for KMA result-code failures.
-- Do not change public method names casually.
+- 실제 `serviceKey`나 `authKey`를 출력, 로그, 커밋, fixture에 남기지 않습니다.
+- 기본 테스트에서 실제 API를 호출하지 않습니다.
+- `nx`/`ny`를 위도/경도로 취급하지 않습니다.
+- KMA 시간은 KST 기준입니다.
+- `PCP`, `SNO` 범주 문자열을 무조건 float로 변환하지 않습니다.
+- KMA result code 실패를 빈 리스트 성공처럼 반환하지 않습니다.
+- data.go.kr와 APIHub의 인증 파라미터를 섞지 않습니다.
+- APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
 
-## Agent Ownership Map
+## 작업 소유권
 
-### Client Agent
+### 단기예보 클라이언트
 
-Owns:
+담당 파일:
 
 - `pykma/client.py`
 - `pykma/_http.py`
-- request/response parsing
-- error mapping
 
-Checklist:
+확인할 것:
 
-- service key goes through `serviceKey`
-- `dataType=JSON`
-- `pageNo` and `numOfRows` defaults are present
-- fake-session tests cover request params
-- non-`00` result codes raise typed exceptions
+- `serviceKey`를 요청 파라미터로 보냅니다.
+- `dataType=JSON`을 기본으로 둡니다.
+- `pageNo`, `numOfRows` 기본값이 있습니다.
+- fake session 테스트가 요청 파라미터를 검증합니다.
+- `resultCode != "00"`은 typed exception입니다.
 
-### Time Agent
+### data.go.kr 범용 클라이언트
 
-Owns:
+담당 파일:
+
+- `pykma/datagokr.py`
+- `docs/datagokr.md`
+
+확인할 것:
+
+- URL은 `{base_url}/{service}/{operation}` 형태입니다.
+- `serviceKey`, `pageNo`, `numOfRows`, `dataType` 기본값이 있습니다.
+- `items()`는 단일 dict 응답도 list로 감쌉니다.
+
+### APIHub 클라이언트
+
+담당 파일:
+
+- `pykma/apihub.py`
+- `pykma/apihub_endpoints.py`
+- `docs/apihub.md`
+- `docs/apihub-endpoints.md`
+- `tools/update_apihub_endpoints.py`
+
+확인할 것:
+
+- APIHub path는 `/api/`로 시작해야 합니다.
+- `authKey`를 자동으로 추가합니다.
+- 탐색 parser는 sample URL에서 `authKey`를 제거합니다.
+- 응답은 `text`와 `content`를 모두 제공합니다.
+- 이름 없는 query string은 `arg1`, `arg2` 순서를 보존합니다.
+- 생성된 endpoint 수와 문서의 endpoint 수가 일치해야 합니다.
+- 포맷정보/예제 첨부 링크는 `APIHUB_ATTACHMENTS` metadata와 문서가 일치해야 합니다.
+
+### 시간 계산
+
+담당 파일:
 
 - `pykma/time_utils.py`
-- base time tests
 
-Checklist:
+확인할 것:
 
-- `getUltraSrtNcst`: `HH00`, available after 40 minutes
-- `getUltraSrtFcst`: `HH30`, available after 15 minutes
-- `getVilageFcst`: `0200/0500/0800/1100/1400/1700/2000/2300`, available after 10 minutes
-- previous-day midnight cases are tested
+- 초단기실황: `HH00`, 발표 후 40분.
+- 초단기예보: `HH30`, 발표 후 15분.
+- 단기예보: `0200/0500/0800/1100/1400/1700/2000/2300`, 발표 후 10분.
+- 전날 자정 경계 케이스를 테스트합니다.
 
-### Grid Agent
+### 좌표 변환
 
-Owns:
+담당 파일:
 
 - `pykma/grid.py`
-- grid conversion tests
 
-Checklist:
+확인할 것:
 
-- official LCC DFS constants are unchanged
-- Seoul, Busan, Jeju, Gangnam verification points pass
-- reverse conversion uses tolerant assertions
+- 공식 LCC DFS 상수는 근거 없이 바꾸지 않습니다.
+- 서울, 부산, 제주, 강남 검증점이 통과합니다.
+- 역변환은 허용 오차로 비교합니다.
 
-### Codes Agent
+### 코드 매핑
 
-Owns:
+담당 파일:
 
 - `pykma/codes.py`
-- category label tests
 
-Checklist:
+확인할 것:
 
-- `SKY` maps only `1`, `3`, `4`
-- `PTY` is endpoint-aware
-- `PCP` and `SNO` labels are preserved
-- `parse_amount()` handles no-rain, less-than, range, and greater-than labels
+- `SKY`는 `1`, `3`, `4`만 매핑합니다.
+- `PTY`는 endpoint-aware입니다.
+- `PCP`, `SNO` 문자열은 보존합니다.
+- `parse_amount()`는 없음, 미만, 범위, 이상 라벨을 처리합니다.
 
-### Docs Agent
+### 문서
 
-Owns:
+담당 파일:
 
-- `README.md`
-- `kma-api.md`
-- `SKILL.md`
-- `AGENTS.md`
+- 모든 `.md` 문서
 
-Checklist:
+확인할 것:
 
-- user examples match actual public API
-- docs mention Decoding key with `params=`
-- docs include KST time behavior
-- docs distinguish observed vs forecast `PTY`
-- docs do not claim live values are stable
+- 프로젝트 문서는 한글로 작성합니다.
+- 코드 식별자, 명령어, URL은 원문을 유지합니다.
+- 사용자 예제는 실제 public API와 일치해야 합니다.
+- API 개수와 구현 범위는 `docs/api-coverage.md`에 반영합니다.
 
-### Release Agent
+## 검증
 
-Owns:
-
-- `pyproject.toml`
-- packaging metadata
-- changelog/release notes when added
-
-Checklist:
-
-- version bump is intentional
-- Python requirement matches syntax used by code and tests
-- package data includes `py.typed`
-- `pytest`, `ruff check .`, and `mypy pykma` are considered before release
-
-## Verification
-
-Fast local checks:
+기본 검증:
 
 ```bash
 python -m compileall pykma tests
 python -m pytest
 ```
 
-Optional quality checks:
+선택 검증:
 
 ```bash
 ruff check .
 mypy pykma
 ```
 
-Live checks, when introduced, must be opt-in:
+실제 API 테스트를 추가할 경우 opt-in으로 둡니다.
 
 ```bash
 KMA_SERVICE_KEY=<decoded service key> python -m pytest -m integration
 ```
 
-## Current Notes
+## 현재 메모
 
-- The initial project skeleton and docs were derived from `README.md`, `SKILL.md`, and the structure of the sibling `pyopinet` project.
-- `kma-api.md` is the preferred place for detailed API quirks so `README.md` can stay readable.
-- `docs/repeated-mistakes.md` must be updated when a bug reflects a known KMA/API trap.
-- `docs/apihub.md` must be updated when APIHub discovery/request behavior changes.
-- `docs/datagokr.md` must be updated when generic data.go.kr service handling changes.
-- `docs/testing.md` must stay aligned with test markers and test file layout.
-- `docs/troubleshooting.md` should get a new entry when a user-facing failure mode is discovered.
-- If expanding beyond `VilageFcstInfoService_2.0`, keep the original client stable and add clearly named modules for new services.
+- `docs/apihub.md`는 APIHub 목록과 탐색 방식을 설명합니다.
+- `docs/apihub-endpoints.md`는 `tools/update_apihub_endpoints.py`로 갱신합니다.
+- `docs/datagokr.md`는 data.go.kr 범용 호출 방식을 설명합니다.
+- `docs/repeated-mistakes.md`는 KMA/APIHub 함정이 발견될 때마다 갱신합니다.
+- `docs/testing.md`는 test marker와 test 파일 구조가 바뀔 때 함께 갱신합니다.
+- `docs/troubleshooting.md`는 사용자에게 보이는 실패 모드가 추가될 때 갱신합니다.

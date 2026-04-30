@@ -11,8 +11,8 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기
 ## 핵심 특징
 
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
-- **data.go.kr generic 호출 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `WthrWrnInfoService` 같은 다른 KMA REST 서비스를 호출합니다.
-- **APIHub generic 호출과 discovery 지원**: `ApiHubClient`로 `authKey` 기반 APIHub path를 호출하고 공식 서비스/endpoint 목록을 탐색합니다.
+- **data.go.kr 범용 호출 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `WthrWrnInfoService` 같은 다른 KMA REST 서비스를 호출합니다.
+- **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
 - **좌표 자동 변환**: 사용자는 WGS84 위도/경도를 넘기고, 라이브러리는 KMA LCC DFS `nx`/`ny` 격자로 변환합니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
 - **Python 타입과 dataclass 반환**: 현재 실황은 `WeatherSnapshot`, 예보는 `ForecastItem`으로 반환합니다.
@@ -102,7 +102,9 @@ lat, lon = to_latlon(60, 127)
 - `lat`, `lon`: WGS84 위도/경도
 - `nx`, `ny`: KMA 격자 좌표
 
-### Generic Clients
+APIHub 공식 목록 기반 함수형 래퍼는 470개이며, 포맷정보/예제/코드표 첨부 metadata는 77개입니다. 전체 함수명은 [docs/apihub-endpoints.md](docs/apihub-endpoints.md)에 정리되어 있습니다.
+
+### 범용 클라이언트
 
 `data.go.kr`의 다른 KMA 서비스는 `DataGoKrClient`를 사용합니다.
 
@@ -120,14 +122,18 @@ items = client.items(
 APIHub는 별도 인증키(`authKey`)를 사용합니다.
 
 ```python
-from pykma import ApiHubClient
+from pykma import ApiHubClient, ApiHubGeneratedClient
 
-hub = ApiHubClient.from_env()  # KMA_APIHUB_AUTH_KEY or KMA_APIHUB_KEY
+hub = ApiHubClient.from_env()  # KMA_APIHUB_AUTH_KEY 또는 KMA_APIHUB_KEY
 response = hub.request_path(
     "/api/typ01/url/wrn_reg.php",
     {"tmfc": "0"},
 )
 print(response.text)
+
+generated = ApiHubGeneratedClient.from_env()
+asos = generated.kma_sfctm2(tm="202605010900", stn="108", help="1")
+rows = asos.text_table().rows
 ```
 
 자세한 내용은 [docs/datagokr.md](docs/datagokr.md)와 [docs/apihub.md](docs/apihub.md)를 참고하세요.
@@ -289,7 +295,7 @@ KmaError
 
 ---
 
-## CLI
+## 명령줄 사용
 
 ```bash
 pykma now --lat 37.5665 --lon 126.9780
@@ -324,6 +330,9 @@ mypy pykma
 ```text
 pykma/
 ├── __init__.py
+├── apihub.py
+├── apihub_endpoints.py
+├── datagokr.py
 ├── client.py
 ├── grid.py
 ├── time_utils.py
@@ -345,9 +354,11 @@ tests/
 - [kma-api.md](kma-api.md): API 세부 명세와 구현 주의사항
 - [SKILL.md](SKILL.md): 에이전트/구현자용 불변조건
 - [AGENTS.md](AGENTS.md): 작업 운영 규칙과 모듈 소유권
+- [docs/api-coverage.md](docs/api-coverage.md): 현재 구현 범위와 API 개수
+- [docs/apihub-endpoints.md](docs/apihub-endpoints.md): APIHub 470개 함수형 endpoint 목록
 - [docs/repeated-mistakes.md](docs/repeated-mistakes.md): 반복 실수 방지 로그
-- [docs/apihub.md](docs/apihub.md): APIHub generic client와 discovery
-- [docs/datagokr.md](docs/datagokr.md): data.go.kr generic client
+- [docs/apihub.md](docs/apihub.md): APIHub 범용 클라이언트와 탐색
+- [docs/datagokr.md](docs/datagokr.md): data.go.kr 범용 클라이언트
 - [docs/testing.md](docs/testing.md): 테스트 작성과 live test 기준
 - [docs/troubleshooting.md](docs/troubleshooting.md): 흔한 오류 증상과 해결책
 - [CONTRIBUTING.md](CONTRIBUTING.md): 기여 절차
@@ -358,9 +369,12 @@ tests/
 ## 호출 한도와 운영 주의
 
 - 공공데이터포털 활용신청 상태와 일일 호출 한도는 계정/서비스 정책에 따라 달라질 수 있습니다.
+- APIHub는 일반회원 기준 일 최대 20,000건/5GB, 기관회원 기준 일 최대 30,000건/50GB로 안내되어 있으며, 시스템 상황에 따라 달라질 수 있습니다.
 - 인증키는 2년마다 갱신이 필요할 수 있습니다.
+- APIHub 인증키는 가입회원 본인만 사용할 수 있고, `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY` 환경변수로 전달합니다.
 - 서버가 빈 `items`를 반환하는 경우 대개 `base_time`이 아직 조회 가능하지 않거나 위치/서비스 승인 문제가 원인입니다.
 - `serviceKey`가 이미 URL 인코딩된 값인지 Decoding 값인지에 따라 전달 방식이 달라집니다. `params=`에는 Decoding 키를 넣는 것을 권장합니다.
+- APIHub 데이터는 공공누리 적용을 받으므로 원천 데이터 이용 조건은 APIHub 안내와 약관을 확인해야 합니다.
 
 ---
 

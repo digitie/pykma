@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import html
+import csv
+import io
 import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
-from urllib.parse import parse_qsl, urlsplit
+from typing import Any, Iterable, Mapping, Optional
+from urllib.parse import quote_plus, unquote_plus, urlsplit, urlunsplit
 
 from ._http import build_session
-from .exceptions import KmaParseError, KmaRequestError, KmaServerError
+from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
 
 try:
     import requests
@@ -34,7 +36,7 @@ APIHUB_CATEGORIES: dict[int, str] = {
     8: "태풍",
     9: "수치모델",
     10: "예특보",
-    11: "융합기상",
+    11: "응용기상",
     12: "세계기상",
     13: "산업특화",
     14: "항공기상",
@@ -55,6 +57,52 @@ class ApiHubEndpoint:
     path: str
     parameters: tuple[str, ...]
     sample_params: Mapping[str, str]
+    query_parts: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class ApiHubEndpointSpec:
+    name: str
+    title: str
+    category_id: int
+    category_name: str
+    service_id: int
+    service_name: str
+    path: str
+    parameters: tuple[str, ...]
+    sample_params: Mapping[str, str]
+    query_parts: tuple[tuple[str, str], ...]
+    response_kind: str
+    source: str
+
+
+@dataclass(frozen=True)
+class ApiHubAttachment:
+    title: str
+    url: str
+    filename: str
+    category_id: int
+    category_name: str
+    service_id: int
+    service_name: str
+    kind: str
+
+
+@dataclass(frozen=True)
+class ApiHubTextTable:
+    headers: tuple[str, ...]
+    rows: tuple[Mapping[str, str], ...]
+    comments: tuple[str, ...]
+    raw_lines: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ApiHubImage:
+    content: bytes
+    content_type: str
+    format: str | None
+    width: int | None
+    height: int | None
 
 
 @dataclass(frozen=True)
@@ -70,6 +118,19 @@ class ApiHubResponse:
             return json.loads(self.text)
         except ValueError as exc:
             raise KmaParseError("APIHub response was not JSON") from exc
+
+    def text_table(self, delimiter: str | None = None) -> ApiHubTextTable:
+        return parse_apihub_text_table(self.text, delimiter=delimiter)
+
+    def image(self) -> ApiHubImage:
+        image_format, width, height = detect_image_info(self.content)
+        return ApiHubImage(
+            content=self.content,
+            content_type=self.content_type,
+            format=image_format,
+            width=width,
+            height=height,
+        )
 
 
 class ApiHubClient:
@@ -111,10 +172,44 @@ class ApiHubClient:
         """Call any APIHub path under `/api/...` and append `authKey`."""
 
         clean_path = _normalize_apihub_path(path)
-        request_params: dict[str, Any] = {"authKey": self.auth_key}
+        request_params: dict[str, Any] = {}
         if params:
             request_params.update(params)
+        request_params["authKey"] = self.auth_key
         return self._get(clean_path, request_params)
+
+    def request_query_parts(
+        self,
+        path: str,
+        query_parts: Iterable[tuple[str, str]],
+        params: Optional[Mapping[str, Any]] = None,
+    ) -> ApiHubResponse:
+        """Call an APIHub endpoint whose query string may contain bare parts.
+
+        Some legacy graphic endpoints use URLs such as
+        ``...?202305031000&0&stn-list&authKey=...``. These are not normal
+        key-value query parameters, so `requests.get(..., params=...)` cannot
+        reproduce them. `query_parts` stores each item as `("bare", name)` or
+        `("named", name)` and this method serializes the query string directly.
+        """
+
+        clean_path = _normalize_apihub_path(path)
+        values = dict(params or {})
+        fragments: list[str] = []
+        for kind, name in query_parts:
+            if name == "authKey":
+                continue
+            if name not in values:
+                continue
+            value = values[name]
+            if value is None:
+                continue
+            if kind == "bare":
+                fragments.append(_quote_query_value(value))
+            else:
+                fragments.append(f"{quote_plus(name)}={_quote_query_value(value)}")
+        fragments.append(f"authKey={_quote_query_value(self.auth_key)}")
+        return self._get_raw(f"{clean_path}?{'&'.join(fragments)}")
 
     def open_api(
         self,
@@ -165,24 +260,37 @@ class ApiHubClient:
         return self._get(path, params)
 
     def _get(self, path: str, params: Mapping[str, Any]) -> ApiHubResponse:
+        return self._get_url(
+            f"{self.base_url}/{path.lstrip('/')}",
+            params=dict(params),
+        )
+
+    def _get_raw(self, path_with_query: str) -> ApiHubResponse:
+        return self._get_url(f"{self.base_url}/{path_with_query.lstrip('/')}", params=None)
+
+    def _get_url(self, url: str, params: Optional[Mapping[str, Any]]) -> ApiHubResponse:
         try:
             response = self.session.get(
-                f"{self.base_url}/{path.lstrip('/')}",
-                params=dict(params),
+                url,
+                params=dict(params) if params is not None else None,
                 timeout=self.timeout,
             )
             response.raise_for_status()
         except HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
+            message = _response_error_message(exc.response)
+            suffix = f": {message}" if message else ""
             if status and status >= 500:
-                raise KmaServerError(f"APIHub server returned HTTP {status}") from exc
-            raise KmaRequestError(f"APIHub request failed with HTTP {status}") from exc
+                raise KmaServerError(f"APIHub server returned HTTP {status}{suffix}") from None
+            if status in {401, 403}:
+                raise KmaAuthError(f"APIHub request failed with HTTP {status}{suffix}") from None
+            raise KmaRequestError(f"APIHub request failed with HTTP {status}{suffix}") from None
         except RequestException as exc:
             raise KmaRequestError("APIHub request failed") from exc
 
         content_type = response.headers.get("Content-Type", "")
         return ApiHubResponse(
-            url=response.url,
+            url=redact_url_credentials(response.url),
             status_code=response.status_code,
             content_type=content_type,
             text=response.text,
@@ -239,13 +347,109 @@ def parse_apihub_sample_url(raw_url: str) -> ApiHubEndpoint:
     parts = urlsplit(cleaned)
     sample_params: dict[str, str] = {}
     parameters: list[str] = []
-    for key, value in parse_qsl(parts.query, keep_blank_values=True):
+    query_parts = _parse_query_parts(parts.query)
+    for kind, key in query_parts:
         if key == "authKey":
             continue
+        value = _query_part_value(parts.query, kind, key)
         if key not in sample_params:
             parameters.append(key)
             sample_params[key] = value
-    return ApiHubEndpoint(parts.path, tuple(parameters), sample_params)
+    return ApiHubEndpoint(parts.path, tuple(parameters), sample_params, query_parts)
+
+
+def parse_apihub_text_table(text: str, delimiter: str | None = None) -> ApiHubTextTable:
+    """Parse common APIHub text responses into comments and dictionary rows.
+
+    APIHub text endpoints are not one uniform format. This parser handles CSV
+    when a delimiter is supplied, whitespace tables with a discoverable header,
+    and falls back to `_raw` rows when no reliable header is present.
+    """
+
+    raw_lines = tuple(line.rstrip("\r") for line in text.splitlines())
+    nonempty = [line.strip() for line in raw_lines if line.strip()]
+    comments = tuple(line for line in nonempty if line.startswith("#"))
+    data_lines = [line for line in nonempty if not line.startswith("#")]
+    if not data_lines:
+        return ApiHubTextTable((), (), comments, raw_lines)
+
+    if delimiter is not None:
+        reader = csv.DictReader(io.StringIO("\n".join(data_lines)), delimiter=delimiter)
+        headers = tuple(reader.fieldnames or ())
+        rows = tuple(dict(row) for row in reader)
+        return ApiHubTextTable(headers, rows, comments, raw_lines)
+
+    headers = _guess_text_headers(comments, data_lines)
+    if not headers:
+        rows = tuple({"_raw": line} for line in data_lines)
+        return ApiHubTextTable((), rows, comments, raw_lines)
+
+    rows_list: list[Mapping[str, str]] = []
+    for line in data_lines:
+        values = line.split()
+        if len(values) < len(headers):
+            rows_list.append({"_raw": line})
+            continue
+        if len(values) > len(headers):
+            values = values[: len(headers) - 1] + [" ".join(values[len(headers) - 1 :])]
+        rows_list.append(dict(zip(headers, values)))
+    return ApiHubTextTable(headers, tuple(rows_list), comments, raw_lines)
+
+
+def detect_image_info(content: bytes) -> tuple[str | None, int | None, int | None]:
+    """Return image format and pixel size for common APIHub image bytes."""
+
+    if content.startswith(b"\x89PNG\r\n\x1a\n") and len(content) >= 24:
+        return "png", int.from_bytes(content[16:20], "big"), int.from_bytes(content[20:24], "big")
+    if content[:6] in (b"GIF87a", b"GIF89a") and len(content) >= 10:
+        return "gif", int.from_bytes(content[6:8], "little"), int.from_bytes(content[8:10], "little")
+    if content.startswith(b"\xff\xd8"):
+        size = _detect_jpeg_size(content)
+        if size is not None:
+            return "jpeg", size[0], size[1]
+        return "jpeg", None, None
+    return None, None, None
+
+
+def redact_url_credentials(url: str) -> str:
+    """Return a URL with API credential query values redacted."""
+
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    redacted_parts: list[str] = []
+    for raw_part in parts.query.split("&"):
+        if "=" not in raw_part:
+            redacted_parts.append(raw_part)
+            continue
+        key, _value = raw_part.split("=", 1)
+        if unquote_plus(key) in {"authKey", "serviceKey"}:
+            redacted_parts.append(f"{key}=***")
+        else:
+            redacted_parts.append(raw_part)
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, "&".join(redacted_parts), parts.fragment)
+    )
+
+
+def _response_error_message(response: Any) -> str:
+    if response is None:
+        return ""
+    try:
+        payload = response.json()
+    except ValueError:
+        text = str(getattr(response, "text", "")).strip()
+        return text[:200]
+    if isinstance(payload, Mapping):
+        result = payload.get("result")
+        if isinstance(result, Mapping) and result.get("message"):
+            return str(result["message"])
+        response_body = payload.get("response")
+        if isinstance(response_body, Mapping):
+            header = response_body.get("header")
+            if isinstance(header, Mapping) and header.get("resultMsg"):
+                return str(header["resultMsg"])
+    return ""
 
 
 def _normalize_apihub_path(path: str) -> str:
@@ -255,3 +459,85 @@ def _normalize_apihub_path(path: str) -> str:
         raise ValueError("APIHub path must start with /api/")
     return clean
 
+
+def _parse_query_parts(query: str) -> tuple[tuple[str, str], ...]:
+    parts: list[tuple[str, str]] = []
+    bare_index = 1
+    for raw_part in query.split("&"):
+        if raw_part == "":
+            continue
+        if "=" in raw_part:
+            key, _value = raw_part.split("=", 1)
+            key = unquote_plus(key)
+            if key == "authKey":
+                continue
+            parts.append(("named", key))
+        else:
+            parts.append(("bare", f"arg{bare_index}"))
+            bare_index += 1
+    return tuple(parts)
+
+
+def _query_part_value(query: str, kind: str, name: str) -> str:
+    bare_index = 1
+    for raw_part in query.split("&"):
+        if raw_part == "":
+            continue
+        if "=" in raw_part:
+            key, value = raw_part.split("=", 1)
+            if kind == "named" and unquote_plus(key) == name:
+                return unquote_plus(value)
+        else:
+            current = f"arg{bare_index}"
+            if kind == "bare" and current == name:
+                return unquote_plus(raw_part)
+            bare_index += 1
+    return ""
+
+
+def _quote_query_value(value: Any) -> str:
+    return quote_plus(str(value), safe=",.:/")
+
+
+def _guess_text_headers(comments: tuple[str, ...], data_lines: list[str]) -> tuple[str, ...]:
+    for comment in reversed(comments):
+        candidate = comment.lstrip("#").strip()
+        if not candidate:
+            continue
+        fields = candidate.replace(",", " ").split()
+        if len(fields) >= 2 and _looks_like_header(fields):
+            return tuple(fields)
+    if len(data_lines) >= 2:
+        fields = data_lines[0].split()
+        values = data_lines[1].split()
+        if len(fields) >= 2 and len(values) >= len(fields) and _looks_like_header(fields):
+            del data_lines[0]
+            return tuple(fields)
+    return ()
+
+
+def _looks_like_header(fields: list[str]) -> bool:
+    return any(re.search(r"[A-Za-z_가-힣]", field) for field in fields)
+
+
+def _detect_jpeg_size(content: bytes) -> tuple[int, int] | None:
+    index = 2
+    while index + 9 < len(content):
+        if content[index] != 0xFF:
+            index += 1
+            continue
+        marker = content[index + 1]
+        index += 2
+        if marker in {0xD8, 0xD9}:
+            continue
+        if index + 2 > len(content):
+            return None
+        length = int.from_bytes(content[index : index + 2], "big")
+        if length < 2 or index + length > len(content):
+            return None
+        if 0xC0 <= marker <= 0xC3:
+            height = int.from_bytes(content[index + 3 : index + 5], "big")
+            width = int.from_bytes(content[index + 5 : index + 7], "big")
+            return width, height
+        index += length
+    return None
