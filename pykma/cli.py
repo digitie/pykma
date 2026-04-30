@@ -7,6 +7,7 @@ import json
 from dataclasses import asdict
 from typing import Sequence
 
+from .apihub import ApiHubClient
 from .client import KmaClient
 
 
@@ -22,7 +23,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     _add_location_args(forecast_parser)
     forecast_parser.add_argument("--short", action="store_true", help="Use ultra-short forecast.")
 
+    apihub_parser = subparsers.add_parser("apihub")
+    apihub_parser.add_argument("path", help="APIHub /api/... path")
+    apihub_parser.add_argument("--auth-key", help="APIHub authKey. Defaults to KMA_APIHUB_AUTH_KEY.")
+    apihub_parser.add_argument(
+        "--param",
+        action="append",
+        default=[],
+        help="Query parameter in key=value form. Can be repeated.",
+    )
+
     args = parser.parse_args(argv)
+    if args.command == "apihub":
+        params = _parse_params(args.param)
+        client = (
+            ApiHubClient(auth_key=args.auth_key)
+            if args.auth_key
+            else ApiHubClient.from_env()
+        )
+        response = client.request_path(args.path, params)
+        print(response.text)
+        return 0
+
     location = _location_kwargs(args)
     client = (
         KmaClient(service_key=args.service_key)
@@ -55,6 +77,18 @@ def _location_kwargs(args: argparse.Namespace) -> dict[str, float | int]:
     if args.ny is None:
         raise SystemExit("--ny is required with --nx")
     return {"nx": args.nx, "ny": args.ny}
+
+
+def _parse_params(values: list[str]) -> dict[str, str]:
+    params: dict[str, str] = {}
+    for value in values:
+        if "=" not in value:
+            raise SystemExit(f"--param must be key=value, got {value!r}")
+        key, raw = value.split("=", 1)
+        if not key:
+            raise SystemExit("--param key must not be empty")
+        params[key] = raw
+    return params
 
 
 if __name__ == "__main__":

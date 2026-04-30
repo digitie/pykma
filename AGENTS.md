@@ -32,6 +32,8 @@ If documents conflict, prefer the higher-priority source and update lower-priori
 - `SKILL.md`: implementation invariants and detailed rules for agents.
 - `AGENTS.md`: task routing, ownership, and verification checklist.
 - `docs/repeated-mistakes.md`: mistakes that have already happened or are likely to recur.
+- `docs/apihub.md`: APIHub authKey client, discovery, and response-format rules.
+- `docs/datagokr.md`: generic data.go.kr client and service/operation examples.
 - `docs/testing.md`: test design, live-test constraints, and regression workflow.
 - `docs/troubleshooting.md`: symptom-to-fix guide for user and maintainer issues.
 - `CONTRIBUTING.md`: contributor setup and workflow.
@@ -179,6 +181,8 @@ KMA_SERVICE_KEY=<decoded service key> python -m pytest -m integration
 - The initial project skeleton and docs were derived from `README.md`, `SKILL.md`, and the structure of the sibling `pyopinet` project.
 - `kma-api.md` is the preferred place for detailed API quirks so `README.md` can stay readable.
 - `docs/repeated-mistakes.md` must be updated when a bug reflects a known KMA/API trap.
+- `docs/apihub.md` must be updated when APIHub discovery/request behavior changes.
+- `docs/datagokr.md` must be updated when generic data.go.kr service handling changes.
 - `docs/testing.md` must stay aligned with test markers and test file layout.
 - `docs/troubleshooting.md` should get a new entry when a user-facing failure mode is discovered.
 - If expanding beyond `VilageFcstInfoService_2.0`, keep the original client stable and add clearly named modules for new services.

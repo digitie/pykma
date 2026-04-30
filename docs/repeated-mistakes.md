@@ -81,3 +81,22 @@ This document records mistakes that are easy to repeat while building `pykma`. W
 
 **Guardrail:** Tests assert actual labels such as `맑음`, `소나기`, `빗방울`, and `강수없음`.
 
+## APIHub Is Not data.go.kr
+
+**Mistake:** Sending `serviceKey` to APIHub or `authKey` to data.go.kr.
+
+**Symptom:** Authentication failures even though the key is valid on the other portal.
+
+**Rule:** `ApiHubClient` appends `authKey`; `DataGoKrClient` and `KmaClient` send `serviceKey`.
+
+**Guardrail:** Tests assert both generic clients build the correct auth parameter.
+
+## APIHub Does Not Always Return JSON
+
+**Mistake:** Calling `.json()` or forcing dataclass parsing for every APIHub endpoint.
+
+**Symptom:** parse errors on text tables, image endpoints, or file downloads.
+
+**Rule:** `ApiHubClient` returns `ApiHubResponse` with `text` and `content`. Parse per endpoint.
+
+**Guardrail:** APIHub tests use text responses and only call `json()` in a JSON-specific test.

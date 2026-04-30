@@ -2,6 +2,8 @@
 
 > 이 문서는 `pykma` 구현자를 위한 API 레퍼런스입니다. 사용자용 빠른 설명은 `README.md`, 에이전트 구현 규칙은 `SKILL.md`를 보세요.
 
+APIHub 전체 범위와 generic 호출 방식은 [docs/apihub.md](docs/apihub.md), data.go.kr generic 호출 방식은 [docs/datagokr.md](docs/datagokr.md)를 함께 보세요.
+
 ## 1. 개요
 
 | 항목 | 값 |
@@ -312,4 +314,3 @@ YO = 136
 - [ ] `PCP`/`SNO`를 무조건 float로 변환하지 않는다.
 - [ ] `PTY` mapping은 endpoint-aware로 처리한다.
 - [ ] 실제 네트워크 호출 없는 단위 테스트를 먼저 작성한다.
-

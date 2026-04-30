@@ -11,6 +11,8 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기
 ## 핵심 특징
 
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
+- **data.go.kr generic 호출 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `WthrWrnInfoService` 같은 다른 KMA REST 서비스를 호출합니다.
+- **APIHub generic 호출과 discovery 지원**: `ApiHubClient`로 `authKey` 기반 APIHub path를 호출하고 공식 서비스/endpoint 목록을 탐색합니다.
 - **좌표 자동 변환**: 사용자는 WGS84 위도/경도를 넘기고, 라이브러리는 KMA LCC DFS `nx`/`ny` 격자로 변환합니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
 - **Python 타입과 dataclass 반환**: 현재 실황은 `WeatherSnapshot`, 예보는 `ForecastItem`으로 반환합니다.
@@ -99,6 +101,36 @@ lat, lon = to_latlon(60, 127)
 
 - `lat`, `lon`: WGS84 위도/경도
 - `nx`, `ny`: KMA 격자 좌표
+
+### Generic Clients
+
+`data.go.kr`의 다른 KMA 서비스는 `DataGoKrClient`를 사용합니다.
+
+```python
+from pykma import DataGoKrClient
+
+client = DataGoKrClient.from_env()
+items = client.items(
+    "MidFcstInfoService",
+    "getMidFcst",
+    {"stnId": "108", "tmFc": "202605010600"},
+)
+```
+
+APIHub는 별도 인증키(`authKey`)를 사용합니다.
+
+```python
+from pykma import ApiHubClient
+
+hub = ApiHubClient.from_env()  # KMA_APIHUB_AUTH_KEY or KMA_APIHUB_KEY
+response = hub.request_path(
+    "/api/typ01/url/wrn_reg.php",
+    {"tmfc": "0"},
+)
+print(response.text)
+```
+
+자세한 내용은 [docs/datagokr.md](docs/datagokr.md)와 [docs/apihub.md](docs/apihub.md)를 참고하세요.
 
 ---
 
@@ -314,6 +346,8 @@ tests/
 - [SKILL.md](SKILL.md): 에이전트/구현자용 불변조건
 - [AGENTS.md](AGENTS.md): 작업 운영 규칙과 모듈 소유권
 - [docs/repeated-mistakes.md](docs/repeated-mistakes.md): 반복 실수 방지 로그
+- [docs/apihub.md](docs/apihub.md): APIHub generic client와 discovery
+- [docs/datagokr.md](docs/datagokr.md): data.go.kr generic client
 - [docs/testing.md](docs/testing.md): 테스트 작성과 live test 기준
 - [docs/troubleshooting.md](docs/troubleshooting.md): 흔한 오류 증상과 해결책
 - [CONTRIBUTING.md](CONTRIBUTING.md): 기여 절차
@@ -342,6 +376,7 @@ KMA 원천 데이터의 저작권과 이용조건은 기상청 및 공공데이�
 
 - [공공데이터포털](https://www.data.go.kr)
 - [기상청 API허브](https://apihub.kma.go.kr)
+- [기상청 API허브 API 소개](https://apihub.kma.go.kr/apiInfo.do)
 - `VilageFcstInfoService_2.0` 활용가이드
 
 ---

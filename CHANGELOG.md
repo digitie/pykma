@@ -13,6 +13,8 @@ All notable changes to `pykma` will be documented here.
 - Safe `PCP` and `SNO` handling that preserves Korean range labels.
 - Typed exception hierarchy for auth, request, server, and parse errors.
 - JSON CLI entrypoint.
+- Generic `DataGoKrClient` for other KMA services on `apis.data.go.kr/1360000`.
+- Generic `ApiHubClient` with `authKey` request support, `typ02/openApi` helper, and portal discovery parsers.
+- APIHub CLI path caller.
 - Offline unit tests covering client parsing, time rules, coordinate conversion, code mapping, and CLI behavior.
 - Documentation set: README, API reference, agent guide, troubleshooting, testing, and repeated-mistake notes.
-

@@ -119,3 +119,23 @@ or:
 pip install requests
 ```
 
+## APIHub Call Returns Text Instead Of JSON
+
+Likely cause:
+
+- Many APIHub endpoints are old text, CSV-like text, image, or binary endpoints.
+
+Fix:
+
+- Use `ApiHubResponse.text` for text endpoints.
+- Use `ApiHubResponse.content` for image or file endpoints.
+- Call `ApiHubResponse.json()` only when the endpoint documentation says it returns JSON.
+
+## `authKey` Works On APIHub But `serviceKey` Does Not
+
+APIHub and data.go.kr are separate gateways.
+
+- APIHub uses `authKey`.
+- data.go.kr uses `serviceKey`.
+
+Use `ApiHubClient` for `https://apihub.kma.go.kr/api/...` paths and `DataGoKrClient` or `KmaClient` for `http://apis.data.go.kr/1360000/...` paths.

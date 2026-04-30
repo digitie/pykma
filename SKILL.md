@@ -18,6 +18,7 @@ You are helping build and maintain `pykma`, a Python client for KMA public weath
 7. **Coordinates**: public API accepts WGS84 `lat`/`lon` or KMA grid `nx`/`ny`; never treat `nx`/`ny` as latitude/longitude.
 8. **No silent empty success**: non-`00` KMA result codes must surface as typed exceptions.
 9. **Offline tests by default**: normal test runs must not call the real KMA API.
+10. **Gateway separation**: data.go.kr uses `serviceKey`; APIHub uses `authKey`.
 
 ## Supported Endpoints
 
@@ -279,6 +280,8 @@ When one of these mistakes is fixed, update `docs/repeated-mistakes.md` with the
 
 - Update `README.md` for user-facing API changes.
 - Update `kma-api.md` for endpoint details, response fields, or KMA behavior.
+- Update `docs/apihub.md` for APIHub categories, discovery, or response-format behavior.
+- Update `docs/datagokr.md` for generic data.go.kr service support.
 - Update `docs/testing.md` when test strategy, markers, or fixture policy changes.
 - Update `docs/troubleshooting.md` when a user-visible error gets a known fix.
 - Update `docs/repeated-mistakes.md` when a recurring trap is discovered or prevented.

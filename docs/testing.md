@@ -22,6 +22,8 @@ Default tests must be:
 - `tests/test_grid.py`: known grid conversion points and bounds.
 - `tests/test_time_utils.py`: KST conversion and endpoint-specific base time selection.
 - `tests/test_cli.py`: CLI argument handling and JSON output shape.
+- `tests/test_datagokr.py`: generic data.go.kr service/operation calls and envelope handling.
+- `tests/test_apihub.py`: APIHub generic request, `typ02/openApi` helper, and discovery HTML parsers.
 
 ## Live Tests
 
@@ -76,4 +78,3 @@ When a bug is fixed:
 1. Add a failing test that would have caught it.
 2. Fix the code.
 3. Update `docs/repeated-mistakes.md` if the bug fits a recurring KMA trap.
-

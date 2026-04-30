@@ -63,6 +63,28 @@ class FakeClient:
         return [FakeForecast(datetime(2026, 4, 30, 15, 0, tzinfo=KST), 60, 127, "T1H", 18.4)]
 
 
+class FakeApiHubResponse:
+    text = "hub-ok"
+
+
+class FakeApiHubClient:
+    last_init_key: str | None = None
+    last_from_env_called = False
+    last_call: tuple[str, dict[str, str]] | None = None
+
+    def __init__(self, auth_key: str) -> None:
+        FakeApiHubClient.last_init_key = auth_key
+
+    @classmethod
+    def from_env(cls) -> "FakeApiHubClient":
+        cls.last_from_env_called = True
+        return cls("env-hub-key")
+
+    def request_path(self, path: str, params: dict[str, str]) -> FakeApiHubResponse:
+        FakeApiHubClient.last_call = (path, params)
+        return FakeApiHubResponse()
+
+
 def test_cli_now_outputs_json_and_uses_explicit_service_key() -> None:
     original = cli.KmaClient
     cli.KmaClient = FakeClient  # type: ignore[assignment]
@@ -104,3 +126,39 @@ def test_cli_forecast_short_uses_from_env_and_latlon() -> None:
 def test_cli_rejects_incomplete_location_pairs() -> None:
     assert_raises(SystemExit, lambda: cli.main(["now", "--lat", "37.5"]))
     assert_raises(SystemExit, lambda: cli.main(["now", "--nx", "60"]))
+
+
+def test_cli_apihub_calls_generic_path() -> None:
+    original = cli.ApiHubClient
+    cli.ApiHubClient = FakeApiHubClient  # type: ignore[assignment]
+    FakeApiHubClient.last_from_env_called = False
+    stream = io.StringIO()
+    try:
+        with redirect_stdout(stream):
+            result = cli.main(
+                [
+                    "apihub",
+                    "/api/typ01/url/kma_sfctm2.php",
+                    "--param",
+                    "tm=202211300900",
+                    "--param",
+                    "stn=108",
+                ]
+            )
+    finally:
+        cli.ApiHubClient = original
+
+    assert result == 0
+    assert stream.getvalue().strip() == "hub-ok"
+    assert FakeApiHubClient.last_from_env_called is True
+    assert FakeApiHubClient.last_call == (
+        "/api/typ01/url/kma_sfctm2.php",
+        {"tm": "202211300900", "stn": "108"},
+    )
+
+
+def test_cli_apihub_rejects_bad_param_shape() -> None:
+    assert_raises(
+        SystemExit,
+        lambda: cli.main(["apihub", "/api/typ01/url/kma_sfctm2.php", "--param", "bad"]),
+    )
