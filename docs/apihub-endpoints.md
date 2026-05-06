@@ -2,7 +2,7 @@
 
 이 문서는 `pykma/apihub_endpoints.py`와 같은 원천에서 생성한 함수 목록입니다.
 
-- 생성일: 2026-05-01
+- 생성일: 2026-05-06
 - 원천: https://apihub.kma.go.kr/apiList.do
 - 보조 원천: https://apihub.kma.go.kr/generateAPIUrl.do
 - 텍스트 예제 첨부: `main.txt`처럼 API URL을 포함한 예제 파일

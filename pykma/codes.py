@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Optional
 
+from .enums import KmaEndpoint, WeatherCategory, enum_value
+
 SKY_LABELS = {
     "1": "맑음",
     "3": "구름많음",
@@ -62,28 +64,48 @@ _NUMERIC_CATEGORIES = {
 }
 
 
-def label_for(category: str, value: object, *, endpoint: str = "") -> Optional[str]:
-    code = str(value)
-    if category == "SKY":
+def label_for(
+    category: str | WeatherCategory,
+    value: object,
+    *,
+    endpoint: str | KmaEndpoint = "",
+) -> Optional[str]:
+    category_code = enum_value(category)
+    code = enum_value(value)
+    endpoint_code = enum_value(endpoint) if endpoint else ""
+    if category_code == WeatherCategory.SKY.value:
         return SKY_LABELS.get(code)
-    if category == "PTY":
-        if endpoint == "getUltraSrtNcst":
+    if category_code == WeatherCategory.PRECIPITATION_TYPE.value:
+        if endpoint_code == KmaEndpoint.ULTRA_SRT_NCST.value:
             return PTY_NCST_LABELS.get(code)
         return PTY_FCST_LABELS.get(code)
     return None
 
 
-def normalize_value(category: str, value: object) -> str | float:
+def normalize_value(category: str | WeatherCategory, value: object) -> str | float:
+    category_code = enum_value(category)
     raw = "" if value is None else str(value).strip()
-    if category in {"PCP", "SNO"}:
+    if category_code in {WeatherCategory.PRECIPITATION.value, WeatherCategory.SNOW.value}:
         return raw
-    if category in _NUMERIC_CATEGORIES:
+    if category_code in _NUMERIC_CATEGORIES:
         try:
             number = float(raw)
         except ValueError:
             return raw
         return number
     return raw
+
+
+def unit_for(category: str | WeatherCategory) -> Optional[str]:
+    """Return the conventional unit for a KMA category, if pykma knows one."""
+
+    return CATEGORY_UNITS.get(enum_value(category))
+
+
+def is_numeric_category(category: str | WeatherCategory) -> bool:
+    """Return true when pykma normally converts the category value to float."""
+
+    return enum_value(category) in _NUMERIC_CATEGORIES
 
 
 def parse_amount(value: object) -> Optional[float]:
@@ -108,4 +130,3 @@ def parse_amount(value: object) -> Optional[float]:
     if "~" in text and len(numbers) >= 2:
         return (numbers[0] + numbers[1]) / 2.0
     return numbers[0]
-

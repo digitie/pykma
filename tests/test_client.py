@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar
 
 from pykma.client import KmaClient
+from pykma.enums import WeatherCategory
 from pykma.exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
+from pykma.locations import GridPoint, LatLon
 from pykma.time_utils import KST
 
 T = TypeVar("T", bound=BaseException)
@@ -151,6 +153,61 @@ def test_forecast_uses_latlon_conversion_and_preserves_pcp_labels() -> None:
     assert items[0].value == 18.4
     assert items[1].value == "1.0mm 미만"
     assert items[2].label == "맑음"
+
+
+def test_client_accepts_standard_location_objects_and_returns_category_enums() -> None:
+    session = FakeSession(
+        _payload(
+            [
+                {
+                    "baseDate": "20260430",
+                    "baseTime": "1400",
+                    "fcstDate": "20260430",
+                    "fcstTime": "1500",
+                    "nx": "60",
+                    "ny": "127",
+                    "category": "TMP",
+                    "fcstValue": "18.4",
+                }
+            ]
+        )
+    )
+    client = KmaClient("decoded-key", session=session)
+
+    items = client.forecast(
+        location=LatLon(37.5665, 126.9780),
+        when=datetime(2026, 4, 30, 14, 15, tzinfo=KST),
+    )
+
+    assert session.last_params is not None
+    assert session.last_params["nx"] == 60
+    assert session.last_params["ny"] == 127
+    assert items[0].category is WeatherCategory.TEMPERATURE
+    assert items[0].category == "TMP"
+    assert items[0].category_enum is WeatherCategory.TEMPERATURE
+    assert items[0].unit == "C"
+    assert items[0].grid == GridPoint(60, 127)
+
+
+def test_client_accepts_grid_location_mapping() -> None:
+    session = FakeSession(
+        _payload(
+            [
+                {"category": "T1H", "obsrValue": "18.4"},
+                {"category": "PTY", "obsrValue": "0"},
+            ]
+        )
+    )
+    client = KmaClient("decoded-key", session=session)
+
+    snapshot = client.now(
+        location={"nx": "60", "ny": "127"},
+        when=datetime(2026, 4, 30, 14, 45, tzinfo=KST),
+    )
+
+    assert snapshot.grid == GridPoint(60, 127)
+    assert isinstance(snapshot.latlon, LatLon)
+    assert snapshot.temperature == 18.4
 
 
 def test_fetch_items_accepts_single_item_dict() -> None:

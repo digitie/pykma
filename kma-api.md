@@ -192,6 +192,22 @@ else:
 
 KMA 격자는 LCC DFS 좌표입니다.
 
+라이브러리 public API에서는 외부 프로그램이 좌표계를 섞지 않도록 다음 값 객체를 제공합니다.
+
+```python
+from pykma import GridPoint, LatLon, normalize_location
+
+LatLon(37.5665, 126.9780).to_grid()  # GridPoint(nx=60, ny=127)
+GridPoint(60, 127).to_latlon()       # 격자 중심에 가까운 WGS84 좌표
+normalize_location({"latitude": 37.5665, "longitude": 126.9780})
+normalize_location({"nx": 60, "ny": 127})
+```
+
+- `LatLon`은 WGS84(`EPSG:4326`) 위도/경도입니다.
+- `GridPoint`는 KMA DFS 격자 좌표입니다.
+- `nx`/`ny`를 위도/경도로 해석하지 않습니다.
+- `location=` 입력은 `lat/lon` 또는 `nx/ny`와 섞어 쓰지 않습니다.
+
 상수:
 
 ```python
@@ -215,6 +231,18 @@ YO = 136
 | 강남역 | `37.4979, 127.0276` | `61, 125` |
 
 ## 7. 코드 매핑
+
+코드 식별자는 외부 프로그램에서 문자열 오타를 줄일 수 있도록 public enum으로도 제공합니다.
+
+```python
+from pykma import KmaEndpoint, WeatherCategory, label_for, unit_for
+
+unit_for(WeatherCategory.TEMPERATURE)  # "C"
+label_for(WeatherCategory.SKY, "1")    # "맑음"
+label_for(WeatherCategory.PRECIPITATION_TYPE, "4", endpoint=KmaEndpoint.VILAGE_FCST)
+```
+
+`WeatherCategory`와 `KmaEndpoint`는 KMA wire value를 그대로 담은 `str` enum입니다. 알 수 없는 새 category는 모델에서 문자열 원문으로 보존합니다.
 
 ### `SKY`
 

@@ -16,8 +16,10 @@ except ModuleNotFoundError:  # pragma: no cover - exercised only in minimal envs
 
 from ._http import build_session
 from .codes import label_for, normalize_value, parse_amount
+from .enums import KmaEndpoint, WeatherCategory, coerce_category, enum_value
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
-from .grid import to_grid, validate_grid
+from .grid import validate_grid
+from .locations import LocationInput, normalize_location
 from .models import ForecastItem, WeatherSnapshot
 from .time_utils import (
     as_kst,
@@ -60,6 +62,7 @@ class KmaClient:
     def now(
         self,
         *,
+        location: Optional[LocationInput] = None,
         lat: Optional[float] = None,
         lon: Optional[float] = None,
         nx: Optional[int] = None,
@@ -72,10 +75,16 @@ class KmaClient:
         base time when `when` is omitted.
         """
 
-        grid_x, grid_y = self._coordinates(lat=lat, lon=lon, nx=nx, ny=ny)
+        grid_x, grid_y = self._coordinates(
+            location=location,
+            lat=lat,
+            lon=lon,
+            nx=nx,
+            ny=ny,
+        )
         base_date, base_time = latest_ultra_srt_ncst_base(when)
         items = self._fetch_items(
-            "getUltraSrtNcst",
+            KmaEndpoint.ULTRA_SRT_NCST,
             base_date=base_date,
             base_time=base_time,
             nx=grid_x,
@@ -88,14 +97,22 @@ class KmaClient:
             observed_at=parse_kma_datetime(base_date, base_time),
             nx=grid_x,
             ny=grid_y,
-            temperature=_float_or_none(by_category.get("T1H")),
-            humidity=_int_or_none(by_category.get("REH")),
-            wind_speed=_float_or_none(by_category.get("WSD")),
-            wind_direction=_int_or_none(by_category.get("VEC")),
-            precipitation=parse_amount(by_category.get("RN1")),
-            sky_label=label_for("SKY", by_category.get("SKY"), endpoint="getUltraSrtNcst"),
+            temperature=_float_or_none(
+                by_category.get(WeatherCategory.CURRENT_TEMPERATURE.value)
+            ),
+            humidity=_int_or_none(by_category.get(WeatherCategory.HUMIDITY.value)),
+            wind_speed=_float_or_none(by_category.get(WeatherCategory.WIND_SPEED.value)),
+            wind_direction=_int_or_none(by_category.get(WeatherCategory.WIND_DIRECTION.value)),
+            precipitation=parse_amount(by_category.get(WeatherCategory.ONE_HOUR_RAIN.value)),
+            sky_label=label_for(
+                WeatherCategory.SKY,
+                by_category.get(WeatherCategory.SKY.value),
+                endpoint=KmaEndpoint.ULTRA_SRT_NCST,
+            ),
             precipitation_label=label_for(
-                "PTY", by_category.get("PTY"), endpoint="getUltraSrtNcst"
+                WeatherCategory.PRECIPITATION_TYPE,
+                by_category.get(WeatherCategory.PRECIPITATION_TYPE.value),
+                endpoint=KmaEndpoint.ULTRA_SRT_NCST,
             ),
             raw=raw,
         )
@@ -103,6 +120,7 @@ class KmaClient:
     def forecast_short(
         self,
         *,
+        location: Optional[LocationInput] = None,
         lat: Optional[float] = None,
         lon: Optional[float] = None,
         nx: Optional[int] = None,
@@ -111,20 +129,27 @@ class KmaClient:
     ) -> list[ForecastItem]:
         """Fetch ultra-short forecast items from `getUltraSrtFcst`."""
 
-        grid_x, grid_y = self._coordinates(lat=lat, lon=lon, nx=nx, ny=ny)
+        grid_x, grid_y = self._coordinates(
+            location=location,
+            lat=lat,
+            lon=lon,
+            nx=nx,
+            ny=ny,
+        )
         base_date, base_time = latest_ultra_srt_fcst_base(when)
         items = self._fetch_items(
-            "getUltraSrtFcst",
+            KmaEndpoint.ULTRA_SRT_FCST,
             base_date=base_date,
             base_time=base_time,
             nx=grid_x,
             ny=grid_y,
         )
-        return [_forecast_item(item, "getUltraSrtFcst") for item in items]
+        return [_forecast_item(item, KmaEndpoint.ULTRA_SRT_FCST) for item in items]
 
     def forecast(
         self,
         *,
+        location: Optional[LocationInput] = None,
         lat: Optional[float] = None,
         lon: Optional[float] = None,
         nx: Optional[int] = None,
@@ -133,16 +158,22 @@ class KmaClient:
     ) -> list[ForecastItem]:
         """Fetch village forecast items from `getVilageFcst`."""
 
-        grid_x, grid_y = self._coordinates(lat=lat, lon=lon, nx=nx, ny=ny)
+        grid_x, grid_y = self._coordinates(
+            location=location,
+            lat=lat,
+            lon=lon,
+            nx=nx,
+            ny=ny,
+        )
         base_date, base_time = latest_vilage_base(when)
         items = self._fetch_items(
-            "getVilageFcst",
+            KmaEndpoint.VILAGE_FCST,
             base_date=base_date,
             base_time=base_time,
             nx=grid_x,
             ny=grid_y,
         )
-        return [_forecast_item(item, "getVilageFcst") for item in items]
+        return [_forecast_item(item, KmaEndpoint.VILAGE_FCST) for item in items]
 
     def version(self, ftype: str, when: datetime) -> Mapping[str, Any]:
         """Fetch forecast version metadata from `getFcstVersion`."""
@@ -151,7 +182,7 @@ class KmaClient:
         base_date = when_kst.strftime("%Y%m%d")
         base_time = when_kst.strftime("%H%M")
         items = self._request(
-            "getFcstVersion",
+            KmaEndpoint.FCST_VERSION,
             {
                 "ftype": ftype,
                 "basedatetime": f"{base_date}{base_time}",
@@ -162,27 +193,18 @@ class KmaClient:
     def _coordinates(
         self,
         *,
+        location: Optional[LocationInput],
         lat: Optional[float],
         lon: Optional[float],
         nx: Optional[int],
         ny: Optional[int],
     ) -> tuple[int, int]:
-        has_latlon = lat is not None or lon is not None
-        has_grid = nx is not None or ny is not None
-        if has_latlon and has_grid:
-            raise ValueError("Provide either lat/lon or nx/ny, not both")
-        if has_latlon:
-            if lat is None or lon is None:
-                raise ValueError("Both lat and lon are required")
-            return to_grid(lat, lon)
-        if nx is None or ny is None:
-            raise ValueError("Either lat/lon or nx/ny is required")
-        validate_grid(nx, ny)
-        return nx, ny
+        grid = normalize_location(location, lat=lat, lon=lon, nx=nx, ny=ny)
+        return grid.nx, grid.ny
 
     def _fetch_items(
         self,
-        endpoint: str,
+        endpoint: str | KmaEndpoint,
         *,
         base_date: str,
         base_time: str,
@@ -208,7 +230,11 @@ class KmaClient:
             raise KmaParseError("KMA response items.item was not a list")
         return items
 
-    def _request(self, endpoint: str, params: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _request(
+        self,
+        endpoint: str | KmaEndpoint,
+        params: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
         request_params: dict[str, Any] = {
             "serviceKey": self.service_key,
             "pageNo": 1,
@@ -219,7 +245,9 @@ class KmaClient:
 
         try:
             response = self.session.get(
-                f"{self.base_url}/{endpoint}", params=request_params, timeout=self.timeout
+                f"{self.base_url}/{enum_value(endpoint)}",
+                params=request_params,
+                timeout=self.timeout,
             )
             response.raise_for_status()
         except HTTPError as exc:
@@ -247,9 +275,9 @@ class KmaClient:
         return body
 
 
-def _forecast_item(item: Mapping[str, Any], endpoint: str) -> ForecastItem:
+def _forecast_item(item: Mapping[str, Any], endpoint: str | KmaEndpoint) -> ForecastItem:
     try:
-        category = str(item["category"])
+        category = coerce_category(item["category"])
         value = item.get("fcstValue")
         nx = int(item["nx"])
         ny = int(item["ny"])

@@ -17,7 +17,7 @@ description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, �
 6. APIHub 기본 URL은 `https://apihub.kma.go.kr`입니다.
 7. APIHub 인증 파라미터는 `authKey`입니다.
 8. KMA 예보 시간은 KST(UTC+9)입니다. naive `datetime`은 KST로 해석합니다.
-9. public API는 WGS84 `lat`/`lon` 또는 KMA 격자 `nx`/`ny`를 받습니다. `nx`/`ny`를 위도/경도로 취급하지 않습니다.
+9. public API는 `location=LatLon(...)`, `location=GridPoint(...)`, WGS84 `lat`/`lon`, KMA 격자 `nx`/`ny` 중 하나를 받습니다. `nx`/`ny`를 위도/경도로 취급하지 않습니다.
 10. KMA `resultCode != "00"`은 typed exception으로 surface합니다.
 11. 기본 테스트는 실제 KMA API를 호출하지 않습니다.
 12. APIHub 응답은 JSON, XML, 텍스트, 이미지, 바이너리가 섞여 있으므로 하나의 모델로 강제하지 않습니다.
@@ -55,6 +55,8 @@ pykma/
 ├── datagokr.py          # DataGoKrClient data.go.kr 범용 client
 ├── apihub.py            # ApiHubClient APIHub 범용 client, 탐색, TXT/이미지 helper
 ├── apihub_endpoints.py  # 생성된 APIHub 함수형 endpoint 래퍼
+├── enums.py             # KmaEndpoint, WeatherCategory, SKY/PTY enum
+├── locations.py         # LatLon, GridPoint, normalize_location
 ├── grid.py              # KMA LCC DFS 변환
 ├── time_utils.py        # KST 기준 base time helper
 ├── codes.py             # SKY/PTY map, category unit, parse_amount
@@ -68,7 +70,9 @@ tests/
 ├── test_apihub.py
 ├── test_apihub_endpoints.py
 ├── test_codes.py
+├── test_enums.py
 ├── test_grid.py
+├── test_locations.py
 ├── test_time_utils.py
 └── test_cli.py
 ```
@@ -82,9 +86,13 @@ KmaClient(service_key, *, timeout=10, retries=3, base_url=None, session=None)
 KmaClient.from_env(name="KMA_SERVICE_KEY")
 ```
 
-위치 인자는 둘 중 하나만 받습니다.
+위치 인자는 다음 형식 중 하나만 받습니다.
 
 ```python
+kma.now(location=LatLon(37.5665, 126.9780))
+kma.now(location=GridPoint(60, 127))
+kma.now(location={"latitude": 37.5665, "longitude": 126.9780})
+kma.now(location={"nx": 60, "ny": 127})
 kma.now(lat=37.5665, lon=126.9780)
 kma.now(nx=60, ny=127)
 ```
@@ -94,6 +102,16 @@ kma.now(nx=60, ny=127)
 - `lat`만 있고 `lon` 없음
 - `nx`만 있고 `ny` 없음
 - `lat/lon`과 `nx/ny`를 동시에 전달
+- `location`과 `lat/lon` 또는 `nx/ny`를 동시에 전달
+
+### 위치와 enum
+
+- `LatLon`은 WGS84 좌표이며 `crs == "EPSG:4326"`입니다.
+- `GridPoint`는 KMA DFS 좌표이며 `grid_system == "KMA_DFS"`입니다.
+- `normalize_location()`은 외부 dict/object 입력을 `GridPoint`로 표준화하는 경계 함수입니다.
+- `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`는 KMA wire value와 같은 `str` enum입니다.
+- 알려진 `ForecastItem.category`는 `WeatherCategory`로 반환하고, 알 수 없는 새 category는 문자열 원문을 보존합니다.
+- enum 값은 JSON 직렬화와 문자열 비교가 자연스럽게 동작해야 합니다.
 
 ### `DataGoKrClient`
 
@@ -106,6 +124,7 @@ client.items("MidFcstInfoService", "getMidFcst", {...})
 규칙:
 
 - `serviceKey`를 자동으로 보냅니다.
+- 문서가 `ServiceKey`를 요구하는 경우 `service_key_param="ServiceKey"`를 사용할 수 있어야 합니다.
 - 기본값은 `pageNo=1`, `numOfRows=10`, `dataType=JSON`입니다.
 - `items()`는 단일 dict를 list로 감쌉니다.
 

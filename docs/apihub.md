@@ -289,6 +289,8 @@ python -X utf8 tools/update_apihub_endpoints.py
 
 이 스크립트는 실제 데이터 endpoint를 호출하지 않고 포털 문서와 URL 발행 metadata만 읽습니다.
 
+2026-05-06 재대조 기준으로 공식 목록 재수집 결과는 로컬 함수형 래퍼 470개, 첨부 metadata 77개와 일치했습니다. APIHub의 보조 `generateAPIUrl.do`가 일시적으로 실패하는 경우가 있어, 생성기는 해당 보조 metadata 실패만 건너뛰고 `apiList.do` 본문과 첨부 예제 수집을 계속합니다.
+
 ## 구현 주의사항
 
 - `authKey`를 로그나 커밋에 남기지 않습니다.

@@ -63,6 +63,16 @@ def test_datagokr_generic_request_builds_service_operation_url() -> None:
     assert session.calls[0]["params"]["numOfRows"] == 10
 
 
+def test_datagokr_service_key_parameter_name_is_configurable() -> None:
+    session = FakeSession(_payload([{"wfSv": "맑음"}]))
+    client = DataGoKrClient("decoded-key", service_key_param="ServiceKey", session=session)
+
+    client.request("MidFcstInfoService", "getMidFcst")
+
+    assert session.calls[0]["params"]["ServiceKey"] == "decoded-key"
+    assert "serviceKey" not in session.calls[0]["params"]
+
+
 def test_datagokr_items_wraps_single_item_dict() -> None:
     client = DataGoKrClient("decoded-key", session=FakeSession(_payload({"wfSv": "맑음"})))
 

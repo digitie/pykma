@@ -2,7 +2,7 @@
 
 Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기예보 API를 Python에서 편하게 쓰기 위한 클라이언트 라이브러리입니다.
 
-`pykma`는 `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸고, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, 코드 라벨 매핑, 예외 처리를 함께 제공합니다.
+`pykma`는 `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸고, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, 예외 처리를 함께 제공합니다.
 
 > 이 저장소는 라이브러리 구현과 유지보수를 위한 명세가 함께 들어 있는 초기 패키지입니다. 세부 API 규칙은 [kma-api.md](kma-api.md), 에이전트 구현 규칙은 [SKILL.md](SKILL.md), 작업 운영 규칙은 [AGENTS.md](AGENTS.md)를 참고하세요.
 
@@ -13,10 +13,11 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
 - **data.go.kr 범용 호출 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `WthrWrnInfoService` 같은 다른 KMA REST 서비스를 호출합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
-- **좌표 자동 변환**: 사용자는 WGS84 위도/경도를 넘기고, 라이브러리는 KMA LCC DFS `nx`/`ny` 격자로 변환합니다.
+- **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현합니다.
+- **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
 - **Python 타입과 dataclass 반환**: 현재 실황은 `WeatherSnapshot`, 예보는 `ForecastItem`으로 반환합니다.
-- **코드 라벨 매핑**: `SKY`, `PTY` 같은 코드를 사람이 읽을 수 있는 한국어 라벨로 함께 제공합니다.
+- **enum과 코드 라벨 매핑**: `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`를 제공하고, 사람이 읽을 수 있는 한국어 라벨도 함께 제공합니다.
 - **문자열 범주값 보존**: `PCP`, `SNO`처럼 `"1.0mm 미만"`, `"30.0~50.0mm"` 같은 범주 문자열은 무리하게 숫자로 바꾸지 않습니다.
 - **명확한 예외 계층**: 인증, 요청, 서버, 파싱 오류를 구분합니다.
 - **네트워크 없는 기본 테스트**: 좌표 변환, 시간 계산, 코드 매핑, 응답 파싱은 mock/fixture 기반으로 검증합니다.
@@ -77,13 +78,32 @@ for item in items[:5]:
 items = kma.forecast(nx=60, ny=127)
 ```
 
+외부 프로그램에서는 위치를 명시적인 값 객체로 넘기는 방식을 권장합니다.
+
+```python
+from pykma import GridPoint, LatLon
+
+snap = kma.now(location=LatLon(37.5665, 126.9780))
+items = kma.forecast(location=GridPoint(60, 127))
+```
+
+dict 기반 입력도 지원합니다. API 서버나 설정 파일에서 받은 값을 그대로 연결할 때 유용합니다.
+
+```python
+kma.now(location={"latitude": 37.5665, "longitude": 126.9780})
+kma.now(location={"nx": 60, "ny": 127})
+```
+
 좌표 변환만 사용할 수도 있습니다.
 
 ```python
-from pykma import to_grid, to_latlon
+from pykma import LatLon, to_grid, to_latlon
 
 nx, ny = to_grid(37.5665, 126.9780)  # (60, 127)
 lat, lon = to_latlon(60, 127)
+
+grid = LatLon(37.5665, 126.9780).to_grid()
+latlon = grid.to_latlon()
 ```
 
 ---
@@ -99,8 +119,14 @@ lat, lon = to_latlon(60, 127)
 
 모든 위치 인자는 둘 중 하나만 사용합니다.
 
+- `location=LatLon(...)`: WGS84 위도/경도 값 객체
+- `location=GridPoint(...)`: KMA DFS 격자 값 객체
+- `location={"lat": ..., "lon": ...}` 또는 `{"latitude": ..., "longitude": ...}`: mapping 기반 WGS84 입력
+- `location={"nx": ..., "ny": ...}`: mapping 기반 KMA DFS 입력
 - `lat`, `lon`: WGS84 위도/경도
 - `nx`, `ny`: KMA 격자 좌표
+
+여러 좌표 형식을 섞으면 `ValueError`를 발생시킵니다.
 
 APIHub 공식 목록 기반 함수형 래퍼는 470개이며, 포맷정보/예제/코드표 첨부 metadata는 77개입니다. 전체 함수명은 [docs/apihub-endpoints.md](docs/apihub-endpoints.md)에 정리되어 있습니다.
 
@@ -117,6 +143,12 @@ items = client.items(
     "getMidFcst",
     {"stnId": "108", "tmFc": "202605010600"},
 )
+```
+
+data.go.kr 문서가 인증키 파라미터를 `ServiceKey`로 표기한 서비스는 다음처럼 바꿀 수 있습니다.
+
+```python
+client = DataGoKrClient.from_env(service_key_param="ServiceKey")
 ```
 
 APIHub는 별도 인증키(`authKey`)를 사용합니다.
@@ -161,6 +193,12 @@ class WeatherSnapshot:
     sky_label: str | None
     precipitation_label: str | None
     raw: dict
+
+    @property
+    def grid(self) -> GridPoint: ...
+
+    @property
+    def latlon(self) -> LatLon: ...
 ```
 
 ### `ForecastItem`
@@ -175,12 +213,58 @@ class ForecastItem:
     forecast_at: datetime
     nx: int
     ny: int
-    category: str
+    category: WeatherCategory | str
     value: str | float
     label: str | None
+
+    @property
+    def category_enum(self) -> WeatherCategory | None: ...
+
+    @property
+    def unit(self) -> str | None: ...
+
+    @property
+    def grid(self) -> GridPoint: ...
+
+    @property
+    def latlon(self) -> LatLon: ...
 ```
 
+`ForecastItem.category`는 알려진 category일 때 `WeatherCategory` enum으로 들어갑니다. `WeatherCategory`는 `str` 기반 enum이라 `"TMP"` 같은 원문 문자열과 비교할 수 있고 JSON 직렬화도 자연스럽게 동작합니다. 알 수 없는 새 category는 원문 문자열을 보존합니다.
+
 `ForecastItem.value`는 숫자로 안전하게 해석되는 값만 `float`가 됩니다. `PCP`, `SNO` 범주 문자열은 원문을 보존합니다.
+
+### 위치 타입
+
+```python
+from pykma import GridPoint, LatLon, normalize_location
+
+seoul = LatLon(37.5665, 126.9780)
+grid = seoul.to_grid()          # GridPoint(nx=60, ny=127)
+center = grid.to_latlon()       # 격자 중심에 가까운 WGS84 좌표
+
+normalize_location({"lat": 37.5665, "lon": 126.9780})  # GridPoint(60, 127)
+normalize_location({"nx": 60, "ny": 127})              # GridPoint(60, 127)
+```
+
+- `LatLon.crs`는 `"EPSG:4326"`입니다.
+- `GridPoint.grid_system`은 `"KMA_DFS"`입니다.
+- `nx`/`ny`는 위도/경도가 아니며, KMA DFS 격자 좌표입니다.
+
+### Public enum
+
+```python
+from pykma import KmaEndpoint, WeatherCategory, label_for, unit_for
+
+WeatherCategory.TEMPERATURE == "TMP"  # True
+unit_for(WeatherCategory.TEMPERATURE)  # "C"
+
+label_for(
+    WeatherCategory.PRECIPITATION_TYPE,
+    "4",
+    endpoint=KmaEndpoint.VILAGE_FCST,
+)  # "소나기"
+```
 
 ---
 

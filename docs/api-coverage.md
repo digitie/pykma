@@ -14,6 +14,7 @@
 | APIHub 함수형 래퍼 | 470개 | `apiList.do`와 `generateAPIUrl.do` 기반 함수형 endpoint |
 | APIHub 첨부 metadata | 77개 | 포맷정보, 예제, 코드표 등 첨부 링크 |
 | APIHub 탐색 기능 | 2개 메서드 | 서비스 목록과 endpoint sample 추출 |
+| 위치/코드 타입 계층 | 1개 계층 | `LatLon`, `GridPoint`, `WeatherCategory`, `KmaEndpoint` 등 public helper |
 
 ## 타입화 endpoint 4개
 
@@ -41,6 +42,8 @@ client.request("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202
 ```
 
 이 계층은 특정 endpoint를 개별 모델로 구현한 것이 아니라, 표준 data.go.kr envelope를 범용으로 처리합니다. 따라서 “개별 구현 endpoint 개수”에는 넣지 않습니다.
+
+공공데이터포털 문서에는 인증키 파라미터가 `serviceKey` 또는 `ServiceKey`로 섞여 표시됩니다. `DataGoKrClient`는 기본적으로 `serviceKey`를 쓰며, 필요한 경우 `service_key_param="ServiceKey"`로 바꿀 수 있습니다.
 
 ## APIHub 범용 지원
 
@@ -77,7 +80,7 @@ response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
 
 ## APIHub 조사 기준
 
-2026-05-01에 공식 페이지를 다시 확인했습니다.
+2026-05-06에 공식 페이지를 다시 확인했습니다.
 
 - `apiInfo.do` 사용자용 제공내역 분류: 13개
 - `apiList.do`에서 실제 접근 가능한 wrapper 생성 대상 분류: 13개
@@ -90,6 +93,37 @@ response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
 
 이 470개는 `ApiHubGeneratedClient`의 함수형 래퍼로 구현되어 있습니다. 다만 응답 row schema를 endpoint별 dataclass로 모두 고정한 것은 아니며, 응답 종류에 따라 `json()`, `text_table()`, `image()` 등으로 다룹니다.
 
+### 2026-05-06 APIHub 재대조 결과
+
+공식 APIHub를 다시 수집해 로컬 snapshot과 비교했습니다.
+
+| 항목 | 공식 재수집 | 로컬 구현 | 차이 |
+|---|---:|---:|---:|
+| endpoint signature | 470 | 470 | 0 |
+| 함수 이름 | 470 | 470 | 0 |
+| 첨부 metadata | 77 | 77 | 0 |
+
+`seqApi` 1~20을 확인했을 때 서비스가 있는 카테고리는 `2~12`, `14`, `15`였고, `13`은 현재 서비스가 없습니다. 따라서 생성 대상 카테고리에서 `13`을 제외한 것은 현재 공식 목록과 일치합니다.
+
+검사 중 `generateAPIUrl.do`가 특정 서비스에서 일시적으로 HTTP 500을 반환하는 경우가 확인되었습니다. `tools/update_apihub_endpoints.py`는 이제 보조 URL 발행 metadata가 실패해도 `apiList.do` 본문과 첨부 예제에서 확인되는 endpoint를 계속 수집합니다. 실제 누락 여부는 최종 signature 비교로 확인합니다.
+
+### data.go.kr 재검토 결과
+
+data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operation}` 형태가 반복됩니다. `DataGoKrClient`는 이 형태를 범용으로 호출하므로, 모든 data.go.kr 서비스를 endpoint별 개별 함수로 생성하지 않습니다.
+
+현재 보장 범위:
+
+- 표준 `response.header/body` JSON envelope 처리
+- 단일 dict/list `items.item` 정규화
+- typed result-code exception
+- `serviceKey`/`ServiceKey` 인증 파라미터 이름 선택
+
+현재 보장하지 않는 범위:
+
+- data.go.kr의 모든 operation을 endpoint별 dataclass로 고정 변환
+- JSON이 아닌 XML 전용 또는 파일 다운로드 응답의 자동 모델링
+- 각 서비스별 필수 파라미터 조합 검증
+
 ## 답변 기준
 
 “지금 구현해놓은 API가 몇 개냐”는 질문에는 다음처럼 답합니다.
@@ -98,3 +132,4 @@ response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
 - **APIHub 함수형 래퍼는 470개입니다.**
 - **범용 클라이언트까지 포함하면 data.go.kr 임의 service/operation과 APIHub `/api/...` path를 호출할 수 있습니다.**
 - **APIHub 470개는 endpoint별 함수 이름을 제공하지만, 모든 응답을 endpoint별 dataclass로 강제 변환하지는 않습니다.**
+- **위치/코드 타입 계층은 endpoint 개수를 늘리는 항목은 아니며, 외부 프로그램에서 좌표계와 category 문자열을 안정적으로 다루기 위한 public API입니다.**

@@ -29,11 +29,15 @@ class DataGoKrClient:
         timeout: float = 10,
         retries: int = 3,
         base_url: str = DATA_GOKR_BASE_URL,
+        service_key_param: str = "serviceKey",
         session: Optional[Any] = None,
     ) -> None:
         if not service_key:
             raise ValueError("service_key is required")
+        if not service_key_param:
+            raise ValueError("service_key_param is required")
         self.service_key = service_key
+        self.service_key_param = service_key_param
         self.timeout = timeout
         self.base_url = base_url.rstrip("/")
         self.session = session or build_session(retries)
@@ -63,7 +67,7 @@ class DataGoKrClient:
         """
 
         request_params: dict[str, Any] = {
-            "serviceKey": self.service_key,
+            self.service_key_param: self.service_key,
             "pageNo": page_no,
             "numOfRows": num_of_rows,
             "dataType": data_type,
@@ -137,4 +141,3 @@ def _raise_for_data_gokr_result_code(code: str, message: str) -> None:
     if code in {"04", "99"}:
         raise KmaServerError(text)
     raise KmaRequestError(text)
-

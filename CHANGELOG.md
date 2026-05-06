@@ -22,4 +22,8 @@
 - 클라이언트 파싱, 시간 규칙, 좌표 변환, 코드 매핑, APIHub 래퍼, CLI 동작을 검증하는 오프라인 단위 테스트.
 - `.env.local`과 `PYKMA_RUN_LIVE=1`로만 실행되는 APIHub/data.go.kr 실서버 integration 테스트.
 - APIHub 401/403을 `KmaAuthError`로 변환하고 응답 URL/예외에서 인증키를 가리는 보호 로직.
+- 외부 프로그램에서 좌표계를 명확히 다룰 수 있는 `LatLon`, `GridPoint`, `normalize_location()` public API.
+- KMA endpoint/category/code 문자열 오타를 줄이는 `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType` enum.
+- `ForecastItem`과 `WeatherSnapshot`의 `grid`, `latlon`, `category_enum`, `unit` helper 속성.
+- data.go.kr 문서의 `serviceKey`/`ServiceKey` 표기 차이를 처리할 수 있는 `service_key_param` 설정.
 - README, API 레퍼런스, 에이전트 가이드, 트러블슈팅, 테스트 가이드, 반복 실수 방지 문서.

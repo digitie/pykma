@@ -34,9 +34,9 @@
 
 **증상:** 엉뚱한 위치의 예보를 조회하거나 좌표 검증 오류가 발생합니다.
 
-**규칙:** WGS84는 `lat`/`lon`, KMA DFS 격자는 `nx`/`ny`를 사용합니다.
+**규칙:** WGS84는 `LatLon` 또는 `lat`/`lon`, KMA DFS 격자는 `GridPoint` 또는 `nx`/`ny`를 사용합니다. 외부 프로그램과 연결할 때는 `location=LatLon(...)`, `location=GridPoint(...)`, `normalize_location()`을 우선 사용합니다.
 
-**방지 테스트:** `pykma/grid.py`가 WGS84 범위와 공식 격자 범위를 검증하고, 클라이언트 테스트가 혼합/부분 좌표를 거부합니다.
+**방지 테스트:** `pykma/grid.py`가 WGS84 범위와 공식 격자 범위를 검증하고, `tests/test_locations.py`와 클라이언트 테스트가 혼합/부분 좌표를 거부합니다.
 
 ## `PCP`, `SNO`는 항상 숫자가 아님
 
@@ -60,6 +60,16 @@
 - `getUltraSrtFcst` / `getVilageFcst`: `0`, `1`, `2`, `3`, `4`
 
 **방지 테스트:** endpoint별 `PTY` 라벨 동작을 테스트합니다.
+
+## 문자열 코드 오타를 public API에 퍼뜨리지 않기
+
+**실수:** 외부 프로그램에서 `"TMP"`, `"PTY"`, `"getVilageFcst"` 같은 문자열을 여러 곳에 직접 적음.
+
+**증상:** 오타가 런타임까지 숨어 있다가 라벨/단위 매핑이 누락되거나 잘못된 endpoint helper를 호출합니다.
+
+**규칙:** 새 public 예제와 내부 구현은 가능한 경우 `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType` enum을 사용합니다. 알 수 없는 새 KMA category는 문자열 원문으로 보존합니다.
+
+**방지 테스트:** enum 값이 KMA wire value와 같은지, code helper가 enum과 문자열을 모두 처리하는지 테스트합니다.
 
 ## KMA 응답 구조를 사용자에게 새게 하지 않기
 
@@ -90,6 +100,16 @@
 **규칙:** `ApiHubClient`는 `authKey`, `DataGoKrClient`와 `KmaClient`는 `serviceKey`를 사용합니다.
 
 **방지 테스트:** 두 범용 클라이언트가 올바른 인증 파라미터를 만드는지 확인합니다.
+
+## data.go.kr 인증 파라미터 표기 차이를 무시하지 않기
+
+**실수:** 모든 data.go.kr 문서가 인증키 이름을 같은 대소문자로 표기한다고 가정함.
+
+**증상:** 어떤 문서는 `serviceKey`, 어떤 문서는 `ServiceKey`로 표시합니다. gateway가 대소문자를 엄격히 처리하는 서비스라면 인증 실패가 날 수 있습니다.
+
+**규칙:** 기본값은 실사용 검증된 `serviceKey`를 쓰되, 필요하면 `DataGoKrClient(..., service_key_param="ServiceKey")`로 바꿉니다.
+
+**방지 테스트:** `tests/test_datagokr.py`에서 인증 파라미터 이름을 설정할 수 있는지 검증합니다.
 
 ## APIHub는 항상 JSON이 아님
 

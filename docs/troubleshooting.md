@@ -103,6 +103,15 @@ pykma now --nx 60 --ny 127
 pykma now --lat 37.5665 --lon 126.9780 --nx 60 --ny 127
 ```
 
+Python 코드에서는 좌표계를 명확히 하기 위해 값 객체를 사용할 수 있습니다.
+
+```python
+from pykma import GridPoint, LatLon
+
+kma.now(location=LatLon(37.5665, 126.9780))
+kma.now(location=GridPoint(60, 127))
+```
+
 ## import는 되지만 네트워크 호출에서 `requests`가 없다고 나옴
 
 `pykma`는 최소 환경에서도 좌표 helper를 import할 수 있게 해두었지만, `KmaClient` 네트워크 호출에는 `requests`가 필요합니다.

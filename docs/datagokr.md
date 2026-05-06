@@ -58,6 +58,12 @@ items = client.items(
 - `numOfRows=10`
 - `dataType=JSON`
 
+공공데이터포털 문서는 서비스에 따라 인증키 항목을 `serviceKey` 또는 `ServiceKey`로 표기합니다. 기본값은 기존 data.go.kr gateway에서 동작 확인한 `serviceKey`이며, 특정 서비스가 대문자 이름을 요구하면 생성자에서 바꿀 수 있습니다.
+
+```python
+client = DataGoKrClient.from_env(service_key_param="ServiceKey")
+```
+
 실제 서버 테스트에서만 쓰는 인증키는 `.env.local`에 둘 수 있습니다. 이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다.
 
 ```text

@@ -50,6 +50,8 @@
 - `pykma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
 - `pykma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
 - `pykma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
+- `pykma/enums.py`: endpoint, category, SKY/PTY public enum.
+- `pykma/locations.py`: `LatLon`, `GridPoint`, `normalize_location()` 위치 표준화.
 - `pykma/_http.py`: session 생성과 retry 설정.
 - `pykma/grid.py`: LCC DFS 격자 변환.
 - `pykma/time_utils.py`: KST 기준 base date/time 계산.
@@ -64,6 +66,7 @@
 - 실제 `serviceKey`나 `authKey`를 출력, 로그, 커밋, fixture에 남기지 않습니다.
 - 기본 테스트에서 실제 API를 호출하지 않습니다.
 - `nx`/`ny`를 위도/경도로 취급하지 않습니다.
+- 외부 프로그램용 위치 입력은 가능하면 `LatLon`/`GridPoint` 또는 `location=`으로 표준화합니다.
 - KMA 시간은 KST 기준입니다.
 - `PCP`, `SNO` 범주 문자열을 무조건 float로 변환하지 않습니다.
 - KMA result code 실패를 빈 리스트 성공처럼 반환하지 않습니다.
@@ -98,6 +101,7 @@
 
 - URL은 `{base_url}/{service}/{operation}` 형태입니다.
 - `serviceKey`, `pageNo`, `numOfRows`, `dataType` 기본값이 있습니다.
+- data.go.kr 문서가 `ServiceKey`를 요구하는 경우 `service_key_param`으로 인증 파라미터 이름을 바꿀 수 있습니다.
 - `items()`는 단일 dict 응답도 list로 감쌉니다.
 
 ### APIHub 클라이언트
@@ -138,21 +142,26 @@
 담당 파일:
 
 - `pykma/grid.py`
+- `pykma/locations.py`
 
 확인할 것:
 
 - 공식 LCC DFS 상수는 근거 없이 바꾸지 않습니다.
 - 서울, 부산, 제주, 강남 검증점이 통과합니다.
 - 역변환은 허용 오차로 비교합니다.
+- `LatLon`은 WGS84 `EPSG:4326`, `GridPoint`는 KMA DFS 좌표입니다.
+- `location=`은 `lat/lon` 또는 `nx/ny`와 섞어 쓰지 못해야 합니다.
 
 ### 코드 매핑
 
 담당 파일:
 
 - `pykma/codes.py`
+- `pykma/enums.py`
 
 확인할 것:
 
+- public enum 값은 KMA wire value와 같아야 합니다.
 - `SKY`는 `1`, `3`, `4`만 매핑합니다.
 - `PTY`는 endpoint-aware입니다.
 - `PCP`, `SNO` 문자열은 보존합니다.

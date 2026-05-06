@@ -21,9 +21,12 @@ python -m pytest
 - `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출과 envelope 처리.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.
+- `tests/test_apihub_generator.py`: APIHub 보조 metadata 페이지가 실패해도 생성기가 본문 endpoint 수집을 유지하는지 검증.
 - `tests/test_live_services.py`: `.env.local` 인증키와 `PYKMA_RUN_LIVE=1`이 있을 때만 실행되는 APIHub/data.go.kr 실서버 smoke test.
 - `tests/test_codes.py`: `SKY`/`PTY` 라벨, `PCP`/`SNO` 보존, `parse_amount()`.
+- `tests/test_enums.py`: public enum wire value, enum-aware code helper, 모델의 enum/category helper.
 - `tests/test_grid.py`: 알려진 격자 변환점과 좌표 범위.
+- `tests/test_locations.py`: `LatLon`, `GridPoint`, mapping 기반 `location=` 표준화와 모호한 입력 거부.
 - `tests/test_time_utils.py`: KST 변환과 endpoint별 base time 선택.
 - `tests/test_cli.py`: CLI 인자 처리와 JSON/text 출력 형태.
 

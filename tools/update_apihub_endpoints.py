@@ -105,18 +105,25 @@ def scrape_endpoints(session: requests.Session) -> list[Endpoint]:
             for endpoint in parse_service_page(category_id, service_id, service_name, service_page):
                 merge_endpoint(merged, endpoint)
 
-            generator_page = get_text(
-                session,
-                "/generateAPIUrl.do",
-                {"seqApi": category_id, "seqApiSub": service_id},
-            )
-            for endpoint in parse_generator_page(
-                category_id,
-                service_id,
-                service_name,
-                generator_page,
-            ):
-                merge_endpoint(merged, endpoint)
+            try:
+                generator_page = get_text(
+                    session,
+                    "/generateAPIUrl.do",
+                    {"seqApi": category_id, "seqApiSub": service_id},
+                )
+            except requests.RequestException as exc:
+                print(
+                    "warning: skipped generateAPIUrl.do "
+                    f"seqApi={category_id} seqApiSub={service_id}: {exc}"
+                )
+            else:
+                for endpoint in parse_generator_page(
+                    category_id,
+                    service_id,
+                    service_name,
+                    generator_page,
+                ):
+                    merge_endpoint(merged, endpoint)
 
             for endpoint in parse_text_attachment_examples(
                 session,
