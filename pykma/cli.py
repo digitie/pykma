@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
+from typing import Any
 from typing import Sequence
 
 from .apihub import ApiHubClient
@@ -53,12 +54,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     if args.command == "now":
-        print(json.dumps(asdict(client.now(**location)), ensure_ascii=False, default=str, indent=2))
+        print(json.dumps(_jsonable(client.now(**location)), ensure_ascii=False, default=str, indent=2))
         return 0
 
     forecast = client.forecast_short(**location) if args.short else client.forecast(**location)
-    print(json.dumps([asdict(item) for item in forecast], ensure_ascii=False, default=str, indent=2))
+    print(json.dumps(_jsonable(forecast), ensure_ascii=False, default=str, indent=2))
     return 0
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    if is_dataclass(value):
+        return asdict(value)
+    return value
 
 
 def _add_location_args(parser: argparse.ArgumentParser) -> None:

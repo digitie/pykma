@@ -13,10 +13,11 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
 - **data.go.kr 범용 호출 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `WthrWrnInfoService` 같은 다른 KMA REST 서비스를 호출합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
+- **한국도로공사 휴게소별 날씨 지원**: `ExpresswayRestAreaWeatherClient`로 고속도로 휴게소별 날씨 정보를 조회합니다.
 - **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현합니다.
 - **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
-- **Python 타입과 dataclass 반환**: 현재 실황은 `WeatherSnapshot`, 예보는 `ForecastItem`으로 반환합니다.
+- **Pydantic 응답 모델**: 실황, 예보, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
 - **enum과 코드 라벨 매핑**: `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`를 제공하고, 사람이 읽을 수 있는 한국어 라벨도 함께 제공합니다.
 - **문자열 범주값 보존**: `PCP`, `SNO`처럼 `"1.0mm 미만"`, `"30.0~50.0mm"` 같은 범주 문자열은 무리하게 숫자로 바꾸지 않습니다.
 - **명확한 예외 계층**: 인증, 요청, 서버, 파싱 오류를 구분합니다.
@@ -170,18 +171,47 @@ rows = asos.text_table().rows
 
 자세한 내용은 [docs/datagokr.md](docs/datagokr.md)와 [docs/apihub.md](docs/apihub.md)를 참고하세요.
 
+### 한국도로공사 휴게소별 날씨
+
+한국도로공사 `data.ex.co.kr`의 휴게소별 날씨 정보도 사용할 수 있습니다. 이 API는 기상청 gateway가 아니므로 별도 인증키를 `EXPRESSWAY_API_KEY`에 둡니다.
+
+```python
+from pykma import ExpresswayRestAreaWeatherClient
+
+client = ExpresswayRestAreaWeatherClient.from_env()
+rows = client.latest_weather(lookback_hours=72)
+
+for row in rows[:3]:
+    print(row.unit_name, row.route_name, row.weather, row.temperature)
+```
+
+특정 날짜와 시간대는 다음처럼 조회합니다.
+
+```python
+rows = client.weather(sdate="20210507", std_hour=12)
+```
+
+자세한 내용은 [docs/expressway.md](docs/expressway.md)를 참고하세요.
+
 ---
 
 ## 응답 모델
 
+사용자에게 반환하는 주요 응답은 Pydantic v2 `BaseModel` 기반의 frozen 모델입니다.
+
+```python
+snapshot = kma.now(location=LatLon(37.5665, 126.9780))
+payload = snapshot.model_dump(mode="json")
+schema = snapshot.model_json_schema()
+```
+
 ### `WeatherSnapshot`
 
 ```python
-from dataclasses import dataclass
 from datetime import datetime
+from pydantic import BaseModel
 
-@dataclass(frozen=True)
-class WeatherSnapshot:
+class WeatherSnapshot(BaseModel):
     observed_at: datetime
     nx: int
     ny: int
@@ -204,11 +234,10 @@ class WeatherSnapshot:
 ### `ForecastItem`
 
 ```python
-from dataclasses import dataclass
 from datetime import datetime
+from pydantic import BaseModel
 
-@dataclass(frozen=True)
-class ForecastItem:
+class ForecastItem(BaseModel):
     base_at: datetime
     forecast_at: datetime
     nx: int
@@ -233,6 +262,29 @@ class ForecastItem:
 `ForecastItem.category`는 알려진 category일 때 `WeatherCategory` enum으로 들어갑니다. `WeatherCategory`는 `str` 기반 enum이라 `"TMP"` 같은 원문 문자열과 비교할 수 있고 JSON 직렬화도 자연스럽게 동작합니다. 알 수 없는 새 category는 원문 문자열을 보존합니다.
 
 `ForecastItem.value`는 숫자로 안전하게 해석되는 값만 `float`가 됩니다. `PCP`, `SNO` 범주 문자열은 원문을 보존합니다.
+
+### `RestAreaWeather`
+
+```python
+from datetime import datetime
+from pydantic import BaseModel
+
+class RestAreaWeather(BaseModel):
+    observed_at: datetime
+    unit_code: str
+    unit_name: str
+    route_no: str
+    route_name: str
+    weather: str | None
+    temperature: float | None
+    humidity: float | None
+    wind_speed: float | None
+    rainfall: float | None
+    snow: float | None
+    raw: dict
+```
+
+한국도로공사 API의 `-99` 계열 결측값은 모델에서 `None`으로 정규화합니다.
 
 ### 위치 타입
 

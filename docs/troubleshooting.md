@@ -204,3 +204,28 @@ $env:PYKMA_RUN_LIVE="1"
 python -m pytest -m integration
 Remove-Item Env:\PYKMA_RUN_LIVE
 ```
+
+## 휴게소별 날씨가 빈 목록을 반환함
+
+가능한 원인:
+
+- 한국도로공사 API의 최신 시간대 자료가 아직 비어 있습니다.
+- `sdate` 또는 `stdHour`가 제공 범위를 벗어났습니다.
+- 인증키는 유효하지만 해당 시각에 자료가 없습니다.
+
+해결:
+
+- `latest_weather(lookback_hours=72)`를 사용해 최근 비어 있지 않은 시간대를 찾습니다.
+- 특정 시각을 조회할 때는 `sdate="YYYYMMDD"`, `std_hour=0~23` 형식을 지킵니다.
+- 실서버 테스트는 `EXPRESSWAY_API_KEY`를 `.env.local`에 두고 `PYKMA_RUN_LIVE=1`로만 실행합니다.
+
+## 휴게소별 날씨에 `-99` 같은 값이 보임
+
+가능한 원인:
+
+- 한국도로공사 API의 결측값 sentinel입니다.
+
+해결:
+
+- `RestAreaWeather`의 typed 필드는 `-99` 계열 값을 `None`으로 정규화합니다.
+- 원문이 필요할 때만 `RestAreaWeather.raw`를 확인합니다.

@@ -6,7 +6,7 @@ from typing import Mapping
 
 import pytest
 
-from pykma import ApiHubGeneratedClient, DataGoKrClient
+from pykma import ApiHubGeneratedClient, DataGoKrClient, ExpresswayRestAreaWeatherClient
 from pykma.exceptions import KmaAuthError
 from pykma.time_utils import latest_ultra_srt_ncst_base
 
@@ -36,6 +36,10 @@ def _apihub_key() -> str | None:
 
 def _data_gokr_key() -> str | None:
     return os.getenv("DATA_GOKR_SERVICE_KEY") or os.getenv("KMA_SERVICE_KEY")
+
+
+def _expressway_key() -> str | None:
+    return os.getenv("EXPRESSWAY_API_KEY") or os.getenv("KOREA_EXPRESSWAY_API_KEY")
 
 
 def _items_from_body(body: Mapping[str, object]) -> list[Mapping[str, object]]:
@@ -94,3 +98,17 @@ def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
     assert any(item.get("category") == "T1H" for item in items)
     assert all(str(item.get("nx")) == "60" for item in items)
     assert all(str(item.get("ny")) == "127" for item in items)
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not _expressway_key(), reason="EXPRESSWAY_API_KEY is not set")
+def test_live_expressway_rest_area_weather_shape() -> None:
+    client = ExpresswayRestAreaWeatherClient(_expressway_key() or "", timeout=30, retries=1)
+
+    rows = client.latest_weather(lookback_hours=72)
+
+    assert rows
+    assert rows[0].unit_name
+    assert rows[0].route_name
+    assert rows[0].observed_at.tzinfo is not None
+    assert rows[0].raw

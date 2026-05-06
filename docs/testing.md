@@ -19,6 +19,8 @@ python -m pytest
 
 - `tests/test_client.py`: 단기예보 typed client 요청 파라미터, fake session 응답 파싱, result code 매핑, 잘못된 응답 처리.
 - `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출과 envelope 처리.
+- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델, 결측값 정규화, 에러 매핑.
+- `tests/test_pydantic_models.py`: public 응답 모델의 Pydantic 직렬화, frozen 동작, 좌표 검증.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.
 - `tests/test_apihub_generator.py`: APIHub 보조 metadata 페이지가 실패해도 생성기가 본문 endpoint 수집을 유지하는지 검증.
@@ -89,6 +91,7 @@ pykma apihub /api/typ01/url/wrn_reg.php --param tmfc=0
 KMA_APIHUB_AUTH_KEY=<APIHub authKey>
 KMA_SERVICE_KEY=<data.go.kr decoded service key>
 DATA_GOKR_SERVICE_KEY=<data.go.kr decoded service key>
+EXPRESSWAY_API_KEY=<한국도로공사 API key>
 ```
 
 실제 서버 integration 테스트는 의도치 않은 네트워크 호출을 막기 위해 marker와 `PYKMA_RUN_LIVE=1`을 함께 요구합니다.

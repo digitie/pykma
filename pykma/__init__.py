@@ -25,9 +25,10 @@ from .exceptions import (
     KmaRequestError,
     KmaServerError,
 )
+from .expressway import ExpresswayRestAreaWeatherClient
 from .grid import to_grid, to_latlon
 from .locations import GridPoint, LatLon, normalize_location
-from .models import ForecastItem, WeatherSnapshot
+from .models import ForecastItem, RestAreaWeather, WeatherSnapshot
 
 __all__ = [
     "ForecastItem",
@@ -42,6 +43,7 @@ __all__ = [
     "DataGoKrClient",
     "ForecastPrecipitationType",
     "GridPoint",
+    "ExpresswayRestAreaWeatherClient",
     "KmaAuthError",
     "KmaClient",
     "KmaEndpoint",
@@ -51,6 +53,7 @@ __all__ = [
     "KmaServerError",
     "LatLon",
     "ObservedPrecipitationType",
+    "RestAreaWeather",
     "SkyCode",
     "WeatherCategory",
     "WeatherSnapshot",

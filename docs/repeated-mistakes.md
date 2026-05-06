@@ -111,6 +111,26 @@
 
 **방지 테스트:** `tests/test_datagokr.py`에서 인증 파라미터 이름을 설정할 수 있는지 검증합니다.
 
+## 한국도로공사 휴게소 날씨 결측값을 실제 값으로 취급하지 않기
+
+**실수:** `-99`, `-99.0`, `-99.000000`을 실제 기온, 강수량, 적설량으로 사용함.
+
+**증상:** 휴게소 날씨 화면이나 통계에서 비현실적인 값이 나타납니다.
+
+**규칙:** `ExpresswayRestAreaWeatherClient`는 `RestAreaWeather` 모델 필드에서 `-99` 계열 값을 `None`으로 정규화합니다. 원문 확인이 필요하면 `raw`를 봅니다.
+
+**방지 테스트:** `tests/test_expressway.py`에서 강수강도, 적설 등 결측 sentinel이 `None`이 되는지 검증합니다.
+
+## 한국도로공사 API를 KMA/data.go.kr 인증 규칙과 섞지 않기
+
+**실수:** 휴게소별 날씨 API에 `serviceKey`나 `authKey`를 보냄.
+
+**증상:** 인증 실패 또는 빈 응답이 발생합니다.
+
+**규칙:** 휴게소별 날씨 API는 한국도로공사 `data.ex.co.kr` gateway를 사용하며 인증 파라미터는 `key`입니다. 로컬 환경변수는 `EXPRESSWAY_API_KEY`를 사용합니다.
+
+**방지 테스트:** `tests/test_expressway.py`에서 최종 요청 파라미터가 `key`, `type`, `sdate`, `stdHour`인지 검증합니다.
+
 ## APIHub는 항상 JSON이 아님
 
 **실수:** 모든 APIHub endpoint에 `.json()`이나 dataclass 파싱을 강제함.
@@ -150,6 +170,16 @@
 **규칙:** 로컬 키는 `.env.local`에만 저장하고, 이 파일은 `.gitignore`로 관리합니다. `ApiHubResponse.url`은 `authKey`/`serviceKey` 값을 `***`로 가리고, HTTP 401/403 예외는 원본 `HTTPError`를 chaining하지 않습니다.
 
 **방지 테스트:** URL redaction 테스트와 APIHub 403 매핑 테스트에서 실제 키가 예외 문자열에 포함되지 않는지 확인합니다.
+
+## `.env.local`에 키를 추가할 때 줄바꿈을 망가뜨리지 않기
+
+**실수:** 새 인증키를 기존 줄 끝에 붙여 `DATA_GOKR_SERVICE_KEY=...EXPRESSWAY_API_KEY=...`처럼 만듦.
+
+**증상:** 원래 잘 되던 data.go.kr 실서버 테스트가 인증 실패를 냅니다.
+
+**규칙:** `.env.local`은 반드시 한 줄에 하나의 `KEY=value`만 둡니다. 키를 추가한 뒤에는 key 이름 목록만 확인하고 값은 출력하지 않습니다.
+
+**방지 테스트:** live test loader는 `.env.local`을 줄 단위로 읽습니다. 실서버 테스트 전 key 이름 목록과 secret scan을 확인합니다.
 
 ## APIHub 403을 단순 키 오류로만 보지 않기
 

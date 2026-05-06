@@ -34,6 +34,7 @@
 - `docs/apihub.md`: APIHub 인증키, 범용 호출, 탐색 기능, 응답 형식 규칙.
 - `docs/apihub-endpoints.md`: APIHub 함수형 endpoint 목록.
 - `docs/datagokr.md`: data.go.kr 범용 클라이언트와 서비스/operation 예시.
+- `docs/expressway.md`: 한국도로공사 휴게소별 날씨 API 사용법.
 - `docs/api-coverage.md`: 현재 구현 범위와 API 개수.
 - `docs/testing.md`: 테스트 설계, live test 제한, 회귀 테스트 절차.
 - `docs/troubleshooting.md`: 증상별 원인과 해결책.
@@ -50,13 +51,14 @@
 - `pykma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
 - `pykma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
 - `pykma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
+- `pykma/expressway.py`: 한국도로공사 휴게소별 날씨 API 클라이언트.
 - `pykma/enums.py`: endpoint, category, SKY/PTY public enum.
 - `pykma/locations.py`: `LatLon`, `GridPoint`, `normalize_location()` 위치 표준화.
 - `pykma/_http.py`: session 생성과 retry 설정.
 - `pykma/grid.py`: LCC DFS 격자 변환.
 - `pykma/time_utils.py`: KST 기준 base date/time 계산.
 - `pykma/codes.py`: category map, 라벨, 단위 힌트, 강수량 문자열 파싱.
-- `pykma/models.py`: 사용자에게 반환하는 frozen dataclass.
+- `pykma/models.py`: 사용자에게 반환하는 frozen Pydantic 모델.
 - `pykma/exceptions.py`: 예외 계층.
 - `pykma/cli.py`: JSON CLI와 APIHub path 호출.
 - `tests/`: 네트워크 없는 단위 테스트.
@@ -71,6 +73,7 @@
 - `PCP`, `SNO` 범주 문자열을 무조건 float로 변환하지 않습니다.
 - KMA result code 실패를 빈 리스트 성공처럼 반환하지 않습니다.
 - data.go.kr와 APIHub의 인증 파라미터를 섞지 않습니다.
+- 한국도로공사 휴게소 날씨 API는 `key` 파라미터와 `EXPRESSWAY_API_KEY` 환경변수를 사용합니다.
 - APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
 
 ## 작업 소유권
@@ -123,6 +126,23 @@
 - 이름 없는 query string은 `arg1`, `arg2` 순서를 보존합니다.
 - 생성된 endpoint 수와 문서의 endpoint 수가 일치해야 합니다.
 - 포맷정보/예제 첨부 링크는 `APIHUB_ATTACHMENTS` metadata와 문서가 일치해야 합니다.
+
+### 한국도로공사 휴게소 날씨
+
+담당 파일:
+
+- `pykma/expressway.py`
+- `docs/expressway.md`
+- `tests/test_expressway.py`
+
+확인할 것:
+
+- endpoint는 `http://data.ex.co.kr/openapi/restinfo/restWeatherList`입니다.
+- 인증 파라미터는 `key`입니다.
+- 요청 파라미터는 `type=json`, `sdate=YYYYMMDD`, `stdHour=HH`입니다.
+- `code != SUCCESS`는 typed exception입니다.
+- `-99` 계열 결측값은 모델 필드에서 `None`으로 정규화하고 원문은 `raw`에 보존합니다.
+- 실서버 테스트는 `PYKMA_RUN_LIVE=1`과 `EXPRESSWAY_API_KEY`가 있을 때만 실행합니다.
 
 ### 시간 계산
 

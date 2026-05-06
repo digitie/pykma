@@ -1,11 +1,11 @@
 ---
 name: kma-api-python-builder
-description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, 확장, 디버그, 테스트할 때 사용한다. KMA, 기상청, 단기예보, 초단기실황, 초단기예보, 동네예보, VilageFcstInfoService_2.0, APIHub, data.go.kr, nx/ny 격자 변환, base_time 계산, serviceKey/authKey 인코딩, SKY/PTY 코드, apis.data.go.kr/1360000, apihub.kma.go.kr 관련 작업에 적용한다.
+description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python 클라이언트를 구현, 확장, 디버그, 테스트할 때 사용한다. KMA, 기상청, 단기예보, 초단기실황, 초단기예보, 동네예보, VilageFcstInfoService_2.0, APIHub, data.go.kr, 한국도로공사, 휴게소별 날씨, nx/ny 격자 변환, base_time 계산, serviceKey/authKey/key 인코딩, SKY/PTY 코드, apis.data.go.kr/1360000, apihub.kma.go.kr, data.ex.co.kr 관련 작업에 적용한다.
 ---
 
 # KMA Python 라이브러리 빌더
 
-`pykma`는 기상청 공공 날씨 API를 위한 Python 클라이언트입니다. public 동작을 바꾸기 전 `README.md`, `kma-api.md`, `docs/api-coverage.md`, `docs/apihub.md`, `docs/apihub-endpoints.md`, `docs/datagokr.md`, `AGENTS.md`를 확인합니다.
+`pykma`는 기상청 공공 날씨 API와 관련 도로 날씨 API를 위한 Python 클라이언트입니다. public 동작을 바꾸기 전 `README.md`, `kma-api.md`, `docs/api-coverage.md`, `docs/apihub.md`, `docs/apihub-endpoints.md`, `docs/datagokr.md`, `docs/expressway.md`, `AGENTS.md`를 확인합니다.
 
 ## 프로젝트 불변조건
 
@@ -16,12 +16,14 @@ description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, �
 5. data.go.kr user-facing 메서드는 기본적으로 `dataType=JSON`을 요청합니다.
 6. APIHub 기본 URL은 `https://apihub.kma.go.kr`입니다.
 7. APIHub 인증 파라미터는 `authKey`입니다.
-8. KMA 예보 시간은 KST(UTC+9)입니다. naive `datetime`은 KST로 해석합니다.
-9. public API는 `location=LatLon(...)`, `location=GridPoint(...)`, WGS84 `lat`/`lon`, KMA 격자 `nx`/`ny` 중 하나를 받습니다. `nx`/`ny`를 위도/경도로 취급하지 않습니다.
-10. KMA `resultCode != "00"`은 typed exception으로 surface합니다.
-11. 기본 테스트는 실제 KMA API를 호출하지 않습니다.
-12. APIHub 응답은 JSON, XML, 텍스트, 이미지, 바이너리가 섞여 있으므로 하나의 모델로 강제하지 않습니다.
-13. APIHub legacy 그래픽 URL의 이름 없는 query string은 순서가 의미이므로 `arg1`, `arg2` 순서를 보존합니다.
+8. 한국도로공사 휴게소 날씨 기본 URL은 `http://data.ex.co.kr/openapi/restinfo/restWeatherList`입니다.
+9. 한국도로공사 휴게소 날씨 인증 파라미터는 `key`입니다.
+10. KMA 예보 시간과 도로 날씨 조회 시각은 KST(UTC+9)입니다. naive `datetime`은 KST로 해석합니다.
+11. public API는 `location=LatLon(...)`, `location=GridPoint(...)`, WGS84 `lat`/`lon`, KMA 격자 `nx`/`ny` 중 하나를 받습니다. `nx`/`ny`를 위도/경도로 취급하지 않습니다.
+12. KMA `resultCode != "00"`은 typed exception으로 surface합니다.
+13. 기본 테스트는 실제 KMA/APIHub/도로공사 API를 호출하지 않습니다.
+14. APIHub 응답은 JSON, XML, 텍스트, 이미지, 바이너리가 섞여 있으므로 하나의 모델로 강제하지 않습니다.
+15. APIHub legacy 그래픽 URL의 이름 없는 query string은 순서가 의미이므로 `arg1`, `arg2` 순서를 보존합니다.
 
 ## 현재 구현 범위
 
@@ -32,6 +34,7 @@ description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, �
 - APIHub 범용 호출 계층: 임의 `/api/...` path 호출 가능
 - APIHub 함수형 래퍼: 공식 목록 기반 470개 endpoint
 - APIHub 탐색 기능: 공식 페이지에서 서비스 목록과 sample endpoint signature 추출 가능
+- 한국도로공사 휴게소별 날씨: 1개 endpoint typed 모델 지원
 
 ## 지원 endpoint
 
@@ -43,6 +46,7 @@ description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, �
 | `KmaClient.forecast_short()` | `getUltraSrtFcst` | 초단기예보 |
 | `KmaClient.forecast()` | `getVilageFcst` | 단기예보 |
 | `KmaClient.version()` | `getFcstVersion` | 예보버전 |
+| `ExpresswayRestAreaWeatherClient.weather()` | `restWeatherList` | 휴게소별 날씨 |
 
 그 외 KMA 서비스는 우선 범용 클라이언트로 호출합니다. 안정적인 응답 schema와 사용례가 쌓이면 타입화된 wrapper를 추가합니다.
 
@@ -55,12 +59,13 @@ pykma/
 ├── datagokr.py          # DataGoKrClient data.go.kr 범용 client
 ├── apihub.py            # ApiHubClient APIHub 범용 client, 탐색, TXT/이미지 helper
 ├── apihub_endpoints.py  # 생성된 APIHub 함수형 endpoint 래퍼
+├── expressway.py        # 한국도로공사 휴게소별 날씨 client
 ├── enums.py             # KmaEndpoint, WeatherCategory, SKY/PTY enum
 ├── locations.py         # LatLon, GridPoint, normalize_location
 ├── grid.py              # KMA LCC DFS 변환
 ├── time_utils.py        # KST 기준 base time helper
 ├── codes.py             # SKY/PTY map, category unit, parse_amount
-├── models.py            # frozen dataclass
+├── models.py            # frozen Pydantic response models
 ├── exceptions.py        # KmaError 계층
 ├── _http.py             # requests session과 retry 설정
 └── cli.py               # console entrypoint
@@ -69,6 +74,7 @@ tests/
 ├── test_datagokr.py
 ├── test_apihub.py
 ├── test_apihub_endpoints.py
+├── test_expressway.py
 ├── test_codes.py
 ├── test_enums.py
 ├── test_grid.py
@@ -161,6 +167,24 @@ hub.aws3_nph_awsm_tms_h06(use_sample=True)
 - 포맷정보/예제/코드표 첨부 링크는 `APIHUB_ATTACHMENTS`에 metadata로 남깁니다.
 - 예제 URL의 `authKey`는 버리고 사용자의 `authKey`만 붙입니다.
 - 이름 없는 query string은 `request_query_parts()`를 통해 순서를 보존합니다.
+
+### `ExpresswayRestAreaWeatherClient`
+
+```python
+ExpresswayRestAreaWeatherClient(api_key)
+ExpresswayRestAreaWeatherClient.from_env(name="EXPRESSWAY_API_KEY")
+client.weather(sdate="20210507", std_hour=12)
+client.latest_weather(lookback_hours=72)
+```
+
+규칙:
+
+- `key`, `type=json`, `sdate`, `stdHour`를 요청 파라미터로 보냅니다.
+- `sdate`는 `YYYYMMDD`, `stdHour`는 `00`~`23`으로 표준화합니다.
+- 응답의 `code`가 `SUCCESS`가 아니면 typed exception입니다.
+- 메시지에 인증키 문제가 있으면 `KmaAuthError`입니다.
+- `-99`, `-99.0`, `-99.000000` 계열 결측값은 `RestAreaWeather` 필드에서 `None`으로 정규화합니다.
+- 원본 row는 `RestAreaWeather.raw`에 보존합니다.
 
 ## 타입 변환 정책
 

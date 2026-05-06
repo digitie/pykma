@@ -26,4 +26,6 @@
 - KMA endpoint/category/code 문자열 오타를 줄이는 `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType` enum.
 - `ForecastItem`과 `WeatherSnapshot`의 `grid`, `latlon`, `category_enum`, `unit` helper 속성.
 - data.go.kr 문서의 `serviceKey`/`ServiceKey` 표기 차이를 처리할 수 있는 `service_key_param` 설정.
+- 한국도로공사 휴게소별 날씨 API를 호출하는 `ExpresswayRestAreaWeatherClient`와 `RestAreaWeather` 모델.
+- public 응답 모델을 frozen Pydantic v2 모델로 전환하고 `model_dump()`, `model_dump_json()`, JSON Schema를 지원.
 - README, API 레퍼런스, 에이전트 가이드, 트러블슈팅, 테스트 가이드, 반복 실수 방지 문서.

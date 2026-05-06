@@ -4,17 +4,18 @@
 
 ## 요약
 
-현재 직접 타입화된 모델로 구현한 KMA endpoint는 **4개**이고, APIHub 공식 목록을 함수형으로 감싼 endpoint는 **470개**입니다.
+현재 직접 타입화된 모델로 구현한 KMA endpoint는 **4개**이고, APIHub 공식 목록을 함수형으로 감싼 endpoint는 **470개**입니다. 관련 도로 날씨 API로 한국도로공사 휴게소별 날씨 endpoint **1개**도 타입화했습니다.
 
 | 구분 | 개수 | 설명 |
 |---|---:|---|
-| 개별 타입화 endpoint | 4개 | `KmaClient`가 dataclass로 반환하는 단기예보 endpoint |
+| 개별 타입화 endpoint | 4개 | `KmaClient`가 Pydantic 모델로 반환하는 단기예보 endpoint |
 | data.go.kr 범용 호출 방식 | 1개 계층 | 임의 `{service}/{operation}` 호출 가능 |
 | APIHub 범용 호출 방식 | 1개 계층 | 임의 `/api/...` path 호출 가능 |
 | APIHub 함수형 래퍼 | 470개 | `apiList.do`와 `generateAPIUrl.do` 기반 함수형 endpoint |
 | APIHub 첨부 metadata | 77개 | 포맷정보, 예제, 코드표 등 첨부 링크 |
 | APIHub 탐색 기능 | 2개 메서드 | 서비스 목록과 endpoint sample 추출 |
 | 위치/코드 타입 계층 | 1개 계층 | `LatLon`, `GridPoint`, `WeatherCategory`, `KmaEndpoint` 등 public helper |
+| 한국도로공사 휴게소별 날씨 | 1개 | `ExpresswayRestAreaWeatherClient`가 `RestAreaWeather`로 반환 |
 
 ## 타입화 endpoint 4개
 
@@ -65,7 +66,7 @@ hub.request_path("/api/typ01/url/wrn_reg.php", {"tmfc": "0"})
 hub.open_api("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202605010600"})
 ```
 
-APIHub는 텍스트, JSON, XML, 이미지, 바이너리 파일 응답이 섞여 있습니다. `pykma`는 endpoint별 반환 스키마를 모두 dataclass로 고정하지는 않지만, 공식 목록에서 확인한 endpoint를 `ApiHubGeneratedClient`의 함수형 메서드로 제공합니다.
+APIHub는 텍스트, JSON, XML, 이미지, 바이너리 파일 응답이 섞여 있습니다. `pykma`는 endpoint별 반환 스키마를 모두 Pydantic 모델로 고정하지는 않지만, 공식 목록에서 확인한 endpoint를 `ApiHubGeneratedClient`의 함수형 메서드로 제공합니다.
 
 예:
 
@@ -91,7 +92,7 @@ response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
 
 `apiInfo.do`의 제공내역 번호는 사용자 안내용 번호이고, `apiList.do`의 `seqApi`는 포털 내부 라우팅 id입니다. 두 번호 체계가 같다고 가정하지 않습니다.
 
-이 470개는 `ApiHubGeneratedClient`의 함수형 래퍼로 구현되어 있습니다. 다만 응답 row schema를 endpoint별 dataclass로 모두 고정한 것은 아니며, 응답 종류에 따라 `json()`, `text_table()`, `image()` 등으로 다룹니다.
+이 470개는 `ApiHubGeneratedClient`의 함수형 래퍼로 구현되어 있습니다. 다만 응답 row schema를 endpoint별 Pydantic 모델로 모두 고정한 것은 아니며, 응답 종류에 따라 `json()`, `text_table()`, `image()` 등으로 다룹니다.
 
 ### 2026-05-06 APIHub 재대조 결과
 
@@ -120,9 +121,26 @@ data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operati
 
 현재 보장하지 않는 범위:
 
-- data.go.kr의 모든 operation을 endpoint별 dataclass로 고정 변환
+- data.go.kr의 모든 operation을 endpoint별 Pydantic 모델로 고정 변환
 - JSON이 아닌 XML 전용 또는 파일 다운로드 응답의 자동 모델링
 - 각 서비스별 필수 파라미터 조합 검증
+
+## 한국도로공사 휴게소별 날씨
+
+`ExpresswayRestAreaWeatherClient`는 한국도로공사 LINK API인 휴게소별 날씨 정보를 호출합니다.
+
+```text
+http://data.ex.co.kr/openapi/restinfo/restWeatherList
+```
+
+이 API는 기상청 APIHub나 data.go.kr `1360000` gateway가 아니며, 인증 파라미터는 `key`입니다.
+
+| 메서드 | endpoint | 반환 |
+|---|---|---|
+| `weather(sdate, std_hour)` | `restWeatherList` | `list[RestAreaWeather]` |
+| `latest_weather()` | `restWeatherList` | `list[RestAreaWeather]` |
+
+`latest_weather()`는 최근 시간대가 비어 있을 수 있는 API 특성을 고려해 lookback window 안에서 가장 최근의 비어 있지 않은 응답을 찾는 편의 메서드입니다.
 
 ## 답변 기준
 
@@ -130,6 +148,7 @@ data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operati
 
 - **직접 타입화 구현 endpoint는 4개입니다.**
 - **APIHub 함수형 래퍼는 470개입니다.**
+- **한국도로공사 휴게소별 날씨 타입화 endpoint는 1개입니다.**
 - **범용 클라이언트까지 포함하면 data.go.kr 임의 service/operation과 APIHub `/api/...` path를 호출할 수 있습니다.**
-- **APIHub 470개는 endpoint별 함수 이름을 제공하지만, 모든 응답을 endpoint별 dataclass로 강제 변환하지는 않습니다.**
+- **APIHub 470개는 endpoint별 함수 이름을 제공하지만, 모든 응답을 endpoint별 Pydantic 모델로 강제 변환하지는 않습니다.**
 - **위치/코드 타입 계층은 endpoint 개수를 늘리는 항목은 아니며, 외부 프로그램에서 좌표계와 category 문자열을 안정적으로 다루기 위한 public API입니다.**
