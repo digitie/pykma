@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Callable
 
-from pykma import has_next_page, make_cache_key, next_page_no, sanitize_request_params
+from pykma import (
+    KMA_DATA_GOKR_DATASETS,
+    WeatherCategory,
+    has_next_page,
+    make_cache_key,
+    next_page_no,
+    sanitize_request_params,
+)
 from pykma.datagokr import DataGoKrClient
 from pykma.exceptions import KmaAuthError, KmaParseError
 from pykma.metadata import redact_credentials_in_text
+from pykma.time_utils import KST
 
 
 class FakeResponse:
@@ -106,6 +115,89 @@ def test_datagokr_items_wraps_single_item_dict() -> None:
     assert client.items("MidFcstInfoService", "getMidFcst")[0] == {"wfSv": "맑음"}
 
 
+def test_datagokr_dataset_catalog_is_kma_only() -> None:
+    client = DataGoKrClient("decoded-key", session=FakeSession(_payload([])))
+
+    datasets = client.datasets()
+
+    assert datasets == KMA_DATA_GOKR_DATASETS
+    assert len(datasets) == 86
+    assert sum(1 for dataset in datasets if dataset.gateway == "datagokr") == 38
+    assert sum(1 for dataset in datasets if dataset.gateway == "apihub") == 48
+    assert (
+        sum(len(dataset.operations) for dataset in datasets if dataset.gateway == "datagokr")
+        == 160
+    )
+    assert all(dataset.title.startswith("\uae30\uc0c1\uccad") for dataset in datasets)
+    assert client.dataset("15084084").operations == (
+        "getUltraSrtNcst",
+        "getUltraSrtFcst",
+        "getVilageFcst",
+        "getFcstVersion",
+    )
+    assert len(client.dataset("15000415").operations) == 10
+    non_kma_fragments = (
+        "\uacbd\uae30\ub3c4",
+        "\ub18d\ucd0c\uc9c4\ud765\uccad",
+        "\ud589\uc815\uc548\uc804\ubd80",
+        "\ubc95\uc81c\ucc98",
+        "\ud55c\uad6d\ub3c4\ub85c\uacf5\uc0ac",
+    )
+    assert not any(
+        fragment in dataset.title for dataset in datasets for fragment in non_kma_fragments
+    )
+
+
+def test_datagokr_dataset_catalog_request_by_id() -> None:
+    session = FakeSession(_payload({"stnId": "108", "tm": "2026-05-01"}))
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.dataset_items(
+        "15059093",
+        {
+            "startDt": "20260501",
+            "endDt": "20260502",
+            "dataCd": "ASOS",
+            "dateCd": "DAY",
+        },
+    )
+
+    assert client.dataset("15059093").service == "AsosDalyInfoService"
+    assert session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
+    )
+    assert rows[0].service == "AsosDalyInfoService"
+    assert rows[0].operation == "getWthrDataList"
+    assert rows[0].raw["stnId"] == "108"
+
+
+def test_datagokr_dataset_catalog_multi_operation_requires_selection() -> None:
+    session = FakeSession(_payload({"beachNum": "1", "tm": "202205011600", "wh": "0.7"}))
+    client = DataGoKrClient("decoded-key", session=session)
+
+    assert_raises(ValueError, lambda: client.dataset_items("15102239", {"beach_num": "1"}))
+
+    rows = client.dataset_items(
+        "15102239",
+        {"beach_num": "1", "searchTime": "202205011600"},
+        operation="getWhBuoyBeach",
+    )
+
+    assert session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/BeachInfoservice/getWhBuoyBeach"
+    )
+    assert rows[0].service == "BeachInfoservice"
+    assert rows[0].operation == "getWhBuoyBeach"
+
+
+def test_datagokr_dataset_catalog_rejects_api_hub_linked_entries() -> None:
+    client = DataGoKrClient("decoded-key", session=FakeSession(_payload([])))
+
+    assert client.dataset("15139470").gateway == "apihub"
+    assert_raises(ValueError, lambda: client.dataset_items("15139470"))
+    assert_raises(ValueError, lambda: client.dataset("99999999"))
+
+
 def test_datagokr_pagination_helpers_and_iter_pages_guard() -> None:
     first = _paged_payload([{"id": 1}], page_no=1, total_count=3)
     second = _paged_payload([{"id": 2}], page_no=2, total_count=3)
@@ -183,6 +275,247 @@ def test_mid_forecast_helpers_do_not_guess_reg_id_mapping() -> None:
     assert rows[0].metadata.request_params["regId"] == "11B00000"
     assert "nx" not in rows[0].metadata.request_params
     assert "ny" not in rows[0].metadata.request_params
+
+
+def test_datagokr_mid_sea_forecast_helper() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "regId": "12A20000",
+                "tmFc": "202605010600",
+                "wf3Am": "맑음",
+            }
+        )
+    )
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
+
+    assert rows[0].operation == "getMidSeaFcst"
+    assert rows[0].reg_id == "12A20000"
+    assert session.calls[0]["url"] == "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidSeaFcst"
+
+
+def test_datagokr_asos_helpers_build_requests() -> None:
+    daily_session = FakeSession(_payload({"stnId": "108", "tm": "2026-05-01"}))
+    hourly_session = FakeSession(_payload({"stnId": "108", "tm": "2026-05-01 03:00"}))
+
+    daily = DataGoKrClient("decoded-key", session=daily_session).asos_daily_weather(
+        start_dt="20260501",
+        end_dt="20260502",
+        stn_ids=108,
+    )
+    hourly = DataGoKrClient("decoded-key", session=hourly_session).asos_hourly_weather(
+        start_dt="20260501",
+        start_hh=3,
+        end_dt="20260501",
+        end_hh="05",
+        stn_ids="108",
+    )
+
+    assert daily_session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
+    )
+    assert daily_session.calls[0]["params"]["dataCd"] == "ASOS"
+    assert daily_session.calls[0]["params"]["dateCd"] == "DAY"
+    assert daily_session.calls[0]["params"]["stnIds"] == "108"
+    assert daily[0].service == "AsosDalyInfoService"
+    assert daily[0].metadata is not None
+    assert "serviceKey" not in daily[0].metadata.request_params
+    assert hourly_session.calls[0]["params"]["startHh"] == "03"
+    assert hourly_session.calls[0]["params"]["endHh"] == "05"
+    assert hourly[0].operation == "getWthrDataList"
+
+
+def test_datagokr_raw_weather_warning_and_message_helpers() -> None:
+    warning_session = FakeSession(_payload({"title": "warning"}))
+    message_session = FakeSession(_payload({"wfSv1": "summary"}))
+
+    warning = DataGoKrClient("decoded-key", session=warning_session).weather_warning_list(
+        stn_id=108,
+        from_tm_fc="20260501",
+        to_tm_fc="20260502",
+    )
+    land = DataGoKrClient("decoded-key", session=message_session).land_forecast_message(
+        reg_id="11B10101"
+    )
+
+    assert warning_session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
+    )
+    assert warning_session.calls[0]["params"]["fromTmFc"] == "20260501"
+    assert warning[0].service == "WthrWrnInfoService"
+    assert message_session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/VilageFcstMsgService/getLandFcst"
+    )
+    assert message_session.calls[0]["params"]["regId"] == "11B10101"
+    assert land[0].operation == "getLandFcst"
+
+
+def test_datagokr_beach_forecast_helper_builds_request_and_models_rows() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "beachNum": "1",
+                "baseDate": "20220622",
+                "baseTime": "1230",
+                "category": "TMP",
+                "fcstDate": "20220622",
+                "fcstTime": "1300",
+                "fcstValue": "25.1",
+                "nx": "51",
+                "ny": "124",
+            }
+        )
+    )
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.beach_ultra_short_forecast(
+        beach_num=1,
+        base_date="20220622",
+        base_time="1230",
+    )
+
+    assert session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/BeachInfoservice/getUltraSrtFcstBeach"
+    )
+    assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
+    assert session.calls[0]["params"]["dataType"] == "JSON"
+    assert session.calls[0]["params"]["numOfRows"] == 1000
+    assert session.calls[0]["params"]["beach_num"] == "1"
+    assert rows[0].operation == "getUltraSrtFcstBeach"
+    assert rows[0].category is WeatherCategory.TEMPERATURE
+    assert rows[0].value == 25.1
+    assert rows[0].grid is not None
+    assert rows[0].grid.nx == 51
+    assert rows[0].metadata is not None
+    assert rows[0].metadata.endpoint == "BeachInfoservice/getUltraSrtFcstBeach"
+    assert rows[0].metadata.base_date == "20220622"
+    assert "serviceKey" not in rows[0].metadata.request_params
+
+
+def test_datagokr_beach_forecast_can_select_latest_base_from_when() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "beachNum": "1",
+                "baseDate": "20260506",
+                "baseTime": "2300",
+                "category": "SKY",
+                "fcstDate": "20260507",
+                "fcstTime": "0000",
+                "fcstValue": "1",
+                "nx": "51",
+                "ny": "124",
+            }
+        )
+    )
+    client = DataGoKrClient("decoded-key", session=session)
+
+    client.beach_forecast(beach_num="1", when=datetime(2026, 5, 7, 2, 5, tzinfo=KST))
+
+    assert session.calls[0]["params"]["base_date"] == "20260506"
+    assert session.calls[0]["params"]["base_time"] == "2300"
+    assert_raises(
+        ValueError,
+        lambda: client.beach_forecast(beach_num="1", base_date="20260507"),
+    )
+
+
+def test_datagokr_beach_observation_helpers_parse_rows() -> None:
+    wave_client = DataGoKrClient(
+        "decoded-key",
+        session=FakeSession(_payload({"beachNum": "1", "tm": "202205011600", "wh": "0.7"})),
+    )
+    water_client = DataGoKrClient(
+        "decoded-key",
+        session=FakeSession(_payload({"beachNum": "1", "tm": "202205011600", "tw": "18.4"})),
+    )
+
+    wave = wave_client.beach_wave_height(beach_num="1", search_time="202205011600")
+    water = water_client.beach_water_temperature(
+        beach_num=1,
+        search_time=datetime(2022, 5, 1, 16, 0, tzinfo=KST),
+    )
+
+    assert wave[0].observed_at.isoformat() == "2022-05-01T16:00:00+09:00"
+    assert wave[0].wave_height == 0.7
+    assert water[0].water_temperature == 18.4
+
+
+def test_datagokr_beach_tide_and_sun_helpers_preserve_upstream_parameters() -> None:
+    tide_client = DataGoKrClient(
+        "decoded-key",
+        session=FakeSession(
+            _payload(
+                {
+                    "beachNum": "1",
+                    "baseDate": "20220620",
+                    "tiStnld": "station",
+                    "tiTime": "0520",
+                    "tiType": "low",
+                    "tilevel": "35",
+                }
+            )
+        ),
+    )
+    sun_session = FakeSession(
+        _payload(
+            {
+                "beachNum": "1",
+                "baseDate": "20220501",
+                "sunrise": "0535",
+                "sunset": "1920",
+            }
+        )
+    )
+    sun_client = DataGoKrClient("decoded-key", session=sun_session)
+
+    tide = tide_client.beach_tide_info(beach_num=1, base_date="20220620")
+    sun = sun_client.beach_sun_info(beach_num="1", base_date="20220501")
+
+    assert tide[0].station_name == "station"
+    assert tide[0].tide_level == 35.0
+    assert sun[0].sunrise == "0535"
+    assert sun_session.calls[0]["params"]["Base_date"] == "20220501"
+    assert sun[0].metadata is not None
+    assert sun[0].metadata.base_date == "20220501"
+
+
+def test_datagokr_tour_living_and_earthquake_helpers() -> None:
+    tour_session = FakeSession(_payload({"courseId": "1"}))
+    living_session = FakeSession(_payload({"areaNo": "1100000000"}))
+    quake_session = FakeSession(_payload({"tmFc": "20260501"}))
+
+    tour = DataGoKrClient("decoded-key", session=tour_session).tour_village_forecast(
+        course_id=1,
+        current_date="20260501",
+        hour=9,
+    )
+    uv = DataGoKrClient("decoded-key", session=living_session).uv_index(
+        area_no="1100000000",
+        time="2026050106",
+    )
+    quake = DataGoKrClient("decoded-key", session=quake_session).earthquake_message_list(
+        from_tm_fc="20260501",
+        to_tm_fc="20260502",
+    )
+
+    assert tour_session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/TourStnInfoService1/getTourStnVilageFcst1"
+    )
+    assert tour_session.calls[0]["params"]["HOUR"] == "09"
+    assert tour[0].service == "TourStnInfoService1"
+    assert living_session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/LivingWthrIdxServiceV4/getUVIdxV4"
+    )
+    assert living_session.calls[0]["params"]["time"] == "2026050106"
+    assert uv[0].operation == "getUVIdxV4"
+    assert quake_session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/EqkInfoService/getEqkMsgList"
+    )
+    assert quake_session.calls[0]["params"]["toTmFc"] == "20260502"
+    assert quake[0].operation == "getEqkMsgList"
 
 
 def test_datagokr_result_code_mapping_and_shape_errors() -> None:

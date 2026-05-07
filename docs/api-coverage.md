@@ -4,12 +4,17 @@
 
 ## 요약
 
-현재 직접 타입화된 모델로 구현한 KMA endpoint는 **4개**이고, APIHub 공식 목록을 함수형으로 감싼 endpoint는 **470개**입니다. 관련 도로 날씨 API로 한국도로공사 휴게소별 날씨 endpoint **1개**도 타입화했습니다.
+현재 직접 타입화된 모델로 구현한 KMA endpoint는 **4개**이고, data.go.kr `기상청` 검색 전체 페이지에서 확인한 KMA 항목 **86개**를 카탈로그로 제공합니다. 이 중 기존 data.go.kr `serviceKey` gateway 항목은 **38개**, 포털 상세기능에서 확인한 gateway operation은 **160개**, APIHub LINK 항목은 **48개**입니다. 주요 서비스 helper는 **20개 이상**의 operation을 감싸며, 별도로 해수욕장 날씨 조회서비스 helper는 **6개** operation을 감쌉니다. APIHub 공식 목록을 함수형으로 감싼 endpoint는 **470개**입니다. 관련 도로 날씨 API로 한국도로공사 휴게소별 날씨 endpoint **1개**도 타입화했습니다.
 
 | 구분 | 개수 | 설명 |
 |---|---:|---|
 | 개별 타입화 endpoint | 4개 | `KmaClient`가 Pydantic 모델로 반환하는 단기예보 endpoint |
 | data.go.kr 범용 호출 방식 | 1개 계층 | 임의 `{service}/{operation}` 호출 가능 |
+| data.go.kr 기상청 카탈로그 | 86개 | 공공데이터포털 `기상청` 검색 전체 페이지에서 제목이 `기상청`으로 시작하는 항목만 포함 |
+| data.go.kr serviceKey gateway operation | 160개 | 카탈로그 중 gateway 항목 38개의 포털 상세기능 operation |
+| data.go.kr/APIHub 정확 중복 | 109개 | APIHub `/api/typ02/openApi/{service}/{operation}`와 같은 gateway operation |
+| data.go.kr 주요 서비스 helper | 20개+ | ASOS, 특보, 통보문, 관광코스, 생활기상지수, 지진정보 등 |
+| data.go.kr 해수욕장 날씨 helper | 6개 | `BeachInfoservice` operation을 Pydantic row 모델로 반환 |
 | APIHub 범용 호출 방식 | 1개 계층 | 임의 `/api/...` path 호출 가능 |
 | APIHub 함수형 래퍼 | 470개 | `apiList.do`와 `generateAPIUrl.do` 기반 함수형 endpoint |
 | APIHub 첨부 metadata | 77개 | 포맷정보, 예제, 코드표 등 첨부 링크 |
@@ -45,6 +50,42 @@ client.request("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202
 이 계층은 특정 endpoint를 개별 모델로 구현한 것이 아니라, 표준 data.go.kr envelope를 범용으로 처리합니다. 따라서 “개별 구현 endpoint 개수”에는 넣지 않습니다.
 
 공공데이터포털 문서에는 인증키 파라미터가 `serviceKey` 또는 `ServiceKey`로 섞여 표시됩니다. `DataGoKrClient`는 기본적으로 `serviceKey`를 쓰며, 필요한 경우 `service_key_param="ServiceKey"`로 바꿀 수 있습니다.
+
+## data.go.kr 기상청 카탈로그 86개
+
+2026-05-07 기준 공공데이터포털 `기상청` 오픈 API 검색을 `perPage=40`으로 모든 페이지 확인했고, 제목이 `기상청`으로 시작하는 항목만 `KMA_DATA_GOKR_DATASETS`에 반영했습니다. 기상청이 아닌 기관의 검색 결과는 포함하지 않습니다.
+
+카탈로그 구성은 기존 data.go.kr `serviceKey` gateway 38개, 해당 gateway operation 160개, APIHub LINK 48개입니다. 이 중 APIHub `typ02/openApi`와 정확히 같은 `{service}/{operation}`은 21개 dataset, 109개 operation입니다. 자세한 표는 [data.go.kr/APIHub 중복 확인](datagokr-apihub-overlap.md)에 있습니다.
+
+`DataGoKrClient.dataset(dataset_id)`는 카탈로그 metadata를 반환하고, `dataset_items(dataset_id, ...)`는 기존 `serviceKey` gateway 항목을 `{service}/{operation}` 형태로 호출합니다. APIHub LINK 항목은 `gateway="apihub"`로 표시하며 `ApiHubClient` 또는 `ApiHubGeneratedClient`로 호출해야 합니다.
+
+## data.go.kr 주요 서비스 helper
+
+2026-05-07 기준 공공데이터포털 `기상청` 오픈 API 검색에서 확인한 서비스 중 자주 쓰는 주요 REST 서비스는 `DataGoKrClient` helper로 감쌉니다. 응답 row는 endpoint별 고정 모델 대신 `DataGoKrItem`으로 반환해 `service`, `operation`, `raw`, `metadata`를 제공합니다.
+
+| 서비스 | helper |
+|---|---|
+| `MidFcstInfoService/getMidSeaFcst` | `mid_sea_forecast()` |
+| `AsosDalyInfoService/getWthrDataList` | `asos_daily_weather()` |
+| `AsosHourlyInfoService/getWthrDataList` | `asos_hourly_weather()` |
+| `WthrWrnInfoService/*` | `weather_warning()`, `weather_warning_list()` |
+| `VilageFcstMsgService/*` | `forecast_message()`, `weather_situation()`, `land_forecast_message()`, `sea_forecast_message()` |
+| `TourStnInfoService1/*` | `tour_village_forecast()`, `city_tour_climate_index()` |
+| `LivingWthrIdxServiceV4/*` | `sensible_temperature_index()`, `uv_index()`, `air_diffusion_index()` |
+| `EqkInfoService/*` | `earthquake_info()`, `earthquake_message()`, `earthquake_message_list()`, `tsunami_message()`, `tsunami_message_list()` |
+
+## data.go.kr 해수욕장 날씨 helper 6개
+
+공공데이터포털 `기상청_전국 해수욕장 날씨 조회서비스`는 `BeachInfoservice` 아래 6개 operation을 제공합니다. `DataGoKrClient`는 범용 호출도 가능하지만, 이 서비스는 자주 쓰는 파라미터와 응답 row 모델을 전용 helper로 제공합니다.
+
+| 번호 | 메서드 | endpoint | 반환 |
+|---:|---|---|---|
+| 1 | `beach_ultra_short_forecast()` | `getUltraSrtFcstBeach` | `list[BeachForecastItem]` |
+| 2 | `beach_forecast()` | `getVilageFcstBeach` | `list[BeachForecastItem]` |
+| 3 | `beach_wave_height()` | `getWhBuoyBeach` | `list[BeachWaveHeight]` |
+| 4 | `beach_tide_info()` | `getTideInfoBeach` | `list[BeachTideItem]` |
+| 5 | `beach_sun_info()` | `getSunInfoBeach` | `list[BeachSunTime]` |
+| 6 | `beach_water_temperature()` | `getTwBuoyBeach` | `list[BeachWaterTemperature]` |
 
 ## APIHub 범용 지원
 
@@ -110,7 +151,7 @@ response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
 
 ### data.go.kr 재검토 결과
 
-data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operation}` 형태가 반복됩니다. `DataGoKrClient`는 이 형태를 범용으로 호출하므로, 모든 data.go.kr 서비스를 endpoint별 개별 함수로 생성하지 않습니다.
+data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operation}` 형태가 반복됩니다. `DataGoKrClient`는 이 형태를 범용으로 호출하고, 공공데이터포털 `기상청` 검색 전체 페이지에서 확인한 KMA 항목 86개와 gateway operation 160개를 dataset id 카탈로그로 제공합니다. 모든 data.go.kr 서비스를 endpoint별 개별 함수로 생성하지는 않습니다.
 
 현재 보장 범위:
 
@@ -118,12 +159,14 @@ data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operati
 - 단일 dict/list `items.item` 정규화
 - typed result-code exception
 - `serviceKey`/`ServiceKey` 인증 파라미터 이름 선택
+- 제목이 `기상청`으로 시작하는 data.go.kr 검색 항목 86개와 gateway operation 160개 카탈로그
 
 현재 보장하지 않는 범위:
 
 - data.go.kr의 모든 operation을 endpoint별 Pydantic 모델로 고정 변환
 - JSON이 아닌 XML 전용 또는 파일 다운로드 응답의 자동 모델링
 - 각 서비스별 필수 파라미터 조합 검증
+- APIHub LINK 항목을 `serviceKey` gateway로 자동 변환
 
 ## 한국도로공사 휴게소별 날씨
 
@@ -147,6 +190,7 @@ http://data.ex.co.kr/openapi/restinfo/restWeatherList
 “지금 구현해놓은 API가 몇 개냐”는 질문에는 다음처럼 답합니다.
 
 - **직접 타입화 구현 endpoint는 4개입니다.**
+- **data.go.kr `기상청` 검색 카탈로그 항목은 86개입니다.**
 - **APIHub 함수형 래퍼는 470개입니다.**
 - **한국도로공사 휴게소별 날씨 타입화 endpoint는 1개입니다.**
 - **범용 클라이언트까지 포함하면 data.go.kr 임의 service/operation과 APIHub `/api/...` path를 호출할 수 있습니다.**

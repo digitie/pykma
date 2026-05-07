@@ -3,16 +3,38 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from ._http import build_session
+from .codes import label_for, normalize_value
+from .datagokr_catalog import (
+    KMA_DATA_GOKR_DATASETS,
+    KMA_DATA_GOKR_DATASETS_BY_ID,
+    DataGoKrDatasetSpec,
+)
+from .enums import coerce_category
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
 from .metadata import ResponseMetadata, make_response_metadata, redact_credentials_in_text
-from .models import MidForecastItem
+from .models import (
+    BeachForecastItem,
+    BeachSunTime,
+    BeachTideItem,
+    BeachWaterTemperature,
+    BeachWaveHeight,
+    DataGoKrItem,
+    MidForecastItem,
+)
 from .pagination import iter_pages as _iter_pages
+from .time_utils import (
+    KST,
+    as_kst,
+    latest_ultra_srt_fcst_base,
+    latest_vilage_base,
+    parse_kma_datetime,
+)
 
 try:
     import requests
@@ -24,11 +46,31 @@ except ModuleNotFoundError:  # pragma: no cover
 
 DATA_GOKR_BASE_URL = "http://apis.data.go.kr/1360000"
 MID_FCST_SERVICE = "MidFcstInfoService"
+ASOS_DAILY_SERVICE = "AsosDalyInfoService"
+ASOS_HOURLY_SERVICE = "AsosHourlyInfoService"
+WTHR_WRN_SERVICE = "WthrWrnInfoService"
+VILAGE_FCST_MSG_SERVICE = "VilageFcstMsgService"
+TOUR_STN_SERVICE = "TourStnInfoService1"
+LIVING_WTHR_IDX_SERVICE = "LivingWthrIdxServiceV4"
+EQK_INFO_SERVICE = "EqkInfoService"
+BEACH_INFO_SERVICE = "BeachInfoservice"
+BEACH_ULTRA_SRT_FCST = "getUltraSrtFcstBeach"
+BEACH_WAVE_HEIGHT = "getWhBuoyBeach"
+BEACH_TIDE_INFO = "getTideInfoBeach"
+BEACH_SUN_INFO = "getSunInfoBeach"
+BEACH_WATER_TEMPERATURE = "getTwBuoyBeach"
+BEACH_VILAGE_FCST = "getVilageFcstBeach"
 
 
 @dataclass(frozen=True)
 class _DataGoKrBody:
     body: Mapping[str, Any]
+    metadata: ResponseMetadata
+
+
+@dataclass(frozen=True)
+class _DataGoKrItems:
+    items: list[Mapping[str, Any]]
     metadata: ResponseMetadata
 
 
@@ -136,9 +178,7 @@ class DataGoKrClient:
             service_name=clean_service,
             endpoint=endpoint,
             request_params=request_params,
-            base_date=str(request_params.get("base_date"))
-            if request_params.get("base_date") is not None
-            else None,
+            base_date=_metadata_param(request_params, "base_date", "Base_date"),
             base_time=str(request_params.get("base_time"))
             if request_params.get("base_time") is not None
             else None,
@@ -224,6 +264,64 @@ class DataGoKrClient:
 
         body = self.request(service, operation, params, **kwargs)
         return _items_from_body(body, endpoint=f"{service.strip('/')}/{operation.strip('/')}")
+
+    def datasets(self) -> tuple[DataGoKrDatasetSpec, ...]:
+        """Return KMA-only data.go.kr OpenAPI datasets from the public portal."""
+
+        return KMA_DATA_GOKR_DATASETS
+
+    def dataset(self, dataset_id: str | int) -> DataGoKrDatasetSpec:
+        """Return one KMA data.go.kr dataset spec by public-data id."""
+
+        clean_id = str(dataset_id)
+        try:
+            return KMA_DATA_GOKR_DATASETS_BY_ID[clean_id]
+        except KeyError:
+            raise ValueError(f"unknown KMA data.go.kr dataset_id: {clean_id}") from None
+
+    def request_dataset(
+        self,
+        dataset_id: str | int,
+        params: Mapping[str, Any] | None = None,
+        *,
+        operation: str | None = None,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> Mapping[str, Any]:
+        """Call a KMA data.go.kr dataset by public-data id."""
+
+        _, service, selected_operation = self._dataset_service_operation(dataset_id, operation)
+        return self.request(
+            service,
+            selected_operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def dataset_items(
+        self,
+        dataset_id: str | int,
+        params: Mapping[str, Any] | None = None,
+        *,
+        operation: str | None = None,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call a KMA data.go.kr dataset and return raw rows with metadata."""
+
+        _, service, selected_operation = self._dataset_service_operation(dataset_id, operation)
+        return self._raw_items(
+            service,
+            selected_operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
 
     def iter_pages(
         self,
@@ -311,6 +409,661 @@ class DataGoKrClient:
             num_of_rows=num_of_rows,
         )
 
+    def mid_sea_forecast(
+        self,
+        *,
+        reg_id: str,
+        tm_fc: str | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[MidForecastItem]:
+        """Call `getMidSeaFcst` for a KMA mid-term sea forecast `reg_id`."""
+
+        return self._mid_items(
+            "getMidSeaFcst",
+            {"regId": reg_id, "tmFc": _format_tm_fc(tm_fc)},
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def asos_daily_weather(
+        self,
+        *,
+        start_dt: str | date | datetime,
+        end_dt: str | date | datetime,
+        stn_ids: str | int | None = None,
+        data_cd: str = "ASOS",
+        date_cd: str = "DAY",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `AsosDalyInfoService/getWthrDataList`."""
+
+        params: dict[str, Any] = {
+            "dataCd": data_cd,
+            "dateCd": date_cd,
+            "startDt": _format_yyyymmdd(start_dt),
+            "endDt": _format_yyyymmdd(end_dt),
+        }
+        if stn_ids is not None:
+            params["stnIds"] = str(stn_ids)
+        return self._raw_items(
+            ASOS_DAILY_SERVICE,
+            "getWthrDataList",
+            params,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def asos_hourly_weather(
+        self,
+        *,
+        start_dt: str | date | datetime,
+        start_hh: str | int,
+        end_dt: str | date | datetime,
+        end_hh: str | int,
+        stn_ids: str | int | None = None,
+        data_cd: str = "ASOS",
+        date_cd: str = "HR",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `AsosHourlyInfoService/getWthrDataList`."""
+
+        params: dict[str, Any] = {
+            "dataCd": data_cd,
+            "dateCd": date_cd,
+            "startDt": _format_yyyymmdd(start_dt),
+            "startHh": _format_hh(start_hh),
+            "endDt": _format_yyyymmdd(end_dt),
+            "endHh": _format_hh(end_hh),
+        }
+        if stn_ids is not None:
+            params["stnIds"] = str(stn_ids)
+        return self._raw_items(
+            ASOS_HOURLY_SERVICE,
+            "getWthrDataList",
+            params,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def weather_warning(
+        self,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call a `WthrWrnInfoService` operation.
+
+        Common operations include `getWthrWrnList`, `getWthrWrnMsg`,
+        `getWthrInfoList`, `getWthrInfo`, `getWthrBrkNewsList`,
+        `getWthrBrkNews`, `getWthrPwnList`, `getWthrPwn`, `getPwnCd`,
+        and `getPwnStatus`.
+        """
+
+        return self._raw_items(
+            WTHR_WRN_SERVICE,
+            operation,
+            params,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def weather_warning_list(
+        self,
+        *,
+        stn_id: str | int,
+        from_tm_fc: str | date | datetime,
+        to_tm_fc: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `WthrWrnInfoService/getWthrWrnList`."""
+
+        return self.weather_warning(
+            "getWthrWrnList",
+            _date_range_params(stn_id=stn_id, from_tm_fc=from_tm_fc, to_tm_fc=to_tm_fc),
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def forecast_message(
+        self,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call a `VilageFcstMsgService` operation."""
+
+        return self._raw_items(
+            VILAGE_FCST_MSG_SERVICE,
+            operation,
+            params,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def weather_situation(
+        self,
+        *,
+        stn_id: str | int,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `VilageFcstMsgService/getWthrSituation`."""
+
+        return self.forecast_message(
+            "getWthrSituation",
+            {"stnId": str(stn_id)},
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def land_forecast_message(
+        self,
+        *,
+        reg_id: str,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `VilageFcstMsgService/getLandFcst`."""
+
+        return self.forecast_message(
+            "getLandFcst",
+            {"regId": reg_id},
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def sea_forecast_message(
+        self,
+        *,
+        reg_id: str,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `VilageFcstMsgService/getSeaFcst`."""
+
+        return self.forecast_message(
+            "getSeaFcst",
+            {"regId": reg_id},
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def beach_ultra_short_forecast(
+        self,
+        *,
+        beach_num: str | int,
+        base_date: str | date | datetime | None = None,
+        base_time: str | int | None = None,
+        when: datetime | None = None,
+        page_no: int = 1,
+        num_of_rows: int = 1000,
+    ) -> list[BeachForecastItem]:
+        """Call `BeachInfoservice/getUltraSrtFcstBeach`.
+
+        When `base_date` and `base_time` are omitted, the latest usable KST
+        ultra-short forecast base time is selected with the same rule as
+        `KmaClient.forecast_short()`.
+        """
+
+        base_date_text, base_time_text = _resolve_base_date_time(
+            base_date,
+            base_time,
+            latest_ultra_srt_fcst_base,
+            when=when,
+        )
+        fetched = self._items_with_metadata(
+            BEACH_INFO_SERVICE,
+            BEACH_ULTRA_SRT_FCST,
+            {
+                "base_date": base_date_text,
+                "base_time": base_time_text,
+                "beach_num": _format_beach_num(beach_num),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        return [
+            _beach_forecast_item(row, BEACH_ULTRA_SRT_FCST, metadata=fetched.metadata)
+            for row in fetched.items
+        ]
+
+    def beach_forecast(
+        self,
+        *,
+        beach_num: str | int,
+        base_date: str | date | datetime | None = None,
+        base_time: str | int | None = None,
+        when: datetime | None = None,
+        page_no: int = 1,
+        num_of_rows: int = 1000,
+    ) -> list[BeachForecastItem]:
+        """Call `BeachInfoservice/getVilageFcstBeach`.
+
+        When `base_date` and `base_time` are omitted, the latest usable KST
+        short-term forecast base time is selected with the same rule as
+        `KmaClient.forecast()`.
+        """
+
+        base_date_text, base_time_text = _resolve_base_date_time(
+            base_date,
+            base_time,
+            latest_vilage_base,
+            when=when,
+        )
+        fetched = self._items_with_metadata(
+            BEACH_INFO_SERVICE,
+            BEACH_VILAGE_FCST,
+            {
+                "base_date": base_date_text,
+                "base_time": base_time_text,
+                "beach_num": _format_beach_num(beach_num),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        return [
+            _beach_forecast_item(row, BEACH_VILAGE_FCST, metadata=fetched.metadata)
+            for row in fetched.items
+        ]
+
+    def beach_wave_height(
+        self,
+        *,
+        beach_num: str | int,
+        search_time: str | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[BeachWaveHeight]:
+        """Call `BeachInfoservice/getWhBuoyBeach` for wave height."""
+
+        fetched = self._items_with_metadata(
+            BEACH_INFO_SERVICE,
+            BEACH_WAVE_HEIGHT,
+            {
+                "beach_num": _format_beach_num(beach_num),
+                "searchTime": _format_yyyymmddhhmm(search_time),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        return [_beach_wave_height(row, metadata=fetched.metadata) for row in fetched.items]
+
+    def beach_tide_info(
+        self,
+        *,
+        beach_num: str | int,
+        base_date: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[BeachTideItem]:
+        """Call `BeachInfoservice/getTideInfoBeach` for tide information."""
+
+        fetched = self._items_with_metadata(
+            BEACH_INFO_SERVICE,
+            BEACH_TIDE_INFO,
+            {
+                "base_date": _format_yyyymmdd(base_date),
+                "beach_num": _format_beach_num(beach_num),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        return [_beach_tide_item(row, metadata=fetched.metadata) for row in fetched.items]
+
+    def beach_sun_info(
+        self,
+        *,
+        beach_num: str | int,
+        base_date: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[BeachSunTime]:
+        """Call `BeachInfoservice/getSunInfoBeach` for sunrise and sunset.
+
+        The upstream Swagger for this endpoint spells the request date as
+        `Base_date`, unlike the other beach endpoints.
+        """
+
+        fetched = self._items_with_metadata(
+            BEACH_INFO_SERVICE,
+            BEACH_SUN_INFO,
+            {
+                "Base_date": _format_yyyymmdd(base_date),
+                "beach_num": _format_beach_num(beach_num),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        return [_beach_sun_time(row, metadata=fetched.metadata) for row in fetched.items]
+
+    def beach_water_temperature(
+        self,
+        *,
+        beach_num: str | int,
+        search_time: str | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[BeachWaterTemperature]:
+        """Call `BeachInfoservice/getTwBuoyBeach` for water temperature."""
+
+        fetched = self._items_with_metadata(
+            BEACH_INFO_SERVICE,
+            BEACH_WATER_TEMPERATURE,
+            {
+                "beach_num": _format_beach_num(beach_num),
+                "searchTime": _format_yyyymmddhhmm(search_time),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        return [_beach_water_temperature(row, metadata=fetched.metadata) for row in fetched.items]
+
+    def tour_village_forecast(
+        self,
+        *,
+        course_id: str | int,
+        current_date: str | date | datetime,
+        hour: str | int,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `TourStnInfoService1/getTourStnVilageFcst1`."""
+
+        return self._raw_items(
+            TOUR_STN_SERVICE,
+            "getTourStnVilageFcst1",
+            {
+                "CURRENT_DATE": _format_yyyymmdd(current_date),
+                "HOUR": _format_hh(hour),
+                "COURSE_ID": str(course_id),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def city_tour_climate_index(
+        self,
+        *,
+        city_area_id: str | int,
+        current_date: str | date | datetime,
+        day: str | int,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `TourStnInfoService1/getCityTourClmIdx1`."""
+
+        return self._raw_items(
+            TOUR_STN_SERVICE,
+            "getCityTourClmIdx1",
+            {
+                "CURRENT_DATE": _format_yyyymmdd(current_date),
+                "DAY": str(day),
+                "CITY_AREA_ID": str(city_area_id),
+            },
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def sensible_temperature_index(
+        self,
+        *,
+        area_no: str | int,
+        time: str | datetime,
+        request_code: str,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `LivingWthrIdxServiceV4/getSenTaIdxV4`."""
+
+        return self._living_weather_index(
+            "getSenTaIdxV4",
+            area_no=area_no,
+            time=time,
+            request_code=request_code,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def uv_index(
+        self,
+        *,
+        area_no: str | int,
+        time: str | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `LivingWthrIdxServiceV4/getUVIdxV4`."""
+
+        return self._living_weather_index(
+            "getUVIdxV4",
+            area_no=area_no,
+            time=time,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def air_diffusion_index(
+        self,
+        *,
+        area_no: str | int,
+        time: str | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `LivingWthrIdxServiceV4/getAirDiffusionIdxV4`."""
+
+        return self._living_weather_index(
+            "getAirDiffusionIdxV4",
+            area_no=area_no,
+            time=time,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def earthquake_info(
+        self,
+        operation: str,
+        *,
+        from_tm_fc: str | date | datetime,
+        to_tm_fc: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call an `EqkInfoService` operation."""
+
+        return self._raw_items(
+            EQK_INFO_SERVICE,
+            operation,
+            {"fromTmFc": _format_yyyymmdd(from_tm_fc), "toTmFc": _format_yyyymmdd(to_tm_fc)},
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def earthquake_message(
+        self,
+        *,
+        from_tm_fc: str | date | datetime,
+        to_tm_fc: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `EqkInfoService/getEqkMsg`."""
+
+        return self.earthquake_info(
+            "getEqkMsg",
+            from_tm_fc=from_tm_fc,
+            to_tm_fc=to_tm_fc,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def earthquake_message_list(
+        self,
+        *,
+        from_tm_fc: str | date | datetime,
+        to_tm_fc: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `EqkInfoService/getEqkMsgList`."""
+
+        return self.earthquake_info(
+            "getEqkMsgList",
+            from_tm_fc=from_tm_fc,
+            to_tm_fc=to_tm_fc,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def tsunami_message(
+        self,
+        *,
+        from_tm_fc: str | date | datetime,
+        to_tm_fc: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `EqkInfoService/getTsunamiMsg`."""
+
+        return self.earthquake_info(
+            "getTsunamiMsg",
+            from_tm_fc=from_tm_fc,
+            to_tm_fc=to_tm_fc,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def tsunami_message_list(
+        self,
+        *,
+        from_tm_fc: str | date | datetime,
+        to_tm_fc: str | date | datetime,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        """Call `EqkInfoService/getTsunamiMsgList`."""
+
+        return self.earthquake_info(
+            "getTsunamiMsgList",
+            from_tm_fc=from_tm_fc,
+            to_tm_fc=to_tm_fc,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def _living_weather_index(
+        self,
+        operation: str,
+        *,
+        area_no: str | int,
+        time: str | datetime,
+        request_code: str | None = None,
+        page_no: int,
+        num_of_rows: int,
+    ) -> list[DataGoKrItem]:
+        params: dict[str, Any] = {
+            "areaNo": str(area_no),
+            "time": _format_yyyymmddhh(time),
+        }
+        if request_code is not None:
+            params["requestCode"] = request_code
+        return self._raw_items(
+            LIVING_WTHR_IDX_SERVICE,
+            operation,
+            params,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def _dataset_service_operation(
+        self,
+        dataset_id: str | int,
+        operation: str | None,
+    ) -> tuple[DataGoKrDatasetSpec, str, str]:
+        spec = self.dataset(dataset_id)
+        if spec.gateway != "datagokr" or spec.service is None:
+            raise ValueError(
+                f"{spec.dataset_id} is APIHub-linked; use ApiHubClient "
+                "or ApiHubGeneratedClient"
+            )
+        if operation is None:
+            if len(spec.operations) == 1:
+                selected_operation = spec.operations[0]
+            elif spec.operations:
+                known = ", ".join(spec.operations)
+                raise ValueError(
+                    f"operation is required for {spec.dataset_id}; known operations: {known}"
+                )
+            else:
+                raise ValueError(f"operation is required for {spec.dataset_id}")
+        else:
+            selected_operation = operation.strip("/")
+            if not selected_operation:
+                raise ValueError("operation is required")
+        return spec, spec.service, selected_operation
+
+    def _raw_items(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        fetched = self._items_with_metadata(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        clean_service = service.strip("/")
+        clean_operation = operation.strip("/")
+        return [
+            DataGoKrItem(
+                service=clean_service,
+                operation=clean_operation,
+                raw=dict(row),
+                metadata=fetched.metadata,
+            )
+            for row in fetched.items
+        ]
+
+    def _items_with_metadata(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> _DataGoKrItems:
+        response = self._request_with_metadata(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+        endpoint = f"{service.strip('/')}/{operation.strip('/')}"
+        return _DataGoKrItems(
+            _items_from_body(response.body, endpoint=endpoint),
+            response.metadata,
+        )
+
     def _mid_items(
         self,
         operation: str,
@@ -319,15 +1072,276 @@ class DataGoKrClient:
         page_no: int,
         num_of_rows: int,
     ) -> list[MidForecastItem]:
-        response = self._request_with_metadata(
+        fetched = self._items_with_metadata(
             MID_FCST_SERVICE,
             operation,
             params,
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
-        rows = _items_from_body(response.body, endpoint=f"{MID_FCST_SERVICE}/{operation}")
-        return [_mid_forecast_item(row, operation, response.metadata) for row in rows]
+        return [_mid_forecast_item(row, operation, fetched.metadata) for row in fetched.items]
+
+
+def _resolve_base_date_time(
+    base_date: str | date | datetime | None,
+    base_time: str | int | None,
+    latest: Callable[[datetime | None], tuple[str, str]],
+    *,
+    when: datetime | None,
+) -> tuple[str, str]:
+    if when is not None and (base_date is not None or base_time is not None):
+        raise ValueError("when cannot be combined with base_date/base_time")
+    if base_date is None and base_time is None:
+        return latest(when)
+    if base_date is None or base_time is None:
+        raise ValueError("base_date and base_time must be provided together")
+    return _format_yyyymmdd(base_date), _format_hhmm(base_time)
+
+
+def _format_beach_num(value: str | int) -> str:
+    text = str(value).strip()
+    if not text:
+        raise ValueError("beach_num is required")
+    return text
+
+
+def _format_yyyymmdd(value: str | date | datetime) -> str:
+    if isinstance(value, datetime):
+        return as_kst(value).strftime("%Y%m%d")
+    if isinstance(value, date):
+        return value.strftime("%Y%m%d")
+    text = str(value).strip()
+    if len(text) != 8 or not text.isdigit():
+        raise ValueError("base_date must be YYYYMMDD")
+    return text
+
+
+def _format_hhmm(value: str | int) -> str:
+    if isinstance(value, int):
+        text = f"{value:04d}"
+    else:
+        text = str(value).strip()
+    if len(text) != 4 or not text.isdigit():
+        raise ValueError("base_time must be HHMM")
+    hour = int(text[:2])
+    minute = int(text[2:])
+    if hour > 23 or minute > 59:
+        raise ValueError("base_time must be a valid HHMM value")
+    return text
+
+
+def _format_hh(value: str | int) -> str:
+    if isinstance(value, int):
+        text = f"{value:02d}"
+    else:
+        text = str(value).strip()
+    if len(text) != 2 or not text.isdigit():
+        raise ValueError("hour must be HH")
+    if int(text) > 23:
+        raise ValueError("hour must be between 00 and 23")
+    return text
+
+
+def _format_yyyymmddhh(value: str | datetime) -> str:
+    if isinstance(value, datetime):
+        return as_kst(value).strftime("%Y%m%d%H")
+    text = str(value).strip()
+    if len(text) != 10 or not text.isdigit():
+        raise ValueError("time must be YYYYMMDDHH")
+    return text
+
+
+def _format_yyyymmddhhmm(value: str | datetime) -> str:
+    if isinstance(value, datetime):
+        return as_kst(value).strftime("%Y%m%d%H%M")
+    text = str(value).strip()
+    if len(text) != 12 or not text.isdigit():
+        raise ValueError("search_time must be YYYYMMDDHHMM")
+    return text
+
+
+def _date_range_params(
+    *,
+    stn_id: str | int,
+    from_tm_fc: str | date | datetime,
+    to_tm_fc: str | date | datetime,
+) -> dict[str, str]:
+    return {
+        "stnId": str(stn_id),
+        "fromTmFc": _format_yyyymmdd(from_tm_fc),
+        "toTmFc": _format_yyyymmdd(to_tm_fc),
+    }
+
+
+def _metadata_param(params: Mapping[str, Any], *names: str) -> str | None:
+    for name in names:
+        value = params.get(name)
+        if value is not None:
+            return str(value)
+    return None
+
+
+def _beach_forecast_item(
+    row: Mapping[str, Any],
+    operation: str,
+    *,
+    metadata: ResponseMetadata | None = None,
+) -> BeachForecastItem:
+    try:
+        category = coerce_category(row["category"])
+        value = row.get("fcstValue")
+        nx = _int_or_none(row.get("nx"))
+        ny = _int_or_none(row.get("ny"))
+        return BeachForecastItem(
+            operation=operation,
+            base_at=parse_kma_datetime(str(row["baseDate"]), str(row["baseTime"])),
+            forecast_at=parse_kma_datetime(str(row["fcstDate"]), str(row["fcstTime"])),
+            beach_num=_required_text(row["beachNum"], "beachNum"),
+            category=category,
+            value=normalize_value(category, value),
+            label=label_for(category, value, endpoint=operation),
+            nx=nx,
+            ny=ny,
+            raw=dict(row),
+            metadata=metadata,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise KmaParseError(
+            f"Malformed beach forecast item: {row!r}",
+            provider="data.go.kr",
+            endpoint=f"{BEACH_INFO_SERVICE}/{operation}",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
+
+
+def _beach_wave_height(
+    row: Mapping[str, Any],
+    *,
+    metadata: ResponseMetadata | None = None,
+) -> BeachWaveHeight:
+    try:
+        return BeachWaveHeight(
+            observed_at=_parse_yyyymmddhhmm(row["tm"], field="tm"),
+            beach_num=_required_text(row["beachNum"], "beachNum"),
+            wave_height=_float_or_none(row.get("wh")),
+            raw=dict(row),
+            metadata=metadata,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise KmaParseError(
+            f"Malformed beach wave-height item: {row!r}",
+            provider="data.go.kr",
+            endpoint=f"{BEACH_INFO_SERVICE}/{BEACH_WAVE_HEIGHT}",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
+
+
+def _beach_water_temperature(
+    row: Mapping[str, Any],
+    *,
+    metadata: ResponseMetadata | None = None,
+) -> BeachWaterTemperature:
+    try:
+        return BeachWaterTemperature(
+            observed_at=_parse_yyyymmddhhmm(row["tm"], field="tm"),
+            beach_num=_required_text(row["beachNum"], "beachNum"),
+            water_temperature=_float_or_none(row.get("tw")),
+            raw=dict(row),
+            metadata=metadata,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise KmaParseError(
+            f"Malformed beach water-temperature item: {row!r}",
+            provider="data.go.kr",
+            endpoint=f"{BEACH_INFO_SERVICE}/{BEACH_WATER_TEMPERATURE}",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
+
+
+def _beach_tide_item(
+    row: Mapping[str, Any],
+    *,
+    metadata: ResponseMetadata | None = None,
+) -> BeachTideItem:
+    try:
+        return BeachTideItem(
+            base_date=_required_text(row["baseDate"], "baseDate"),
+            beach_num=_required_text(row["beachNum"], "beachNum"),
+            station_name=_str_or_none(row.get("tiStnld")),
+            tide_time=_str_or_none(row.get("tiTime")),
+            tide_type=_str_or_none(row.get("tiType")),
+            tide_level=_float_or_none(row.get("tilevel")),
+            raw=dict(row),
+            metadata=metadata,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise KmaParseError(
+            f"Malformed beach tide item: {row!r}",
+            provider="data.go.kr",
+            endpoint=f"{BEACH_INFO_SERVICE}/{BEACH_TIDE_INFO}",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
+
+
+def _beach_sun_time(
+    row: Mapping[str, Any],
+    *,
+    metadata: ResponseMetadata | None = None,
+) -> BeachSunTime:
+    try:
+        return BeachSunTime(
+            base_date=_required_text(row["baseDate"], "baseDate"),
+            beach_num=_required_text(row["beachNum"], "beachNum"),
+            sunrise=_str_or_none(row.get("sunrise")),
+            sunset=_str_or_none(row.get("sunset")),
+            raw=dict(row),
+            metadata=metadata,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise KmaParseError(
+            f"Malformed beach sun-time item: {row!r}",
+            provider="data.go.kr",
+            endpoint=f"{BEACH_INFO_SERVICE}/{BEACH_SUN_INFO}",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
+
+
+def _parse_yyyymmddhhmm(value: object, *, field: str) -> datetime:
+    text = _required_text(value, field)
+    if len(text) != 12 or not text.isdigit():
+        raise ValueError(f"{field} must be YYYYMMDDHHMM")
+    return datetime.strptime(text, "%Y%m%d%H%M").replace(tzinfo=KST)
+
+
+def _required_text(value: object, field: str) -> str:
+    text = str(value).strip()
+    if not text:
+        raise ValueError(f"{field} is required")
+    return text
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _int_or_none(value: object) -> int | None:
+    number = _float_or_none(value)
+    if number is None:
+        return None
+    return int(number)
 
 
 def _items_from_body(body: Mapping[str, Any], *, endpoint: str) -> list[Mapping[str, Any]]:
