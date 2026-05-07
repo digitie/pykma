@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from pykma import ApiHubGeneratedClient, DataGoKrClient, ExpresswayRestAreaWeatherClient
-from pykma.exceptions import KmaAuthError
 from pykma.time_utils import latest_ultra_srt_ncst_base
 
 pytestmark = pytest.mark.integration
@@ -54,25 +53,26 @@ def _items_from_body(body: Mapping[str, object]) -> list[Mapping[str, object]]:
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(not _apihub_key(), reason="KMA_APIHUB_AUTH_KEY is not set")
-def test_live_apihub_generated_text_endpoint_shape() -> None:
+def test_live_apihub_forecast_region_endpoints_shape() -> None:
     client = ApiHubGeneratedClient(_apihub_key() or "", timeout=30, retries=1)
 
-    try:
-        response = client.kma_sfctm2(tm="202211300900", stn="108", help="1")
-    except KmaAuthError as exc:
-        message = str(exc)
-        if "403" in message or "활용신청" in message:
-            pytest.skip("APIHub key reached the server but is not approved for this endpoint")
-        raise
-    table = response.text_table()
+    responses = [
+        client.fct_shrt_reg(use_sample=True),
+        client.fct_medm_reg(use_sample=True),
+    ]
 
-    assert response.status_code == 200
-    assert response.content
-    assert response.text.strip()
-    assert "authKey=***" in response.url
-    assert _apihub_key() not in response.url
-    assert table.raw_lines
-    assert "SERVICE_KEY" not in response.text.upper()
+    for response in responses:
+        table = response.text_table()
+
+        assert response.status_code == 200
+        assert response.content
+        assert response.text.strip()
+        assert "authKey=***" in response.url
+        assert _apihub_key() not in response.url
+        assert response.metadata is not None
+        assert "authKey" not in response.metadata.request_params
+        assert table.raw_lines
+        assert "SERVICE_KEY" not in response.text.upper()
 
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
