@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .codes import unit_for
 from .enums import WeatherCategory, category_or_none, coerce_category
 from .locations import GridPoint, LatLon
+from .metadata import ResponseMetadata
 
 
 class PykmaModel(BaseModel):
@@ -22,17 +23,18 @@ class WeatherSnapshot(PykmaModel):
     observed_at: datetime
     nx: int
     ny: int
-    temperature: Optional[float]
-    humidity: Optional[int]
-    wind_speed: Optional[float]
-    wind_direction: Optional[int]
-    precipitation: Optional[float]
-    sky_label: Optional[str]
-    precipitation_label: Optional[str]
+    temperature: float | None
+    humidity: int | None
+    wind_speed: float | None
+    wind_direction: int | None
+    precipitation: float | None
+    sky_label: str | None
+    precipitation_label: str | None
     raw: dict[str, Any]
+    metadata: ResponseMetadata | None = None
 
     @model_validator(mode="after")
-    def _validate_grid(self) -> "WeatherSnapshot":
+    def _validate_grid(self) -> WeatherSnapshot:
         GridPoint(self.nx, self.ny)
         return self
 
@@ -55,8 +57,10 @@ class ForecastItem(PykmaModel):
     nx: int
     ny: int
     category: WeatherCategory | str
-    value: Union[str, float]
-    label: Optional[str]
+    value: str | float
+    label: str | None
+    raw: dict[str, Any] = Field(default_factory=dict)
+    metadata: ResponseMetadata | None = None
 
     @field_validator("category", mode="before")
     @classmethod
@@ -64,18 +68,18 @@ class ForecastItem(PykmaModel):
         return coerce_category(value)
 
     @model_validator(mode="after")
-    def _validate_grid(self) -> "ForecastItem":
+    def _validate_grid(self) -> ForecastItem:
         GridPoint(self.nx, self.ny)
         return self
 
     @property
-    def category_enum(self) -> Optional[WeatherCategory]:
+    def category_enum(self) -> WeatherCategory | None:
         """Return `WeatherCategory` when this item uses a known KMA category."""
 
         return category_or_none(self.category)
 
     @property
-    def unit(self) -> Optional[str]:
+    def unit(self) -> str | None:
         """Return the conventional unit for this item's category, if known."""
 
         return unit_for(self.category)
@@ -101,34 +105,51 @@ class RestAreaWeather(PykmaModel):
     unit_name: str
     route_no: str
     route_name: str
-    direction_code: Optional[str]
-    longitude: Optional[float]
-    latitude: Optional[float]
-    address: Optional[str]
-    measurement_station: Optional[str]
-    weather: Optional[str]
-    temperature: Optional[float]
-    humidity: Optional[float]
-    wind_speed: Optional[float]
-    wind_direction_code: Optional[str]
-    rainfall: Optional[float]
-    rainfall_strength: Optional[float]
-    new_snow: Optional[float]
-    snow: Optional[float]
-    cloud: Optional[float]
-    dew_point: Optional[float]
+    direction_code: str | None
+    longitude: float | None
+    latitude: float | None
+    address: str | None
+    measurement_station: str | None
+    weather: str | None
+    temperature: float | None
+    humidity: float | None
+    wind_speed: float | None
+    wind_direction_code: str | None
+    rainfall: float | None
+    rainfall_strength: float | None
+    new_snow: float | None
+    snow: float | None
+    cloud: float | None
+    dew_point: float | None
     raw: dict[str, Any]
+    metadata: ResponseMetadata | None = None
 
     @model_validator(mode="after")
-    def _validate_latlon(self) -> "RestAreaWeather":
+    def _validate_latlon(self) -> RestAreaWeather:
         if self.latitude is not None and self.longitude is not None:
             LatLon(self.latitude, self.longitude)
         return self
 
     @property
-    def latlon(self) -> Optional[LatLon]:
+    def latlon(self) -> LatLon | None:
         """Return WGS84 location when the API row includes valid coordinates."""
 
         if self.latitude is None or self.longitude is None:
             return None
         return LatLon(self.latitude, self.longitude)
+
+
+class MidForecastItem(PykmaModel):
+    """Typed row wrapper for KMA `MidFcstInfoService` responses.
+
+    `reg_id` is the mid-term forecast region identifier from KMA. It is not
+    interchangeable with short-term forecast `nx`/`ny` DFS grid coordinates,
+    and pykma does not guess mappings between those coordinate systems.
+    """
+
+    operation: str
+    tm_fc: str | None
+    reg_id: str | None = None
+    stn_id: str | None = None
+    raw: dict[str, Any]
+    metadata: ResponseMetadata | None = None

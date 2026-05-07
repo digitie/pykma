@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from .enums import KmaEndpoint, WeatherCategory, enum_value
 
@@ -69,7 +68,7 @@ def label_for(
     value: object,
     *,
     endpoint: str | KmaEndpoint = "",
-) -> Optional[str]:
+) -> str | None:
     category_code = enum_value(category)
     code = enum_value(value)
     endpoint_code = enum_value(endpoint) if endpoint else ""
@@ -96,7 +95,7 @@ def normalize_value(category: str | WeatherCategory, value: object) -> str | flo
     return raw
 
 
-def unit_for(category: str | WeatherCategory) -> Optional[str]:
+def unit_for(category: str | WeatherCategory) -> str | None:
     """Return the conventional unit for a KMA category, if pykma knows one."""
 
     return CATEGORY_UNITS.get(enum_value(category))
@@ -108,7 +107,7 @@ def is_numeric_category(category: str | WeatherCategory) -> bool:
     return enum_value(category) in _NUMERIC_CATEGORIES
 
 
-def parse_amount(value: object) -> Optional[float]:
+def parse_amount(value: object) -> float | None:
     """Parse KMA precipitation or snowfall amount labels into a representative float.
 
     Range labels are represented by their midpoint. Open-ended labels use the boundary.

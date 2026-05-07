@@ -1,8 +1,8 @@
 # pykma
 
-Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기예보 API를 Python에서 편하게 쓰기 위한 클라이언트 라이브러리입니다.
+Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관련 공공 날씨 API를 Python에서 편하게 쓰기 위한 공용 클라이언트 라이브러리입니다.
 
-`pykma`는 `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸고, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, 예외 처리를 함께 제공합니다.
+`pykma`는 특정 앱의 adapter나 DB 스키마를 전제로 하지 않습니다. `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸고, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, provenance metadata, 예외 처리를 함께 제공합니다.
 
 > 이 저장소는 라이브러리 구현과 유지보수를 위한 명세가 함께 들어 있는 초기 패키지입니다. 세부 API 규칙은 [kma-api.md](kma-api.md), 에이전트 구현 규칙은 [SKILL.md](SKILL.md), 작업 운영 규칙은 [AGENTS.md](AGENTS.md)를 참고하세요.
 
@@ -16,12 +16,35 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털 단기
 - **한국도로공사 휴게소별 날씨 지원**: `ExpresswayRestAreaWeatherClient`로 고속도로 휴게소별 날씨 정보를 조회합니다.
 - **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현합니다.
 - **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
+- **명시적 좌표 변환 alias**: 앱 경계에서는 `wgs84_to_kma_grid(latitude, longitude)`, `kma_grid_to_wgs84(nx, ny)`를 사용할 수 있습니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
-- **Pydantic 응답 모델**: 실황, 예보, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
+- **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
+- **Provider metadata와 raw 보존**: typed 모델은 원문 `raw`와 sanitized `metadata`를 담을 수 있어 앱이 직접 raw/serving 저장 전략을 선택할 수 있습니다.
 - **enum과 코드 라벨 매핑**: `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`를 제공하고, 사람이 읽을 수 있는 한국어 라벨도 함께 제공합니다.
 - **문자열 범주값 보존**: `PCP`, `SNO`처럼 `"1.0mm 미만"`, `"30.0~50.0mm"` 같은 범주 문자열은 무리하게 숫자로 바꾸지 않습니다.
-- **명확한 예외 계층**: 인증, 요청, 서버, 파싱 오류를 구분합니다.
+- **명확한 예외 계층**: 인증, quota/rate limit, 요청, 서버, 파싱 오류를 구분하고 metadata를 제공합니다.
+- **Pagination/cache helper**: data.go.kr `pageNo`/`numOfRows`/`totalCount` 기반 helper와 sanitized cache key helper를 제공합니다.
 - **네트워크 없는 기본 테스트**: 좌표 변환, 시간 계산, 코드 매핑, 응답 파싱은 mock/fixture 기반으로 검증합니다.
+
+---
+
+## 권장 Public API
+
+여러 프로젝트에서 직접 의존해도 되는 안정 API는 아래 항목입니다. 이 목록은 package-level `pykma.__all__`과 맞춰 관리합니다.
+
+| 분류 | 권장 API |
+|---|---|
+| typed client | `KmaClient`, `DataGoKrClient`, `ApiHubClient`, `ExpresswayRestAreaWeatherClient` |
+| 위치 값 객체 | `LatLon`, `GridPoint`, `normalize_location` |
+| 좌표 변환 | `to_grid`, `to_latlon`, `wgs84_to_kma_grid`, `kma_grid_to_wgs84` |
+| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `MidForecastItem`, `RestAreaWeather`, `ResponseMetadata` |
+| pagination/cache | `has_next_page`, `next_page_no`, `iter_pages`, `make_cache_key`, `sanitize_request_params` |
+| enum/라벨 | `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`, `label_for`, `unit_for`, `parse_amount` |
+| 예외 | `KmaError`, `KmaAuthError`, `KmaRequestError`, `KmaServerError`, `KmaParseError` |
+
+`ApiHubGeneratedClient`, `APIHUB_ENDPOINTS`, `APIHUB_ATTACHMENTS`도 public API입니다. 다만 공식 APIHub 목록을 생성한 산출물이므로 endpoint 수와 함수 이름은 upstream 목록 갱신에 따라 바뀔 수 있습니다.
+
+위 표에 없는 모듈별 parser/helper는 internal 또는 maintenance API로 보며 하위 호환을 보장하지 않습니다. 모듈 내부의 `_` prefix 함수와 상수, 그리고 `pykma.grid`의 LCC DFS 보정 상수(`RE`, `GRID`, `SLAT1`, `SLAT2`, `OLON`, `OLAT`, `XO`, `YO`)는 구현 세부사항입니다. 검증 근거 없이 바꾸지 않지만, 앱 코드는 이 값들에 직접 의존하지 않는 것을 권장합니다.
 
 ---
 
@@ -95,7 +118,7 @@ kma.now(location={"latitude": 37.5665, "longitude": 126.9780})
 kma.now(location={"nx": 60, "ny": 127})
 ```
 
-좌표 변환만 사용할 수도 있습니다.
+좌표 변환만 사용할 수도 있습니다. 기존 tuple 기반 API는 하위 호환용으로 유지합니다.
 
 ```python
 from pykma import LatLon, to_grid, to_latlon
@@ -105,6 +128,15 @@ lat, lon = to_latlon(60, 127)
 
 grid = LatLon(37.5665, 126.9780).to_grid()
 latlon = grid.to_latlon()
+```
+
+앱의 API 저장 경계처럼 필드명이 `latitude`/`longitude`인 곳에서는 의미가 더 분명한 alias를 권장합니다.
+
+```python
+from pykma import kma_grid_to_wgs84, wgs84_to_kma_grid
+
+grid = wgs84_to_kma_grid(latitude=37.5665, longitude=126.9780)
+latlon = kma_grid_to_wgs84(nx=60, ny=127)
 ```
 
 ---
@@ -150,6 +182,27 @@ data.go.kr 문서가 인증키 파라미터를 `ServiceKey`로 표기한 서비�
 
 ```python
 client = DataGoKrClient.from_env(service_key_param="ServiceKey")
+```
+
+중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `pykma`는 임의 매핑을 추측하지 않습니다.
+
+```python
+rows = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
+temps = client.mid_temperature_forecast(reg_id="11B10101", tm_fc="202605010600")
+overview = client.mid_forecast(stn_id="108", tm_fc="202605010600")
+```
+
+페이지가 있는 data.go.kr 응답은 helper로 순회할 수 있습니다. `max_pages` 또는 `max_items` guard를 항상 둡니다.
+
+```python
+for body in client.iter_pages(
+    "MidFcstInfoService",
+    "getMidLandFcst",
+    {"regId": "11B00000", "tmFc": "202605010600"},
+    num_of_rows=100,
+    max_pages=10,
+):
+    ...
 ```
 
 APIHub는 별도 인증키(`authKey`)를 사용합니다.
@@ -204,6 +257,28 @@ snapshot = kma.now(location=LatLon(37.5665, 126.9780))
 payload = snapshot.model_dump(mode="json")
 schema = snapshot.model_json_schema()
 ```
+
+`raw`는 provider 원문 row/payload를 보존하고, `metadata`는 저장/캐시/감사 추적에 필요한 provenance를 담습니다. `serviceKey`, `authKey`, `key` 원문은 `metadata.request_params`, 예외 metadata, repr에 남기지 않습니다.
+
+```python
+snapshot = kma.now(nx=60, ny=127)
+
+raw_for_db = snapshot.model_dump(mode="json")
+serving_payload = {
+    "temperature": raw_for_db["temperature"],
+    "observed_at": raw_for_db["observed_at"],
+    "source": raw_for_db["metadata"],
+}
+```
+
+`ResponseMetadata` 주요 필드:
+
+- `provider`: `data.go.kr`, `apihub`, `expressway`
+- `service_name`: 예: `VilageFcstInfoService_2.0`, `MidFcstInfoService`
+- `endpoint`: 예: `getVilageFcst`, `MidFcstInfoService/getMidLandFcst`
+- `request_params`: 인증 파라미터가 제거된 요청 파라미터
+- `collected_at`: 응답 수집 시각
+- `base_date`, `base_time` 또는 `reference_time`: 조회 기준시각
 
 ### `WeatherSnapshot`
 
@@ -263,6 +338,17 @@ class ForecastItem(BaseModel):
 
 `ForecastItem.value`는 숫자로 안전하게 해석되는 값만 `float`가 됩니다. `PCP`, `SNO` 범주 문자열은 원문을 보존합니다.
 
+### `MidForecastItem`
+
+```python
+from pykma import DataGoKrClient
+
+client = DataGoKrClient.from_env()
+items = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
+```
+
+`MidForecastItem`은 `MidFcstInfoService` row의 `operation`, `tm_fc`, `reg_id`, `stn_id`, `raw`, `metadata`를 담습니다. 중기예보의 `reg_id`는 단기예보 `nx`/`ny`와 다른 식별자이므로, 라이브러리는 좌표나 권역 매핑을 추측하지 않습니다.
+
 ### `RestAreaWeather`
 
 ```python
@@ -302,6 +388,7 @@ normalize_location({"nx": 60, "ny": 127})              # GridPoint(60, 127)
 - `LatLon.crs`는 `"EPSG:4326"`입니다.
 - `GridPoint.grid_system`은 `"KMA_DFS"`입니다.
 - `nx`/`ny`는 위도/경도가 아니며, KMA DFS 격자 좌표입니다.
+- WGS84 좌표는 항상 `lat/lon` 순서로 다루며, 앱 API나 저장 경계에서는 `latitude/longitude` 이름을 사용해도 같은 의미입니다.
 
 ### Public enum
 
@@ -428,6 +515,36 @@ KmaError
 | `30` | 등록되지 않은 서비스키 | `KmaAuthError` |
 | `31` | 서비스키 만료 | `KmaAuthError` |
 | `99` | 기타 오류 | `KmaServerError` |
+
+모든 `KmaError` 하위 예외는 선택적 metadata 속성을 가질 수 있습니다.
+
+```python
+try:
+    kma.now(nx=60, ny=127)
+except KmaError as exc:
+    print(exc.failure_kind, exc.retryable, exc.metadata)
+```
+
+`failure_kind`는 `auth`, `quota`, `rate_limit`, `request`, `server`, `parse`, `network` 중 하나로 채워질 수 있습니다. 기존처럼 `except KmaAuthError`, `except KmaRequestError`로 잡는 코드는 그대로 동작합니다.
+
+---
+
+## Pagination과 Cache Key
+
+```python
+from pykma import has_next_page, make_cache_key, next_page_no
+
+body = client.request("MidFcstInfoService", "getMidLandFcst", {...})
+if has_next_page(body):
+    print(next_page_no(body))
+
+key = make_cache_key(
+    "getVilageFcst",
+    {"base_date": "20260507", "base_time": "0200", "nx": 60, "ny": 127},
+)
+```
+
+`make_cache_key()`는 `serviceKey`, `authKey`, `key`를 제거한 sanitized params를 사용합니다. 같은 endpoint, 같은 기준시각, 같은 `nx`/`ny` 조합이면 인증키가 달라도 같은 cache key가 만들어집니다.
 
 ---
 

@@ -28,4 +28,10 @@
 - data.go.kr 문서의 `serviceKey`/`ServiceKey` 표기 차이를 처리할 수 있는 `service_key_param` 설정.
 - 한국도로공사 휴게소별 날씨 API를 호출하는 `ExpresswayRestAreaWeatherClient`와 `RestAreaWeather` 모델.
 - public 응답 모델을 frozen Pydantic v2 모델로 전환하고 `model_dump()`, `model_dump_json()`, JSON Schema를 지원.
+- 권장 public API 목록과 `__all__` 정렬.
+- 명시적 좌표 변환 alias `wgs84_to_kma_grid()`, `kma_grid_to_wgs84()`.
+- provider provenance를 담는 `ResponseMetadata`와 인증 파라미터를 제거하는 `sanitize_request_params()`.
+- sanitized params 기반 `make_cache_key()`와 data.go.kr pagination helper.
+- 중기예보 row를 보존하는 `MidForecastItem` 및 `DataGoKrClient.mid_*` helper.
+- `KmaError` 계층의 `failure_kind`, `retryable`, provider/endpoint/status/result metadata.
 - README, API 레퍼런스, 에이전트 가이드, 트러블슈팅, 테스트 가이드, 반복 실수 방지 문서.

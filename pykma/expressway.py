@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from ._http import build_session
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
+from .metadata import ResponseMetadata, make_response_metadata, redact_credentials_in_text
 from .models import RestAreaWeather
 from .time_utils import KST, as_kst
 
@@ -16,10 +19,17 @@ try:
     from requests import HTTPError, RequestException
 except ModuleNotFoundError:  # pragma: no cover
     requests = None  # type: ignore[assignment]
-    HTTPError = ()  # type: ignore[assignment]
-    RequestException = ()  # type: ignore[assignment]
+    HTTPError = ()  # type: ignore[assignment,misc]
+    RequestException = ()  # type: ignore[assignment,misc]
 
 EXPRESSWAY_REST_AREA_WEATHER_URL = "http://data.ex.co.kr/openapi/restinfo/restWeatherList"
+EXPRESSWAY_SERVICE_NAME = "Korea Expressway rest-area weather"
+
+
+@dataclass(frozen=True)
+class _ExpresswayPayload:
+    payload: Mapping[str, Any]
+    metadata: ResponseMetadata
 
 
 class ExpresswayRestAreaWeatherClient:
@@ -32,7 +42,7 @@ class ExpresswayRestAreaWeatherClient:
         timeout: float = 10,
         retries: int = 3,
         base_url: str = EXPRESSWAY_REST_AREA_WEATHER_URL,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("api_key is required")
@@ -46,7 +56,7 @@ class ExpresswayRestAreaWeatherClient:
         cls,
         name: str = "EXPRESSWAY_API_KEY",
         **kwargs: Any,
-    ) -> "ExpresswayRestAreaWeatherClient":
+    ) -> ExpresswayRestAreaWeatherClient:
         api_key = os.getenv(name) or os.getenv("KOREA_EXPRESSWAY_API_KEY")
         if not api_key:
             raise ValueError(f"{name} or KOREA_EXPRESSWAY_API_KEY is not set")
@@ -61,31 +71,120 @@ class ExpresswayRestAreaWeatherClient:
     ) -> Mapping[str, Any]:
         """Call the raw rest-area weather endpoint and return its JSON payload."""
 
+        return self._request_with_metadata(
+            sdate=sdate,
+            std_hour=std_hour,
+            response_type=response_type,
+        ).payload
+
+    def request_with_metadata(
+        self,
+        *,
+        sdate: str | date | datetime,
+        std_hour: str | int,
+        response_type: str = "json",
+    ) -> tuple[Mapping[str, Any], ResponseMetadata]:
+        """Call the endpoint and return `(payload, metadata)`."""
+
+        response = self._request_with_metadata(
+            sdate=sdate,
+            std_hour=std_hour,
+            response_type=response_type,
+        )
+        return response.payload, response.metadata
+
+    def _request_with_metadata(
+        self,
+        *,
+        sdate: str | date | datetime,
+        std_hour: str | int,
+        response_type: str = "json",
+    ) -> _ExpresswayPayload:
         params = {
             "key": self.api_key,
             "type": response_type,
             "sdate": _format_sdate(sdate),
             "stdHour": _format_hour(std_hour),
         }
+        reference_time = _parse_observed_at(params["sdate"], params["stdHour"])
+        metadata = make_response_metadata(
+            provider="expressway",
+            service_name=EXPRESSWAY_SERVICE_NAME,
+            endpoint="restWeatherList",
+            request_params=params,
+            reference_time=reference_time,
+        )
         try:
             response = self.session.get(self.base_url, params=params, timeout=self.timeout)
             response.raise_for_status()
         except HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
             if status and status >= 500:
-                raise KmaServerError(f"Expressway server returned HTTP {status}") from None
-            raise KmaRequestError(f"Expressway request failed with HTTP {status}") from None
+                raise KmaServerError(
+                    f"Expressway server returned HTTP {status}",
+                    provider="expressway",
+                    endpoint="restWeatherList",
+                    status_code=status,
+                    failure_kind="server",
+                    retryable=True,
+                ) from None
+            if status in {401, 403}:
+                raise KmaAuthError(
+                    f"Expressway request failed with HTTP {status}",
+                    provider="expressway",
+                    endpoint="restWeatherList",
+                    status_code=status,
+                    failure_kind="auth",
+                    retryable=False,
+                ) from None
+            if status == 429:
+                raise KmaRequestError(
+                    "Expressway request failed with HTTP 429",
+                    provider="expressway",
+                    endpoint="restWeatherList",
+                    status_code=status,
+                    failure_kind="rate_limit",
+                    retryable=True,
+                ) from None
+            raise KmaRequestError(
+                f"Expressway request failed with HTTP {status}",
+                provider="expressway",
+                endpoint="restWeatherList",
+                status_code=status,
+                failure_kind="request",
+                retryable=False,
+            ) from None
         except RequestException:
-            raise KmaRequestError("Expressway request failed") from None
+            raise KmaRequestError(
+                "Expressway request failed",
+                provider="expressway",
+                endpoint="restWeatherList",
+                failure_kind="network",
+                retryable=True,
+            ) from None
 
         try:
             payload = response.json()
         except ValueError as exc:
-            raise KmaParseError("Expressway response was not JSON") from exc
+            raise KmaParseError(
+                "Expressway response was not JSON",
+                provider="expressway",
+                endpoint="restWeatherList",
+                status_code=response.status_code,
+                failure_kind="parse",
+                retryable=False,
+            ) from exc
         if not isinstance(payload, Mapping):
-            raise KmaParseError("Expressway response was not an object")
+            raise KmaParseError(
+                "Expressway response was not an object",
+                provider="expressway",
+                endpoint="restWeatherList",
+                status_code=response.status_code,
+                failure_kind="parse",
+                retryable=False,
+            )
         _raise_for_expressway_code(payload)
-        return payload
+        return _ExpresswayPayload(payload, metadata)
 
     def weather(
         self,
@@ -95,18 +194,24 @@ class ExpresswayRestAreaWeatherClient:
     ) -> list[RestAreaWeather]:
         """Return rest-area weather rows as typed dataclasses."""
 
-        payload = self.request(sdate=sdate, std_hour=std_hour)
-        rows = payload.get("list", [])
+        response = self._request_with_metadata(sdate=sdate, std_hour=std_hour)
+        rows = response.payload.get("list", [])
         if rows is None:
             return []
         if not isinstance(rows, list):
-            raise KmaParseError("Expressway response list was not a list")
-        return [_rest_area_weather(row) for row in rows]
+            raise KmaParseError(
+                "Expressway response list was not a list",
+                provider="expressway",
+                endpoint="restWeatherList",
+                failure_kind="parse",
+                retryable=False,
+            )
+        return [_rest_area_weather(row, response.metadata) for row in rows]
 
     def latest_weather(
         self,
         *,
-        when: Optional[datetime] = None,
+        when: datetime | None = None,
         lookback_hours: int = 48,
     ) -> list[RestAreaWeather]:
         """Return the newest non-empty rest-area weather rows within a lookback window."""
@@ -123,9 +228,15 @@ class ExpresswayRestAreaWeatherClient:
         return []
 
 
-def _rest_area_weather(row: object) -> RestAreaWeather:
+def _rest_area_weather(row: object, metadata: ResponseMetadata | None = None) -> RestAreaWeather:
     if not isinstance(row, Mapping):
-        raise KmaParseError(f"Malformed Expressway weather row: {row!r}")
+        raise KmaParseError(
+            f"Malformed Expressway weather row: {row!r}",
+            provider="expressway",
+            endpoint="restWeatherList",
+            failure_kind="parse",
+            retryable=False,
+        )
     try:
         return RestAreaWeather(
             observed_at=_parse_observed_at(row.get("sdate"), row.get("stdHour")),
@@ -152,20 +263,41 @@ def _rest_area_weather(row: object) -> RestAreaWeather:
             cloud=_float_or_none(row.get("cloudValue")),
             dew_point=_float_or_none(row.get("dewValue")),
             raw=dict(row),
+            metadata=metadata,
         )
     except (TypeError, ValueError) as exc:
-        raise KmaParseError(f"Malformed Expressway weather row: {row!r}") from exc
+        raise KmaParseError(
+            f"Malformed Expressway weather row: {row!r}",
+            provider="expressway",
+            endpoint="restWeatherList",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
 
 
 def _raise_for_expressway_code(payload: Mapping[str, Any]) -> None:
     code = str(payload.get("code", ""))
-    message = str(payload.get("message", ""))
+    message = redact_credentials_in_text(str(payload.get("message", "")))
     if code in {"", "SUCCESS"}:
         return
     text = f"Expressway API returned {code}: {message}"
     if "인증키" in message:
-        raise KmaAuthError(text)
-    raise KmaRequestError(text)
+        raise KmaAuthError(
+            text,
+            provider="expressway",
+            endpoint="restWeatherList",
+            result_code=code,
+            failure_kind="auth",
+            retryable=False,
+        )
+    raise KmaRequestError(
+        text,
+        provider="expressway",
+        endpoint="restWeatherList",
+        result_code=code,
+        failure_kind="request",
+        retryable=False,
+    )
 
 
 def _format_sdate(value: str | date | datetime) -> str:

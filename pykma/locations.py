@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from .grid import to_grid as _to_grid
 from .grid import to_latlon as _to_latlon
@@ -41,7 +42,7 @@ class LatLon:
     def crs(self) -> str:
         return "EPSG:4326"
 
-    def to_grid(self) -> "GridPoint":
+    def to_grid(self) -> GridPoint:
         nx, ny = _to_grid(self.lat, self.lon)
         return GridPoint(nx, ny)
 
@@ -49,7 +50,7 @@ class LatLon:
         return self.lat, self.lon
 
     @classmethod
-    def from_mapping(cls, values: Mapping[str, Any]) -> "LatLon":
+    def from_mapping(cls, values: Mapping[str, Any]) -> LatLon:
         if "lat" in values and "lon" in values:
             return cls(float(values["lat"]), float(values["lon"]))
         if "latitude" in values and "longitude" in values:
@@ -87,7 +88,7 @@ class GridPoint:
         return self.nx, self.ny
 
     @classmethod
-    def from_mapping(cls, values: Mapping[str, Any]) -> "GridPoint":
+    def from_mapping(cls, values: Mapping[str, Any]) -> GridPoint:
         if "nx" in values and "ny" in values:
             return cls(int(values["nx"]), int(values["ny"]))
         raise ValueError("location mapping must contain nx/ny")
@@ -97,12 +98,12 @@ LocationInput = LatLon | GridPoint | Mapping[str, Any]
 
 
 def normalize_location(
-    location: Optional[LocationInput] = None,
+    location: LocationInput | None = None,
     *,
-    lat: Optional[float] = None,
-    lon: Optional[float] = None,
-    nx: Optional[int] = None,
-    ny: Optional[int] = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    nx: int | None = None,
+    ny: int | None = None,
 ) -> GridPoint:
     """Normalize any supported location input to a KMA DFS grid point."""
 

@@ -30,6 +30,28 @@
 - `to_grid(lat, lon)`으로 위치를 확인합니다.
 - endpoint별 발표 지연은 `kma-api.md`를 확인합니다.
 
+## 예외를 구분해서 재시도하고 싶음
+
+`KmaError` 하위 예외에는 선택적 metadata가 있습니다.
+
+```python
+try:
+    kma.now(nx=60, ny=127)
+except KmaError as exc:
+    print(exc.failure_kind, exc.retryable, exc.metadata)
+```
+
+분류 기준:
+
+- `auth`: 인증키 오류, 승인 안 됨, 만료. 보통 재시도하지 않습니다.
+- `quota` 또는 `rate_limit`: 호출 한도나 HTTP 429. 시간 간격을 두고 재시도할 수 있습니다.
+- `request`: 4xx 요청 오류나 잘못된 파라미터. 요청을 고쳐야 합니다.
+- `server`: 5xx 또는 upstream 서버 장애. 재시도 가능성이 있습니다.
+- `parse`: JSON이 아니거나 예상 schema가 바뀐 경우. raw 응답과 문서를 확인합니다.
+- `network`: 네트워크/연결 오류. 재시도 가능성이 있습니다.
+
+예외 metadata에는 `provider`, `endpoint`, `status_code`, `result_code`, `failure_kind`, `retryable`만 담습니다. `serviceKey`, `authKey`, `key` 원문은 남기지 않습니다.
+
 ## PowerShell에서 한국어 라벨이 깨져 보임
 
 가능한 원인:
@@ -112,6 +134,14 @@ kma.now(location=LatLon(37.5665, 126.9780))
 kma.now(location=GridPoint(60, 127))
 ```
 
+앱 저장 경계에서 `latitude`/`longitude` 이름을 쓴다면 명시적 alias를 사용할 수 있습니다.
+
+```python
+from pykma import wgs84_to_kma_grid
+
+grid = wgs84_to_kma_grid(latitude=37.5665, longitude=126.9780)
+```
+
 ## import는 되지만 네트워크 호출에서 `requests`가 없다고 나옴
 
 `pykma`는 최소 환경에서도 좌표 helper를 import할 수 있게 해두었지만, `KmaClient` 네트워크 호출에는 `requests`가 필요합니다.
@@ -183,6 +213,27 @@ APIHub와 data.go.kr는 서로 다른 gateway입니다.
 - data.go.kr: `serviceKey`
 
 `https://apihub.kma.go.kr/api/...` path는 `ApiHubClient`를 사용하고, `http://apis.data.go.kr/1360000/...` path는 `DataGoKrClient` 또는 `KmaClient`를 사용합니다.
+
+## 저장용 raw payload와 serving payload를 분리하고 싶음
+
+typed 모델은 `raw`와 sanitized `metadata`를 함께 제공합니다.
+
+```python
+snapshot = kma.now(nx=60, ny=127)
+payload = snapshot.model_dump(mode="json")
+```
+
+이 결과를 그대로 raw 저장에 쓰거나, 앱에서 필요한 필드만 골라 serving 저장에 사용할 수 있습니다. `metadata.request_params`에는 인증키 원문이 없습니다.
+
+## 중기예보 `reg_id`를 단기예보 좌표로 바꾸고 싶음
+
+`reg_id`는 중기예보 권역 코드이고 `nx`/`ny`는 단기예보 KMA DFS 격자입니다. 서로 다른 체계이므로 `pykma`는 임의 매핑을 제공하지 않습니다.
+
+해결:
+
+- `DataGoKrClient.mid_land_forecast(reg_id=..., tm_fc=...)`처럼 공식 `reg_id`를 직접 전달합니다.
+- 단기예보는 `KmaClient.forecast(nx=..., ny=...)` 또는 `LatLon`/`GridPoint`를 사용합니다.
+- 서비스별 지역 매핑이 필요하면 앱에서 별도 테이블로 관리합니다.
 
 ## APIHub가 HTTP 403과 활용신청 메시지를 반환함
 

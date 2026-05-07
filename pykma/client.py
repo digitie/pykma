@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping, Optional
+from typing import Any
 
 try:
     import requests
     from requests import HTTPError, RequestException
 except ModuleNotFoundError:  # pragma: no cover - exercised only in minimal envs
     requests = None  # type: ignore[assignment]
-    HTTPError = ()  # type: ignore[assignment]
-    RequestException = ()  # type: ignore[assignment]
+    HTTPError = ()  # type: ignore[assignment,misc]
+    RequestException = ()  # type: ignore[assignment,misc]
 
 from ._http import build_session
 from .codes import label_for, normalize_value, parse_amount
@@ -20,6 +22,7 @@ from .enums import KmaEndpoint, WeatherCategory, coerce_category, enum_value
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
 from .grid import validate_grid
 from .locations import LocationInput, normalize_location
+from .metadata import ResponseMetadata, make_response_metadata, redact_credentials_in_text
 from .models import ForecastItem, WeatherSnapshot
 from .time_utils import (
     as_kst,
@@ -30,6 +33,19 @@ from .time_utils import (
 )
 
 DEFAULT_BASE_URL = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
+SERVICE_NAME = "VilageFcstInfoService_2.0"
+
+
+@dataclass(frozen=True)
+class _KmaBody:
+    body: Mapping[str, Any]
+    metadata: ResponseMetadata
+
+
+@dataclass(frozen=True)
+class _FetchedItems:
+    items: list[Mapping[str, Any]]
+    metadata: ResponseMetadata
 
 
 class KmaClient:
@@ -41,8 +57,8 @@ class KmaClient:
         *,
         timeout: float = 10,
         retries: int = 3,
-        base_url: Optional[str] = None,
-        session: Optional[Any] = None,
+        base_url: str | None = None,
+        session: Any | None = None,
     ) -> None:
         if not service_key:
             raise ValueError("service_key is required")
@@ -52,7 +68,7 @@ class KmaClient:
         self.session = session or build_session(retries)
 
     @classmethod
-    def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> "KmaClient":
+    def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> KmaClient:
         try:
             service_key = os.environ[name]
         except KeyError as exc:
@@ -62,12 +78,12 @@ class KmaClient:
     def now(
         self,
         *,
-        location: Optional[LocationInput] = None,
-        lat: Optional[float] = None,
-        lon: Optional[float] = None,
-        nx: Optional[int] = None,
-        ny: Optional[int] = None,
-        when: Optional[datetime] = None,
+        location: LocationInput | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        nx: int | None = None,
+        ny: int | None = None,
+        when: datetime | None = None,
     ) -> WeatherSnapshot:
         """Fetch current ultra-short observations.
 
@@ -83,13 +99,14 @@ class KmaClient:
             ny=ny,
         )
         base_date, base_time = latest_ultra_srt_ncst_base(when)
-        items = self._fetch_items(
+        fetched = self._fetch_items(
             KmaEndpoint.ULTRA_SRT_NCST,
             base_date=base_date,
             base_time=base_time,
             nx=grid_x,
             ny=grid_y,
         )
+        items = fetched.items
         by_category = {str(item.get("category")): item.get("obsrValue") for item in items}
         raw = {"items": items, "by_category": by_category}
 
@@ -115,17 +132,18 @@ class KmaClient:
                 endpoint=KmaEndpoint.ULTRA_SRT_NCST,
             ),
             raw=raw,
+            metadata=fetched.metadata,
         )
 
     def forecast_short(
         self,
         *,
-        location: Optional[LocationInput] = None,
-        lat: Optional[float] = None,
-        lon: Optional[float] = None,
-        nx: Optional[int] = None,
-        ny: Optional[int] = None,
-        when: Optional[datetime] = None,
+        location: LocationInput | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        nx: int | None = None,
+        ny: int | None = None,
+        when: datetime | None = None,
     ) -> list[ForecastItem]:
         """Fetch ultra-short forecast items from `getUltraSrtFcst`."""
 
@@ -137,24 +155,27 @@ class KmaClient:
             ny=ny,
         )
         base_date, base_time = latest_ultra_srt_fcst_base(when)
-        items = self._fetch_items(
+        fetched = self._fetch_items(
             KmaEndpoint.ULTRA_SRT_FCST,
             base_date=base_date,
             base_time=base_time,
             nx=grid_x,
             ny=grid_y,
         )
-        return [_forecast_item(item, KmaEndpoint.ULTRA_SRT_FCST) for item in items]
+        return [
+            _forecast_item(item, KmaEndpoint.ULTRA_SRT_FCST, metadata=fetched.metadata)
+            for item in fetched.items
+        ]
 
     def forecast(
         self,
         *,
-        location: Optional[LocationInput] = None,
-        lat: Optional[float] = None,
-        lon: Optional[float] = None,
-        nx: Optional[int] = None,
-        ny: Optional[int] = None,
-        when: Optional[datetime] = None,
+        location: LocationInput | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        nx: int | None = None,
+        ny: int | None = None,
+        when: datetime | None = None,
     ) -> list[ForecastItem]:
         """Fetch village forecast items from `getVilageFcst`."""
 
@@ -166,14 +187,17 @@ class KmaClient:
             ny=ny,
         )
         base_date, base_time = latest_vilage_base(when)
-        items = self._fetch_items(
+        fetched = self._fetch_items(
             KmaEndpoint.VILAGE_FCST,
             base_date=base_date,
             base_time=base_time,
             nx=grid_x,
             ny=grid_y,
         )
-        return [_forecast_item(item, KmaEndpoint.VILAGE_FCST) for item in items]
+        return [
+            _forecast_item(item, KmaEndpoint.VILAGE_FCST, metadata=fetched.metadata)
+            for item in fetched.items
+        ]
 
     def version(self, ftype: str, when: datetime) -> Mapping[str, Any]:
         """Fetch forecast version metadata from `getFcstVersion`."""
@@ -193,11 +217,11 @@ class KmaClient:
     def _coordinates(
         self,
         *,
-        location: Optional[LocationInput],
-        lat: Optional[float],
-        lon: Optional[float],
-        nx: Optional[int],
-        ny: Optional[int],
+        location: LocationInput | None,
+        lat: float | None,
+        lon: float | None,
+        nx: int | None,
+        ny: int | None,
     ) -> tuple[int, int]:
         grid = normalize_location(location, lat=lat, lon=lon, nx=nx, ny=ny)
         return grid.nx, grid.ny
@@ -210,8 +234,8 @@ class KmaClient:
         base_time: str,
         nx: int,
         ny: int,
-    ) -> list[Mapping[str, Any]]:
-        body = self._request(
+    ) -> _FetchedItems:
+        response = self._request_with_metadata(
             endpoint,
             {
                 "base_date": base_date,
@@ -221,20 +245,40 @@ class KmaClient:
             },
         )
         try:
-            items = body["items"]["item"]
+            items = response.body["items"]["item"]
         except (KeyError, TypeError) as exc:
-            raise KmaParseError("KMA response did not contain items.item") from exc
+            raise KmaParseError(
+                "KMA response did not contain items.item",
+                provider="data.go.kr",
+                endpoint=enum_value(endpoint),
+                failure_kind="parse",
+                retryable=False,
+            ) from exc
         if isinstance(items, Mapping):
-            return [items]
+            return _FetchedItems([items], response.metadata)
         if not isinstance(items, list):
-            raise KmaParseError("KMA response items.item was not a list")
-        return items
+            raise KmaParseError(
+                "KMA response items.item was not a list",
+                provider="data.go.kr",
+                endpoint=enum_value(endpoint),
+                failure_kind="parse",
+                retryable=False,
+            )
+        return _FetchedItems(items, response.metadata)
 
     def _request(
         self,
         endpoint: str | KmaEndpoint,
         params: Mapping[str, Any],
     ) -> Mapping[str, Any]:
+        return self._request_with_metadata(endpoint, params).body
+
+    def _request_with_metadata(
+        self,
+        endpoint: str | KmaEndpoint,
+        params: Mapping[str, Any],
+    ) -> _KmaBody:
+        endpoint_name = enum_value(endpoint)
         request_params: dict[str, Any] = {
             "serviceKey": self.service_key,
             "pageNo": 1,
@@ -242,10 +286,22 @@ class KmaClient:
             "dataType": "JSON",
         }
         request_params.update(params)
+        metadata = make_response_metadata(
+            provider="data.go.kr",
+            service_name=SERVICE_NAME,
+            endpoint=endpoint_name,
+            request_params=request_params,
+            base_date=str(request_params.get("base_date"))
+            if request_params.get("base_date") is not None
+            else None,
+            base_time=str(request_params.get("base_time"))
+            if request_params.get("base_time") is not None
+            else None,
+        )
 
         try:
             response = self.session.get(
-                f"{self.base_url}/{enum_value(endpoint)}",
+                f"{self.base_url}/{endpoint_name}",
                 params=request_params,
                 timeout=self.timeout,
             )
@@ -253,10 +309,48 @@ class KmaClient:
         except HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
             if status and status >= 500:
-                raise KmaServerError(f"KMA server returned HTTP {status}") from exc
-            raise KmaRequestError(f"KMA request failed with HTTP {status}") from exc
-        except RequestException as exc:
-            raise KmaRequestError("KMA request failed") from exc
+                raise KmaServerError(
+                    f"KMA server returned HTTP {status}",
+                    provider="data.go.kr",
+                    endpoint=endpoint_name,
+                    status_code=status,
+                    failure_kind="server",
+                    retryable=True,
+                ) from None
+            if status in {401, 403}:
+                raise KmaAuthError(
+                    f"KMA request failed with HTTP {status}",
+                    provider="data.go.kr",
+                    endpoint=endpoint_name,
+                    status_code=status,
+                    failure_kind="auth",
+                    retryable=False,
+                ) from None
+            if status == 429:
+                raise KmaRequestError(
+                    "KMA request failed with HTTP 429",
+                    provider="data.go.kr",
+                    endpoint=endpoint_name,
+                    status_code=status,
+                    failure_kind="rate_limit",
+                    retryable=True,
+                ) from None
+            raise KmaRequestError(
+                f"KMA request failed with HTTP {status}",
+                provider="data.go.kr",
+                endpoint=endpoint_name,
+                status_code=status,
+                failure_kind="request",
+                retryable=False,
+            ) from None
+        except RequestException:
+            raise KmaRequestError(
+                "KMA request failed",
+                provider="data.go.kr",
+                endpoint=endpoint_name,
+                failure_kind="network",
+                retryable=True,
+            ) from None
 
         try:
             payload = response.json()
@@ -264,18 +358,37 @@ class KmaClient:
             header = envelope["header"]
             body = envelope.get("body", {})
         except (ValueError, KeyError, TypeError) as exc:
-            raise KmaParseError("KMA response was not valid JSON in the expected shape") from exc
+            raise KmaParseError(
+                "KMA response was not valid JSON in the expected shape",
+                provider="data.go.kr",
+                endpoint=endpoint_name,
+                status_code=response.status_code,
+                failure_kind="parse",
+                retryable=False,
+            ) from exc
 
         code = str(header.get("resultCode", ""))
         message = str(header.get("resultMsg", ""))
         if code != "00":
-            _raise_for_result_code(code, message)
+            _raise_for_result_code(code, message, endpoint=endpoint_name)
         if not isinstance(body, Mapping):
-            raise KmaParseError("KMA response body was not an object")
-        return body
+            raise KmaParseError(
+                "KMA response body was not an object",
+                provider="data.go.kr",
+                endpoint=endpoint_name,
+                status_code=response.status_code,
+                failure_kind="parse",
+                retryable=False,
+            )
+        return _KmaBody(body, metadata)
 
 
-def _forecast_item(item: Mapping[str, Any], endpoint: str | KmaEndpoint) -> ForecastItem:
+def _forecast_item(
+    item: Mapping[str, Any],
+    endpoint: str | KmaEndpoint,
+    *,
+    metadata: ResponseMetadata | None = None,
+) -> ForecastItem:
     try:
         category = coerce_category(item["category"])
         value = item.get("fcstValue")
@@ -290,21 +403,59 @@ def _forecast_item(item: Mapping[str, Any], endpoint: str | KmaEndpoint) -> Fore
             category=category,
             value=normalize_value(category, value),
             label=label_for(category, value, endpoint=endpoint),
+            raw=dict(item),
+            metadata=metadata,
         )
     except (KeyError, TypeError, ValueError) as exc:
-        raise KmaParseError(f"Malformed KMA forecast item: {item!r}") from exc
+        raise KmaParseError(
+            f"Malformed KMA forecast item: {item!r}",
+            provider="data.go.kr",
+            endpoint=enum_value(endpoint),
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
 
 
-def _raise_for_result_code(code: str, message: str) -> None:
-    text = f"KMA API returned {code}: {message}"
+def _raise_for_result_code(code: str, message: str, *, endpoint: str) -> None:
+    text = f"KMA API returned {code}: {redact_credentials_in_text(message)}"
     if code in {"20", "30", "31"}:
-        raise KmaAuthError(text)
+        raise KmaAuthError(
+            text,
+            provider="data.go.kr",
+            endpoint=endpoint,
+            result_code=code,
+            failure_kind="auth",
+            retryable=False,
+        )
     if code in {"04", "99"}:
-        raise KmaServerError(text)
-    raise KmaRequestError(text)
+        raise KmaServerError(
+            text,
+            provider="data.go.kr",
+            endpoint=endpoint,
+            result_code=code,
+            failure_kind="server",
+            retryable=True,
+        )
+    if code == "22":
+        raise KmaRequestError(
+            text,
+            provider="data.go.kr",
+            endpoint=endpoint,
+            result_code=code,
+            failure_kind="quota",
+            retryable=True,
+        )
+    raise KmaRequestError(
+        text,
+        provider="data.go.kr",
+        endpoint=endpoint,
+        result_code=code,
+        failure_kind="request",
+        retryable=False,
+    )
 
 
-def _float_or_none(value: object) -> Optional[float]:
+def _float_or_none(value: object) -> float | None:
     if value is None:
         return None
     try:
@@ -313,7 +464,7 @@ def _float_or_none(value: object) -> Optional[float]:
         return None
 
 
-def _int_or_none(value: object) -> Optional[int]:
+def _int_or_none(value: object) -> int | None:
     number = _float_or_none(value)
     if number is None:
         return None

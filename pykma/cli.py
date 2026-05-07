@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, is_dataclass
 from typing import Any
-from typing import Sequence
 
 from .apihub import ApiHubClient
 from .client import KmaClient
@@ -14,7 +14,10 @@ from .client import KmaClient
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pykma")
-    parser.add_argument("--service-key", help="KMA decoded service key. Defaults to KMA_SERVICE_KEY.")
+    parser.add_argument(
+        "--service-key",
+        help="KMA decoded service key. Defaults to KMA_SERVICE_KEY.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     now_parser = subparsers.add_parser("now")
@@ -26,7 +29,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     apihub_parser = subparsers.add_parser("apihub")
     apihub_parser.add_argument("path", help="APIHub /api/... path")
-    apihub_parser.add_argument("--auth-key", help="APIHub authKey. Defaults to KMA_APIHUB_AUTH_KEY.")
+    apihub_parser.add_argument(
+        "--auth-key",
+        help="APIHub authKey. Defaults to KMA_APIHUB_AUTH_KEY.",
+    )
     apihub_parser.add_argument(
         "--param",
         action="append",
@@ -37,27 +43,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "apihub":
         params = _parse_params(args.param)
-        client = (
+        apihub_client = (
             ApiHubClient(auth_key=args.auth_key)
             if args.auth_key
             else ApiHubClient.from_env()
         )
-        response = client.request_path(args.path, params)
+        response = apihub_client.request_path(args.path, params)
         print(response.text)
         return 0
 
     location = _location_kwargs(args)
-    client = (
+    kma_client = (
         KmaClient(service_key=args.service_key)
         if args.service_key
         else KmaClient.from_env()
     )
 
     if args.command == "now":
-        print(json.dumps(_jsonable(client.now(**location)), ensure_ascii=False, default=str, indent=2))
+        print(
+            json.dumps(
+                _jsonable(_now(kma_client, location)),
+                ensure_ascii=False,
+                default=str,
+                indent=2,
+            )
+        )
         return 0
 
-    forecast = client.forecast_short(**location) if args.short else client.forecast(**location)
+    forecast = (
+        _forecast_short(kma_client, location)
+        if args.short
+        else _forecast(kma_client, location)
+    )
     print(json.dumps(_jsonable(forecast), ensure_ascii=False, default=str, indent=2))
     return 0
 
@@ -68,7 +85,7 @@ def _jsonable(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump(mode="json")
     if is_dataclass(value):
-        return asdict(value)
+        return asdict(value)  # type: ignore[arg-type]
     return value
 
 
@@ -88,6 +105,24 @@ def _location_kwargs(args: argparse.Namespace) -> dict[str, float | int]:
     if args.ny is None:
         raise SystemExit("--ny is required with --nx")
     return {"nx": args.nx, "ny": args.ny}
+
+
+def _now(client: KmaClient, location: dict[str, float | int]) -> Any:
+    if "lat" in location:
+        return client.now(lat=float(location["lat"]), lon=float(location["lon"]))
+    return client.now(nx=int(location["nx"]), ny=int(location["ny"]))
+
+
+def _forecast_short(client: KmaClient, location: dict[str, float | int]) -> Any:
+    if "lat" in location:
+        return client.forecast_short(lat=float(location["lat"]), lon=float(location["lon"]))
+    return client.forecast_short(nx=int(location["nx"]), ny=int(location["ny"]))
+
+
+def _forecast(client: KmaClient, location: dict[str, float | int]) -> Any:
+    if "lat" in location:
+        return client.forecast(lat=float(location["lat"]), lon=float(location["lon"]))
+    return client.forecast(nx=int(location["nx"]), ny=int(location["ny"]))
 
 
 def _parse_params(values: list[str]) -> dict[str, str]:

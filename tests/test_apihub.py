@@ -83,7 +83,10 @@ def assert_raises(exc_type: type[BaseException], func: Callable[[], object]) -> 
 def test_parse_apihub_services_from_portal_script() -> None:
     html = """
     <script>
-    const apiList = [{"seqApi":238,"nmApi":"종관기상관측(ASOS)"},{"seqApi":239,"nmApi":"방재기상관측(AWS)"}];
+    const apiList = [
+      {"seqApi":238,"nmApi":"종관기상관측(ASOS)"},
+      {"seqApi":239,"nmApi":"방재기상관측(AWS)"}
+    ];
     </script>
     """
 
@@ -151,6 +154,10 @@ def test_apihub_request_path_appends_auth_key() -> None:
     response = client.request_path("/api/typ01/url/kma_sfctm2.php", {"tm": "202211300900"})
 
     assert response.text == "ok"
+    assert response.metadata is not None
+    assert response.metadata.provider == "apihub"
+    assert response.metadata.endpoint == "/api/typ01/url/kma_sfctm2.php"
+    assert response.metadata.request_params == {"tm": "202211300900"}
     assert session.calls[0]["url"] == "https://apihub.kma.go.kr/api/typ01/url/kma_sfctm2.php"
     assert session.calls[0]["params"] == {"authKey": "hub-key", "tm": "202211300900"}
 
@@ -252,6 +259,13 @@ def test_redact_url_credentials_preserves_bare_query_parts() -> None:
     assert redacted == (
         "https://apihub.kma.go.kr/api/typ03/cgi/aws3/nph-awsm_tms_h06?"
         "202305031000&0&_DT=RSW:AWSCHART&authKey=***"
+    )
+
+
+def test_redact_url_credentials_handles_expressway_key_name() -> None:
+    assert (
+        redact_url_credentials("http://data.ex.co.kr/openapi/restinfo/restWeatherList?key=secret&type=json")
+        == "http://data.ex.co.kr/openapi/restinfo/restWeatherList?key=***&type=json"
     )
 
 

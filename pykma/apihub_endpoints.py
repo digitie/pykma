@@ -8,7 +8,8 @@ Generated on 2026-05-06 with 470 endpoint wrappers.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from .apihub import (
     ApiHubAttachment,
@@ -18,7 +19,6 @@ from .apihub import (
     ApiHubResponse,
     ApiHubTextTable,
 )
-
 
 APIHUB_ENDPOINTS: tuple[ApiHubEndpointSpec, ...] = (
     ApiHubEndpointSpec(

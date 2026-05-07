@@ -98,6 +98,13 @@ def test_now_pivots_observed_items() -> None:
     assert snapshot.wind_direction == 270
     assert snapshot.precipitation == 0.0
     assert snapshot.precipitation_label == "없음"
+    assert snapshot.metadata is not None
+    assert snapshot.metadata.provider == "data.go.kr"
+    assert snapshot.metadata.service_name == "VilageFcstInfoService_2.0"
+    assert snapshot.metadata.endpoint == "getUltraSrtNcst"
+    assert snapshot.metadata.base_date == "20260430"
+    assert snapshot.metadata.base_time == "1400"
+    assert "serviceKey" not in snapshot.metadata.request_params
     assert session.last_params is not None
     assert session.last_params["serviceKey"] == "decoded-key"
     assert session.last_params["base_date"] == "20260430"
@@ -144,7 +151,11 @@ def test_forecast_uses_latlon_conversion_and_preserves_pcp_labels() -> None:
     )
     client = KmaClient("decoded-key", session=session)
 
-    items = client.forecast(lat=37.5665, lon=126.9780, when=datetime(2026, 4, 30, 14, 15, tzinfo=KST))
+    items = client.forecast(
+        lat=37.5665,
+        lon=126.9780,
+        when=datetime(2026, 4, 30, 14, 15, tzinfo=KST),
+    )
 
     assert session.last_params is not None
     assert session.last_params["nx"] == 60
@@ -152,6 +163,9 @@ def test_forecast_uses_latlon_conversion_and_preserves_pcp_labels() -> None:
     assert session.last_params["base_time"] == "1400"
     assert items[0].value == 18.4
     assert items[1].value == "1.0mm 미만"
+    assert items[1].raw["fcstValue"] == "1.0mm 미만"
+    assert items[1].metadata is not None
+    assert "serviceKey" not in items[1].metadata.request_params
     assert items[2].label == "맑음"
 
 
@@ -270,15 +284,22 @@ def test_result_codes_raise_typed_exceptions() -> None:
 
     for code in auth_codes:
         client = KmaClient("bad-key", session=FakeSession(_error_payload(code)))
-        assert_raises(KmaAuthError, lambda client=client: client.now(nx=60, ny=127))
+        error = assert_raises(KmaAuthError, lambda client=client: client.now(nx=60, ny=127))
+        assert error.failure_kind == "auth"
+        assert error.result_code == code
+        assert error.retryable is False
 
     for code in server_codes:
         client = KmaClient("decoded-key", session=FakeSession(_error_payload(code)))
-        assert_raises(KmaServerError, lambda client=client: client.now(nx=60, ny=127))
+        error = assert_raises(KmaServerError, lambda client=client: client.now(nx=60, ny=127))
+        assert error.failure_kind == "server"
+        assert error.retryable is True
 
     for code in request_codes:
         client = KmaClient("decoded-key", session=FakeSession(_error_payload(code)))
-        assert_raises(KmaRequestError, lambda client=client: client.now(nx=60, ny=127))
+        error = assert_raises(KmaRequestError, lambda client=client: client.now(nx=60, ny=127))
+        assert error.provider == "data.go.kr"
+        assert error.endpoint == "getUltraSrtNcst"
 
 
 def test_malformed_envelope_raises_parse_error() -> None:

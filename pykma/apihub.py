@@ -2,26 +2,34 @@
 
 from __future__ import annotations
 
-import html
 import csv
+import html
 import io
 import json
 import os
 import re
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any
 from urllib.parse import quote_plus, unquote_plus, urlsplit, urlunsplit
 
 from ._http import build_session
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
+from .metadata import (
+    ResponseMetadata,
+    is_credential_param,
+    make_response_metadata,
+    redact_credentials_in_text,
+    request_params_from_url,
+)
 
 try:
     import requests
     from requests import HTTPError, RequestException
 except ModuleNotFoundError:  # pragma: no cover
     requests = None  # type: ignore[assignment]
-    HTTPError = ()  # type: ignore[assignment]
-    RequestException = ()  # type: ignore[assignment]
+    HTTPError = ()  # type: ignore[assignment,misc]
+    RequestException = ()  # type: ignore[assignment,misc]
 
 APIHUB_BASE_URL = "https://apihub.kma.go.kr"
 APIHUB_CATEGORY_IDS = (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15)
@@ -112,12 +120,20 @@ class ApiHubResponse:
     content_type: str
     text: str
     content: bytes
+    metadata: ResponseMetadata | None = None
 
     def json(self) -> Any:
         try:
             return json.loads(self.text)
         except ValueError as exc:
-            raise KmaParseError("APIHub response was not JSON") from exc
+            raise KmaParseError(
+                "APIHub response was not JSON",
+                provider=self.metadata.provider if self.metadata else "apihub",
+                endpoint=self.metadata.endpoint if self.metadata else None,
+                status_code=self.status_code,
+                failure_kind="parse",
+                retryable=False,
+            ) from exc
 
     def text_table(self, delimiter: str | None = None) -> ApiHubTextTable:
         return parse_apihub_text_table(self.text, delimiter=delimiter)
@@ -148,7 +164,7 @@ class ApiHubClient:
         timeout: float = 20,
         retries: int = 3,
         base_url: str = APIHUB_BASE_URL,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> None:
         if not auth_key:
             raise ValueError("auth_key is required")
@@ -158,7 +174,7 @@ class ApiHubClient:
         self.session = session or build_session(retries)
 
     @classmethod
-    def from_env(cls, name: str = "KMA_APIHUB_AUTH_KEY", **kwargs: Any) -> "ApiHubClient":
+    def from_env(cls, name: str = "KMA_APIHUB_AUTH_KEY", **kwargs: Any) -> ApiHubClient:
         auth_key = os.getenv(name) or os.getenv("KMA_APIHUB_KEY")
         if not auth_key:
             raise ValueError(f"{name} or KMA_APIHUB_KEY is not set")
@@ -167,7 +183,7 @@ class ApiHubClient:
     def request_path(
         self,
         path: str,
-        params: Optional[Mapping[str, Any]] = None,
+        params: Mapping[str, Any] | None = None,
     ) -> ApiHubResponse:
         """Call any APIHub path under `/api/...` and append `authKey`."""
 
@@ -182,7 +198,7 @@ class ApiHubClient:
         self,
         path: str,
         query_parts: Iterable[tuple[str, str]],
-        params: Optional[Mapping[str, Any]] = None,
+        params: Mapping[str, Any] | None = None,
     ) -> ApiHubResponse:
         """Call an APIHub endpoint whose query string may contain bare parts.
 
@@ -215,7 +231,7 @@ class ApiHubClient:
         self,
         service: str,
         operation: str,
-        params: Optional[Mapping[str, Any]] = None,
+        params: Mapping[str, Any] | None = None,
         *,
         data_type: str = "JSON",
         page_no: int = 1,
@@ -268,7 +284,14 @@ class ApiHubClient:
     def _get_raw(self, path_with_query: str) -> ApiHubResponse:
         return self._get_url(f"{self.base_url}/{path_with_query.lstrip('/')}", params=None)
 
-    def _get_url(self, url: str, params: Optional[Mapping[str, Any]]) -> ApiHubResponse:
+    def _get_url(self, url: str, params: Mapping[str, Any] | None) -> ApiHubResponse:
+        endpoint = urlsplit(url).path
+        metadata = make_response_metadata(
+            provider="apihub",
+            service_name="APIHub",
+            endpoint=endpoint,
+            request_params=params if params is not None else request_params_from_url(url),
+        )
         try:
             response = self.session.get(
                 url,
@@ -281,12 +304,48 @@ class ApiHubClient:
             message = _response_error_message(exc.response)
             suffix = f": {message}" if message else ""
             if status and status >= 500:
-                raise KmaServerError(f"APIHub server returned HTTP {status}{suffix}") from None
+                raise KmaServerError(
+                    f"APIHub server returned HTTP {status}{suffix}",
+                    provider="apihub",
+                    endpoint=endpoint,
+                    status_code=status,
+                    failure_kind="server",
+                    retryable=True,
+                ) from None
             if status in {401, 403}:
-                raise KmaAuthError(f"APIHub request failed with HTTP {status}{suffix}") from None
-            raise KmaRequestError(f"APIHub request failed with HTTP {status}{suffix}") from None
-        except RequestException as exc:
-            raise KmaRequestError("APIHub request failed") from exc
+                raise KmaAuthError(
+                    f"APIHub request failed with HTTP {status}{suffix}",
+                    provider="apihub",
+                    endpoint=endpoint,
+                    status_code=status,
+                    failure_kind="auth",
+                    retryable=False,
+                ) from None
+            if status == 429:
+                raise KmaRequestError(
+                    f"APIHub request failed with HTTP {status}{suffix}",
+                    provider="apihub",
+                    endpoint=endpoint,
+                    status_code=status,
+                    failure_kind="rate_limit",
+                    retryable=True,
+                ) from None
+            raise KmaRequestError(
+                f"APIHub request failed with HTTP {status}{suffix}",
+                provider="apihub",
+                endpoint=endpoint,
+                status_code=status,
+                failure_kind="request",
+                retryable=False,
+            ) from None
+        except RequestException:
+            raise KmaRequestError(
+                "APIHub request failed",
+                provider="apihub",
+                endpoint=endpoint,
+                failure_kind="network",
+                retryable=True,
+            ) from None
 
         content_type = response.headers.get("Content-Type", "")
         return ApiHubResponse(
@@ -295,6 +354,7 @@ class ApiHubClient:
             content_type=content_type,
             text=response.text,
             content=response.content,
+            metadata=metadata,
         )
 
 
@@ -400,9 +460,17 @@ def detect_image_info(content: bytes) -> tuple[str | None, int | None, int | Non
     """Return image format and pixel size for common APIHub image bytes."""
 
     if content.startswith(b"\x89PNG\r\n\x1a\n") and len(content) >= 24:
-        return "png", int.from_bytes(content[16:20], "big"), int.from_bytes(content[20:24], "big")
+        return (
+            "png",
+            int.from_bytes(content[16:20], "big"),
+            int.from_bytes(content[20:24], "big"),
+        )
     if content[:6] in (b"GIF87a", b"GIF89a") and len(content) >= 10:
-        return "gif", int.from_bytes(content[6:8], "little"), int.from_bytes(content[8:10], "little")
+        return (
+            "gif",
+            int.from_bytes(content[6:8], "little"),
+            int.from_bytes(content[8:10], "little"),
+        )
     if content.startswith(b"\xff\xd8"):
         size = _detect_jpeg_size(content)
         if size is not None:
@@ -423,7 +491,7 @@ def redact_url_credentials(url: str) -> str:
             redacted_parts.append(raw_part)
             continue
         key, _value = raw_part.split("=", 1)
-        if unquote_plus(key) in {"authKey", "serviceKey"}:
+        if is_credential_param(unquote_plus(key)):
             redacted_parts.append(f"{key}=***")
         else:
             redacted_parts.append(raw_part)
@@ -439,16 +507,16 @@ def _response_error_message(response: Any) -> str:
         payload = response.json()
     except ValueError:
         text = str(getattr(response, "text", "")).strip()
-        return text[:200]
+        return redact_credentials_in_text(text[:200])
     if isinstance(payload, Mapping):
         result = payload.get("result")
         if isinstance(result, Mapping) and result.get("message"):
-            return str(result["message"])
+            return redact_credentials_in_text(str(result["message"]))
         response_body = payload.get("response")
         if isinstance(response_body, Mapping):
             header = response_body.get("header")
             if isinstance(header, Mapping) and header.get("resultMsg"):
-                return str(header["resultMsg"])
+                return redact_credentials_in_text(str(header["resultMsg"]))
     return ""
 
 

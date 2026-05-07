@@ -78,8 +78,11 @@ rows = client.latest_weather(lookback_hours=72)
 | `cloud` | 운량 |
 | `dew_point` | 이슬점 |
 | `raw` | 원본 row |
+| `metadata` | 인증키가 제거된 provider/request metadata |
 
 한국도로공사 API는 결측값을 `-99`, `-99.0`, `-99.000000` 같은 숫자로 내려보내는 경우가 있습니다. `pykma`는 이런 sentinel 값을 모델 필드에서 `None`으로 정규화하고, 원문은 `raw`에 보존합니다.
+
+좌표 원문도 `raw["xValue"]`, `raw["yValue"]`에 그대로 남습니다. 모델의 `longitude`, `latitude`는 유효한 WGS84 숫자일 때만 채워지고, `-99` 계열 결측값이면 `None`입니다.
 
 ## 실서버 테스트
 

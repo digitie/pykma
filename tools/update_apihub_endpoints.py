@@ -23,7 +23,6 @@ from urllib.parse import unquote, unquote_plus, urlsplit
 
 import requests
 
-
 BASE_URL = "https://apihub.kma.go.kr"
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "pykma" / "apihub_endpoints.py"
@@ -483,7 +482,7 @@ def render_module(endpoints: list[Endpoint], attachments: list[Attachment]) -> s
         ")",
         "",
         "",
-        f"APIHUB_ENDPOINTS: tuple[ApiHubEndpointSpec, ...] = (",
+        "APIHUB_ENDPOINTS: tuple[ApiHubEndpointSpec, ...] = (",
     ]
     for endpoint in endpoints:
         lines.extend(render_spec(endpoint))

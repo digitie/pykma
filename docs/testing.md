@@ -14,11 +14,12 @@ python -m pytest
 - 결정적 결과
 - `KMA_SERVICE_KEY` 없이 실행 가능
 - 요청 파라미터, 응답 파싱, 변환, 예외 동작 중심
+- `serviceKey`, `authKey`, `key` 원문이 모델 metadata, 예외, repr, fixture에 남지 않음
 
 ## 현재 테스트 범위
 
 - `tests/test_client.py`: 단기예보 typed client 요청 파라미터, fake session 응답 파싱, result code 매핑, 잘못된 응답 처리.
-- `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출과 envelope 처리.
+- `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출, pagination helper, sanitized cache key, 중기예보 typed row wrapper.
 - `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델, 결측값 정규화, 에러 매핑.
 - `tests/test_pydantic_models.py`: public 응답 모델의 Pydantic 직렬화, frozen 동작, 좌표 검증.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
@@ -29,6 +30,7 @@ python -m pytest
 - `tests/test_enums.py`: public enum wire value, enum-aware code helper, 모델의 enum/category helper.
 - `tests/test_grid.py`: 알려진 격자 변환점과 좌표 범위.
 - `tests/test_locations.py`: `LatLon`, `GridPoint`, mapping 기반 `location=` 표준화와 모호한 입력 거부.
+- `tests/test_public_api.py`: package-level `__all__`과 권장 public API 정렬.
 - `tests/test_time_utils.py`: KST 변환과 endpoint별 base time 선택.
 - `tests/test_cli.py`: CLI 인자 처리와 JSON/text 출력 형태.
 
@@ -42,12 +44,13 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
+@pytest.mark.skipif(os.getenv("PYKMA_RUN_LIVE") != "1", reason="set PYKMA_RUN_LIVE=1")
 @pytest.mark.skipif(not os.getenv("KMA_SERVICE_KEY"), reason="KMA_SERVICE_KEY is not set")
 def test_live_now_shape():
     ...
 ```
 
-실제 API 테스트는 정확한 날씨값이 아니라 구조와 타입을 검증합니다.
+실제 API 테스트는 `PYKMA_RUN_LIVE=1`과 해당 인증키가 모두 있을 때만 실행합니다. 정확한 날씨값이 아니라 구조와 타입을 검증합니다.
 
 좋은 검증:
 
@@ -55,6 +58,7 @@ def test_live_now_shape():
 - datetime 필드가 KST aware임
 - `nx`, `ny`가 요청값과 일치함
 - category가 문자열임
+- 응답 URL이나 metadata에 인증키 원문이 없음
 
 피해야 할 검증:
 

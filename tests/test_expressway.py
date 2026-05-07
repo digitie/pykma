@@ -97,9 +97,19 @@ def test_expressway_weather_request_builds_params_and_parses_rows() -> None:
     assert item.rainfall == 8.9
     assert item.rainfall_strength is None
     assert item.snow is None
+    assert item.new_snow is None
     assert item.latlon is not None
     assert item.latlon.lat == 37.332651
     assert item.latlon.lon == 127.104165
+    assert item.raw["xValue"] == "127.104165"
+    assert item.raw["yValue"] == "37.332651"
+    assert item.metadata is not None
+    assert item.metadata.provider == "expressway"
+    assert item.metadata.request_params == {
+        "type": "json",
+        "sdate": "20210507",
+        "stdHour": "12",
+    }
     assert session.calls[0]["url"] == "http://data.ex.co.kr/openapi/restinfo/restWeatherList"
     assert session.calls[0]["params"] == {
         "key": "road-key",
@@ -137,7 +147,16 @@ def test_expressway_latest_weather_looks_back_until_non_empty() -> None:
 def test_expressway_result_code_and_shape_errors() -> None:
     auth_client = ExpresswayRestAreaWeatherClient(
         "bad-key",
-        session=FakeSession([{"list": None, "count": 0, "message": "인증키가 유효하지 않습니다.", "code": "ERROR"}]),
+        session=FakeSession(
+            [
+                {
+                    "list": None,
+                    "count": 0,
+                    "message": "인증키가 유효하지 않습니다.",
+                    "code": "ERROR",
+                }
+            ]
+        ),
     )
     shape_client = ExpresswayRestAreaWeatherClient(
         "road-key",
@@ -146,7 +165,22 @@ def test_expressway_result_code_and_shape_errors() -> None:
 
     error = assert_raises(KmaAuthError, lambda: auth_client.weather(sdate="20210507", std_hour=12))
     assert "bad-key" not in str(error)
+    assert error.failure_kind == "auth"
+    assert error.retryable is False
     assert_raises(KmaParseError, lambda: shape_client.weather(sdate="20210507", std_hour=12))
+
+
+def test_expressway_missing_coordinate_values_normalize_but_raw_is_preserved() -> None:
+    session = FakeSession([_payload([_row(xValue="-99.000000", yValue="-99.000000")])])
+    client = ExpresswayRestAreaWeatherClient("road-key", session=session)
+
+    row = client.weather(sdate="20210507", std_hour=12)[0]
+
+    assert row.longitude is None
+    assert row.latitude is None
+    assert row.latlon is None
+    assert row.raw["xValue"] == "-99.000000"
+    assert row.raw["yValue"] == "-99.000000"
 
 
 def test_expressway_validates_date_and_hour() -> None:
@@ -155,4 +189,3 @@ def test_expressway_validates_date_and_hour() -> None:
     assert_raises(ValueError, lambda: client.weather(sdate="2021-05-07", std_hour=12))
     assert_raises(ValueError, lambda: client.weather(sdate="20210507", std_hour=24))
     assert_raises(ValueError, lambda: client.latest_weather(lookback_hours=-1))
-

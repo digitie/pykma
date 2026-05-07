@@ -51,6 +51,16 @@ items = client.items(
 )
 ```
 
+metadata가 필요하면 `request_with_metadata()`를 사용합니다. metadata의 `request_params`에는 `serviceKey` 원문이 없습니다.
+
+```python
+body, metadata = client.request_with_metadata(
+    "MidFcstInfoService",
+    "getMidFcst",
+    {"stnId": "108", "tmFc": "202605010600"},
+)
+```
+
 기본값:
 
 - `serviceKey=<KMA_SERVICE_KEY>`
@@ -63,6 +73,43 @@ items = client.items(
 ```python
 client = DataGoKrClient.from_env(service_key_param="ServiceKey")
 ```
+
+## Pagination helper
+
+data.go.kr 계열 response body가 `pageNo`, `numOfRows`, `totalCount`를 포함하면 다음 helper를 사용할 수 있습니다.
+
+```python
+from pykma import has_next_page, next_page_no
+
+body = client.request("MidFcstInfoService", "getMidLandFcst", {...})
+if has_next_page(body):
+    print(next_page_no(body))
+```
+
+`DataGoKrClient.iter_pages()`는 `max_pages` 또는 `max_items` guard로 무한 반복을 방지합니다.
+
+```python
+for body in client.iter_pages(
+    "MidFcstInfoService",
+    "getMidLandFcst",
+    {"regId": "11B00000", "tmFc": "202605010600"},
+    num_of_rows=100,
+    max_pages=10,
+):
+    ...
+```
+
+## 중기예보 helper
+
+중기예보는 `MidFcstInfoService` 호출과 row parsing까지만 책임집니다. `reg_id`는 단기예보 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `pykma`는 임의 매핑을 추측하지 않습니다.
+
+```python
+client.mid_forecast(stn_id="108", tm_fc="202605010600")
+client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
+client.mid_temperature_forecast(reg_id="11B10101", tm_fc="202605010600")
+```
+
+각 row는 `MidForecastItem`이며 `operation`, `tm_fc`, `reg_id`, `stn_id`, `raw`, `metadata`를 제공합니다.
 
 실제 서버 테스트에서만 쓰는 인증키는 `.env.local`에 둘 수 있습니다. 이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다.
 

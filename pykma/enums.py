@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 
 class KmaEndpoint(str, Enum):
@@ -94,7 +93,7 @@ def coerce_endpoint(value: object) -> KmaEndpoint | str:
         return code
 
 
-def category_or_none(value: object) -> Optional[WeatherCategory]:
+def category_or_none(value: object) -> WeatherCategory | None:
     """Return a category enum when `value` is a known KMA category code."""
 
     code = coerce_category(value)

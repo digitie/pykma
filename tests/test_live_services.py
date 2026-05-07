@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 import pytest
 
@@ -76,7 +76,10 @@ def test_live_apihub_generated_text_endpoint_shape() -> None:
 
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
-@pytest.mark.skipif(not _data_gokr_key(), reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set",
+)
 def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
     client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
     base_date, base_time = latest_ultra_srt_ncst_base()

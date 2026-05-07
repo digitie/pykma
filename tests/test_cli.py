@@ -46,7 +46,7 @@ class FakeClient:
         FakeClient.last_init_key = service_key
 
     @classmethod
-    def from_env(cls) -> "FakeClient":
+    def from_env(cls) -> FakeClient:
         cls.last_from_env_called = True
         return cls("env-key")
 
@@ -76,7 +76,7 @@ class FakeApiHubClient:
         FakeApiHubClient.last_init_key = auth_key
 
     @classmethod
-    def from_env(cls) -> "FakeApiHubClient":
+    def from_env(cls) -> FakeApiHubClient:
         cls.last_from_env_called = True
         return cls("env-hub-key")
 

@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .locations import GridPoint, LatLon
 
 RE = 6371.00877
 GRID = 5.0
@@ -95,6 +99,28 @@ def to_latlon(nx: int, ny: int) -> tuple[float, float]:
 
     alon = theta / sn + olon
     return alat / degrad, alon / degrad
+
+
+def wgs84_to_kma_grid(latitude: float, longitude: float) -> GridPoint:
+    """Convert WGS84 latitude/longitude to a `GridPoint`.
+
+    This is the explicit public alias for application boundaries that store
+    coordinates as `latitude`/`longitude`.
+    """
+
+    from .locations import GridPoint
+
+    nx, ny = to_grid(latitude, longitude)
+    return GridPoint(nx, ny)
+
+
+def kma_grid_to_wgs84(nx: int, ny: int) -> LatLon:
+    """Convert KMA DFS `nx`/`ny` coordinates to a WGS84 `LatLon` value."""
+
+    from .locations import LatLon
+
+    lat, lon = to_latlon(nx, ny)
+    return LatLon(lat, lon)
 
 
 latlon_to_grid = to_grid
