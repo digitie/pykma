@@ -111,6 +111,16 @@
 
 **방지 테스트:** `tests/test_datagokr.py`에서 인증 파라미터 이름을 설정할 수 있는지 검증합니다.
 
+## data.go.kr 검색 결과를 전부 기상청 API로 보지 않기
+
+**실수:** 공공데이터포털에서 `기상청` 키워드로 검색된 모든 API를 기상청 API로 간주함.
+
+**증상:** 경기도, 농촌진흥청, 행정안전부, 법제처, 한국도로공사 같은 다른 기관의 API가 KMA 클라이언트 카탈로그에 섞입니다.
+
+**규칙:** `KMA_DATA_GOKR_DATASETS`는 제목이 `기상청`으로 시작하는 항목만 포함합니다. 관련 날씨 API라도 제공 기관과 인증 규칙이 다르면 별도 클라이언트로 다룹니다.
+
+**방지 테스트:** `tests/test_datagokr.py`에서 카탈로그 항목 수와 제목 prefix를 검증하고, 대표 비기상청 기관명이 들어가지 않는지 확인합니다.
+
 ## 한국도로공사 휴게소 날씨 결측값을 실제 값으로 취급하지 않기
 
 **실수:** `-99`, `-99.0`, `-99.000000`을 실제 기온, 강수량, 적설량으로 사용함.
@@ -150,6 +160,16 @@
 **규칙:** 이름 없는 query 값은 `arg1`, `arg2`처럼 순서형 인자로 보존하고 `ApiHubClient.request_query_parts()`로 직접 query string을 조립합니다.
 
 **방지 테스트:** `tests/test_apihub.py`와 `tests/test_apihub_endpoints.py`에서 bare query 순서와 최종 URL을 검증합니다.
+
+## 해수욕장 일출일몰 API의 `Base_date`를 `base_date`로 바꾸지 않기
+
+**실수:** `BeachInfoservice/getSunInfoBeach`도 다른 해수욕장 endpoint처럼 `base_date`를 보낸다고 가정함.
+
+**증상:** 일출일몰 조회에서 필수 파라미터 누락 오류가 발생할 수 있습니다.
+
+**규칙:** 공공데이터포털 Swagger 기준으로 일출일몰 endpoint만 날짜 파라미터가 `Base_date`입니다. `DataGoKrClient.beach_sun_info()`는 이 이름을 그대로 사용합니다.
+
+**방지 테스트:** `tests/test_datagokr.py`에서 `beach_sun_info()`가 최종 요청 파라미터에 `Base_date`를 보내고 metadata의 `base_date`도 채우는지 검증합니다.
 
 ## APIHub 목록은 본문만 보면 누락됨
 

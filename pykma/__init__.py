@@ -11,6 +11,7 @@ from .apihub_endpoints import APIHUB_ATTACHMENTS, APIHUB_ENDPOINTS, ApiHubGenera
 from .client import KmaClient
 from .codes import label_for, parse_amount, unit_for
 from .datagokr import DataGoKrClient
+from .datagokr_catalog import KMA_DATA_GOKR_DATASETS, DataGoKrDatasetSpec
 from .enums import (
     ForecastPrecipitationType,
     KmaEndpoint,
@@ -29,7 +30,18 @@ from .expressway import ExpresswayRestAreaWeatherClient
 from .grid import kma_grid_to_wgs84, to_grid, to_latlon, wgs84_to_kma_grid
 from .locations import GridPoint, LatLon, normalize_location
 from .metadata import ResponseMetadata, make_cache_key, sanitize_request_params
-from .models import ForecastItem, MidForecastItem, RestAreaWeather, WeatherSnapshot
+from .models import (
+    BeachForecastItem,
+    BeachSunTime,
+    BeachTideItem,
+    BeachWaterTemperature,
+    BeachWaveHeight,
+    DataGoKrItem,
+    ForecastItem,
+    MidForecastItem,
+    RestAreaWeather,
+    WeatherSnapshot,
+)
 from .pagination import has_next_page, iter_pages, next_page_no
 
 __all__ = [
@@ -41,7 +53,14 @@ __all__ = [
     "ApiHubGeneratedClient",
     "ApiHubResponse",
     "ApiHubService",
+    "BeachForecastItem",
+    "BeachSunTime",
+    "BeachTideItem",
+    "BeachWaterTemperature",
+    "BeachWaveHeight",
     "DataGoKrClient",
+    "DataGoKrDatasetSpec",
+    "DataGoKrItem",
     "ExpresswayRestAreaWeatherClient",
     "ForecastItem",
     "ForecastPrecipitationType",
@@ -53,6 +72,7 @@ __all__ = [
     "KmaParseError",
     "KmaRequestError",
     "KmaServerError",
+    "KMA_DATA_GOKR_DATASETS",
     "LatLon",
     "MidForecastItem",
     "ObservedPrecipitationType",

@@ -33,5 +33,8 @@
 - provider provenance를 담는 `ResponseMetadata`와 인증 파라미터를 제거하는 `sanitize_request_params()`.
 - sanitized params 기반 `make_cache_key()`와 data.go.kr pagination helper.
 - 중기예보 row를 보존하는 `MidForecastItem` 및 `DataGoKrClient.mid_*` helper.
+- 공공데이터포털 `기상청` 오픈 API 검색에서 확인한 주요 미구현 서비스(ASOS, 특보, 통보문, 관광코스, 생활기상지수, 지진정보)를 감싸는 `DataGoKrClient` helper와 `DataGoKrItem` 모델.
+- 공공데이터포털 `기상청` 오픈 API 검색 전체 페이지에서 제목이 `기상청`으로 시작하는 86개 항목만 담은 `KMA_DATA_GOKR_DATASETS` 카탈로그와, 기존 `serviceKey` gateway 38개/operation 160개를 dataset id로 호출하는 helper.
+- 공공데이터포털 `BeachInfoservice` 6개 operation을 감싸는 `DataGoKrClient.beach_*` helper와 해수욕장 row 모델.
 - `KmaError` 계층의 `failure_kind`, `retryable`, provider/endpoint/status/result metadata.
 - README, API 레퍼런스, 에이전트 가이드, 트러블슈팅, 테스트 가이드, 반복 실수 방지 문서.

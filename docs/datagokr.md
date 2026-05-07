@@ -8,6 +8,7 @@
 - https://www.data.go.kr/data/15059468/openapi.do
 - https://www.data.go.kr/data/15000415/openapi.do
 - https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15059093
+- https://www.data.go.kr/tcs/dss/selectDataSetList.do?dType=API&keyword=%EA%B8%B0%EC%83%81%EC%B2%AD&sort=reqCo&currentPage=1&perPage=40&pblonsipScopeCode=PBDE07
 - 수치모델, 위성, 항공, 특보 등 일부 최신 data.go.kr 항목은 APIHub로 redirect/link됩니다.
 
 ## 타입화 클라이언트
@@ -61,6 +62,42 @@ body, metadata = client.request_with_metadata(
 )
 ```
 
+## 기상청 API 카탈로그
+
+2026-05-07 기준 공공데이터포털 `기상청` 오픈 API 검색의 모든 페이지를 확인해, 제목이 `기상청`으로 시작하는 항목만 `KMA_DATA_GOKR_DATASETS`에 담았습니다. 경기도, 농촌진흥청, 행정안전부, 법제처, 한국도로공사 등 기상청이 아닌 항목은 제외합니다.
+
+카탈로그 86개 중 기존 data.go.kr `serviceKey` gateway 항목은 38개이며, 포털 상세기능에서 확인한 operation 160개를 함께 보존합니다. APIHub로 연결되는 48개 항목은 `gateway="apihub"`로 구분합니다. APIHub와 정확히 같은 `{service}/{operation}` 조합은 [data.go.kr/APIHub 중복 확인](datagokr-apihub-overlap.md)에 표로 정리했습니다.
+
+```python
+from pykma import KMA_DATA_GOKR_DATASETS, DataGoKrClient
+
+client = DataGoKrClient.from_env()
+
+print(len(KMA_DATA_GOKR_DATASETS))  # 86
+asos_spec = client.dataset("15059093")
+rows = client.dataset_items(
+    "15059093",
+    {
+        "startDt": "20260501",
+        "endDt": "20260502",
+        "dataCd": "ASOS",
+        "dateCd": "DAY",
+    },
+)
+```
+
+`dataset_items()`는 서비스와 operation이 하나로 결정되는 data.go.kr gateway 항목을 바로 호출합니다. 여러 operation을 가진 항목은 `operation=`을 명시합니다.
+
+```python
+waves = client.dataset_items(
+    "15102239",
+    {"beach_num": "1", "searchTime": "202205011600"},
+    operation="getWhBuoyBeach",
+)
+```
+
+카탈로그에는 APIHub로 연결되는 data.go.kr 항목도 `gateway="apihub"`로 남겨 둡니다. 이 항목은 `serviceKey` gateway가 아니므로 `dataset_items()`가 호출하지 않고, `ApiHubClient` 또는 `ApiHubGeneratedClient`를 사용해야 합니다.
+
 기본값:
 
 - `serviceKey=<KMA_SERVICE_KEY>`
@@ -107,9 +144,107 @@ for body in client.iter_pages(
 client.mid_forecast(stn_id="108", tm_fc="202605010600")
 client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
 client.mid_temperature_forecast(reg_id="11B10101", tm_fc="202605010600")
+client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
 ```
 
 각 row는 `MidForecastItem`이며 `operation`, `tm_fc`, `reg_id`, `stn_id`, `raw`, `metadata`를 제공합니다.
+
+## 주요 서비스 helper
+
+2026-05-07에 공공데이터포털 `기상청` 오픈 API 검색에서 확인한 주요 data.go.kr 서비스는 전용 helper를 제공합니다. endpoint별 안정적인 도메인 모델을 확정하기 어려운 서비스는 `DataGoKrItem`으로 감싸며, 각 row의 `raw`와 인증키가 제거된 `metadata`를 보존합니다.
+
+```python
+from pykma import DataGoKrClient
+
+client = DataGoKrClient.from_env()
+
+daily = client.asos_daily_weather(
+    start_dt="20260501",
+    end_dt="20260502",
+    stn_ids=108,
+)
+hourly = client.asos_hourly_weather(
+    start_dt="20260501",
+    start_hh="00",
+    end_dt="20260501",
+    end_hh="23",
+    stn_ids=108,
+)
+warnings = client.weather_warning_list(
+    stn_id=108,
+    from_tm_fc="20260501",
+    to_tm_fc="20260502",
+)
+situation = client.weather_situation(stn_id=108)
+land = client.land_forecast_message(reg_id="11B10101")
+sea = client.sea_forecast_message(reg_id="12A20100")
+tour = client.tour_village_forecast(course_id=1, current_date="20260501", hour="09")
+climate = client.city_tour_climate_index(city_area_id=1100000000, current_date="20260501", day=3)
+uv = client.uv_index(area_no="1100000000", time="2026050106")
+air = client.air_diffusion_index(area_no="1100000000", time="2026050106")
+sen = client.sensible_temperature_index(
+    area_no="1100000000",
+    time="2026050106",
+    request_code="A41",
+)
+quake = client.earthquake_message_list(from_tm_fc="20260501", to_tm_fc="20260502")
+```
+
+지원 범위:
+
+| service | helper |
+|---|---|
+| `AsosDalyInfoService/getWthrDataList` | `asos_daily_weather()` |
+| `AsosHourlyInfoService/getWthrDataList` | `asos_hourly_weather()` |
+| `WthrWrnInfoService/*` | `weather_warning()`, `weather_warning_list()` |
+| `VilageFcstMsgService/*` | `forecast_message()`, `weather_situation()`, `land_forecast_message()`, `sea_forecast_message()` |
+| `TourStnInfoService1/*` | `tour_village_forecast()`, `city_tour_climate_index()` |
+| `LivingWthrIdxServiceV4/*` | `sensible_temperature_index()`, `uv_index()`, `air_diffusion_index()` |
+| `EqkInfoService/*` | `earthquake_info()`, `earthquake_message()`, `earthquake_message_list()`, `tsunami_message()`, `tsunami_message_list()` |
+
+`weather_warning()`, `forecast_message()`, `earthquake_info()`는 같은 서비스 안의 다른 operation을 직접 지정할 수 있는 얇은 helper입니다. 표준 `response.body.items.item` 형태를 따르는 경우 raw row wrapper로 반환합니다.
+
+## 해수욕장 날씨 조회 helper
+
+공공데이터포털 `기상청_전국 해수욕장 날씨 조회서비스`
+(`BeachInfoservice`)는 `DataGoKrClient`의 전용 helper로 호출할 수 있습니다.
+
+```python
+from pykma import DataGoKrClient
+
+client = DataGoKrClient.from_env()
+
+ultra = client.beach_ultra_short_forecast(
+    beach_num=1,
+    base_date="20220622",
+    base_time="1230",
+)
+forecast = client.beach_forecast(beach_num=1)
+waves = client.beach_wave_height(beach_num=1, search_time="202205011600")
+tides = client.beach_tide_info(beach_num=1, base_date="20220620")
+sun = client.beach_sun_info(beach_num=1, base_date="20220501")
+water = client.beach_water_temperature(beach_num=1, search_time="202205011600")
+```
+
+지원 operation:
+
+| method | service/operation | 반환 모델 |
+|---|---|---|
+| `beach_ultra_short_forecast()` | `BeachInfoservice/getUltraSrtFcstBeach` | `list[BeachForecastItem]` |
+| `beach_forecast()` | `BeachInfoservice/getVilageFcstBeach` | `list[BeachForecastItem]` |
+| `beach_wave_height()` | `BeachInfoservice/getWhBuoyBeach` | `list[BeachWaveHeight]` |
+| `beach_tide_info()` | `BeachInfoservice/getTideInfoBeach` | `list[BeachTideItem]` |
+| `beach_sun_info()` | `BeachInfoservice/getSunInfoBeach` | `list[BeachSunTime]` |
+| `beach_water_temperature()` | `BeachInfoservice/getTwBuoyBeach` | `list[BeachWaterTemperature]` |
+
+초단기예보와 단기예보 helper는 `base_date`와 `base_time`을 생략하면 KST 기준 최신 조회 가능 발표시각을 자동 선택합니다. 명시할 때는 두 값을 함께 전달해야 합니다.
+
+주의할 점:
+
+- `beach_num`은 해변코드입니다. 위도/경도나 `nx`/`ny`가 아닙니다.
+- 파고와 수온 조회의 `search_time`은 `YYYYMMDDHHMM`입니다.
+- 일출일몰 endpoint는 upstream Swagger가 날짜 파라미터를 `Base_date`로 표기하므로 helper가 이 이름을 그대로 사용합니다.
+- 모든 모델은 `raw`와 인증키가 제거된 `metadata`를 보존합니다.
 
 실제 서버 테스트에서만 쓰는 인증키는 `.env.local`에 둘 수 있습니다. 이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다.
 

@@ -11,14 +11,14 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 ## 핵심 특징
 
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
-- **data.go.kr 범용 호출 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `WthrWrnInfoService` 같은 다른 KMA REST 서비스를 호출합니다.
+- **data.go.kr 범용 호출, 기상청 카탈로그, 주요 helper 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `AsosDalyInfoService`, `WthrWrnInfoService` 같은 KMA REST 서비스를 호출하고, 공공데이터포털 `기상청` 검색 전체 페이지의 KMA 항목 86개와 gateway operation 160개를 카탈로그로 조회합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
 - **한국도로공사 휴게소별 날씨 지원**: `ExpresswayRestAreaWeatherClient`로 고속도로 휴게소별 날씨 정보를 조회합니다.
 - **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현합니다.
 - **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
 - **명시적 좌표 변환 alias**: 앱 경계에서는 `wgs84_to_kma_grid(latitude, longitude)`, `kma_grid_to_wgs84(nx, ny)`를 사용할 수 있습니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
-- **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
+- **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, data.go.kr raw row, 해수욕장 날씨 row, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
 - **Provider metadata와 raw 보존**: typed 모델은 원문 `raw`와 sanitized `metadata`를 담을 수 있어 앱이 직접 raw/serving 저장 전략을 선택할 수 있습니다.
 - **enum과 코드 라벨 매핑**: `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`를 제공하고, 사람이 읽을 수 있는 한국어 라벨도 함께 제공합니다.
 - **문자열 범주값 보존**: `PCP`, `SNO`처럼 `"1.0mm 미만"`, `"30.0~50.0mm"` 같은 범주 문자열은 무리하게 숫자로 바꾸지 않습니다.
@@ -35,9 +35,10 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 | 분류 | 권장 API |
 |---|---|
 | typed client | `KmaClient`, `DataGoKrClient`, `ApiHubClient`, `ExpresswayRestAreaWeatherClient` |
+| data.go.kr 카탈로그 | `KMA_DATA_GOKR_DATASETS`, `DataGoKrDatasetSpec` |
 | 위치 값 객체 | `LatLon`, `GridPoint`, `normalize_location` |
 | 좌표 변환 | `to_grid`, `to_latlon`, `wgs84_to_kma_grid`, `kma_grid_to_wgs84` |
-| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `MidForecastItem`, `RestAreaWeather`, `ResponseMetadata` |
+| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `MidForecastItem`, `DataGoKrItem`, `BeachForecastItem`, `BeachWaveHeight`, `BeachWaterTemperature`, `BeachTideItem`, `BeachSunTime`, `RestAreaWeather`, `ResponseMetadata` |
 | pagination/cache | `has_next_page`, `next_page_no`, `iter_pages`, `make_cache_key`, `sanitize_request_params` |
 | enum/라벨 | `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`, `label_for`, `unit_for`, `parse_amount` |
 | 예외 | `KmaError`, `KmaAuthError`, `KmaRequestError`, `KmaServerError`, `KmaParseError` |
@@ -184,13 +185,56 @@ data.go.kr 문서가 인증키 파라미터를 `ServiceKey`로 표기한 서비�
 client = DataGoKrClient.from_env(service_key_param="ServiceKey")
 ```
 
+공공데이터포털 `기상청` 오픈 API 검색 전체 페이지에서 확인한 KMA 항목은 카탈로그로 확인할 수 있습니다. 제목이 `기상청`으로 시작하지 않는 검색 결과는 포함하지 않습니다. 카탈로그에는 KMA 항목 86개, 기존 data.go.kr `serviceKey` gateway operation 160개, APIHub LINK 항목 48개가 들어 있습니다.
+
+```python
+from pykma import KMA_DATA_GOKR_DATASETS
+
+print(len(KMA_DATA_GOKR_DATASETS))  # 86
+spec = client.dataset("15059093")
+rows = client.dataset_items(
+    "15059093",
+    {
+        "startDt": "20260501",
+        "endDt": "20260502",
+        "dataCd": "ASOS",
+        "dateCd": "DAY",
+    },
+)
+```
+
+여러 operation을 가진 dataset은 `operation=`을 명시합니다. APIHub로 연결된 항목은 `gateway="apihub"`로 표시되며 `ApiHubClient` 또는 `ApiHubGeneratedClient`를 사용합니다.
+
 중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `pykma`는 임의 매핑을 추측하지 않습니다.
 
 ```python
 rows = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
 temps = client.mid_temperature_forecast(reg_id="11B10101", tm_fc="202605010600")
 overview = client.mid_forecast(stn_id="108", tm_fc="202605010600")
+sea = client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
+asos = client.asos_daily_weather(start_dt="20260501", end_dt="20260502", stn_ids=108)
+warnings = client.weather_warning_list(stn_id=108, from_tm_fc="20260501", to_tm_fc="20260502")
+situation = client.weather_situation(stn_id=108)
+uv = client.uv_index(area_no="1100000000", time="2026050106")
+quake = client.earthquake_message_list(from_tm_fc="20260501", to_tm_fc="20260502")
 ```
+
+해수욕장 날씨 조회서비스(`BeachInfoservice`)는 전용 helper가 있습니다.
+
+```python
+beach_forecast = client.beach_forecast(beach_num=1)
+ultra = client.beach_ultra_short_forecast(
+    beach_num=1,
+    base_date="20220622",
+    base_time="1230",
+)
+waves = client.beach_wave_height(beach_num=1, search_time="202205011600")
+tides = client.beach_tide_info(beach_num=1, base_date="20220620")
+sun = client.beach_sun_info(beach_num=1, base_date="20220501")
+water = client.beach_water_temperature(beach_num=1, search_time="202205011600")
+```
+
+`beach_forecast()`와 `beach_ultra_short_forecast()`는 `base_date`/`base_time`을 생략하면 KST 기준 최신 발표시각을 자동 선택합니다. `beach_sun_info()`는 공공데이터포털 Swagger의 `Base_date` 파라미터 표기를 그대로 사용합니다.
 
 페이지가 있는 data.go.kr 응답은 helper로 순회할 수 있습니다. `max_pages` 또는 `max_items` guard를 항상 둡니다.
 
@@ -612,6 +656,7 @@ tests/
 - [docs/repeated-mistakes.md](docs/repeated-mistakes.md): 반복 실수 방지 로그
 - [docs/apihub.md](docs/apihub.md): APIHub 범용 클라이언트와 탐색
 - [docs/datagokr.md](docs/datagokr.md): data.go.kr 범용 클라이언트
+- [docs/datagokr-apihub-overlap.md](docs/datagokr-apihub-overlap.md): data.go.kr/APIHub 중복 표
 - [docs/testing.md](docs/testing.md): 테스트 작성과 live test 기준
 - [docs/troubleshooting.md](docs/troubleshooting.md): 흔한 오류 증상과 해결책
 - [CONTRIBUTING.md](CONTRIBUTING.md): 기여 절차
