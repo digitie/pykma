@@ -6,7 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from pykma import ApiHubGeneratedClient, DataGoKrClient, ExpresswayRestAreaWeatherClient
+from pykma import (
+    ApiHubClient,
+    ApiHubGeneratedClient,
+    ApiHubResponse,
+    DataGoKrClient,
+    ExpresswayRestAreaWeatherClient,
+)
 from pykma.time_utils import latest_ultra_srt_ncst_base
 
 pytestmark = pytest.mark.integration
@@ -51,6 +57,15 @@ def _items_from_body(body: Mapping[str, object]) -> list[Mapping[str, object]]:
     raise AssertionError("body.items.item is not a list or mapping")
 
 
+def _assert_apihub_response_is_sanitized(response: ApiHubResponse) -> None:
+    key = _apihub_key()
+    assert key is not None
+    assert "authKey=***" in response.url
+    assert key not in response.url
+    assert response.metadata is not None
+    assert "authKey" not in response.metadata.request_params
+
+
 @pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(not _apihub_key(), reason="KMA_APIHUB_AUTH_KEY is not set")
 def test_live_apihub_forecast_region_endpoints_shape() -> None:
@@ -67,12 +82,47 @@ def test_live_apihub_forecast_region_endpoints_shape() -> None:
         assert response.status_code == 200
         assert response.content
         assert response.text.strip()
-        assert "authKey=***" in response.url
-        assert _apihub_key() not in response.url
-        assert response.metadata is not None
-        assert "authKey" not in response.metadata.request_params
+        _assert_apihub_response_is_sanitized(response)
         assert table.raw_lines
         assert "SERVICE_KEY" not in response.text.upper()
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not _apihub_key(), reason="KMA_APIHUB_AUTH_KEY is not set")
+def test_live_apihub_warning_impact_and_zone_endpoints_shape() -> None:
+    generated = ApiHubGeneratedClient(_apihub_key() or "", timeout=30, retries=1)
+    generic = ApiHubClient(_apihub_key() or "", timeout=30, retries=1)
+
+    text_responses = [
+        generated.wrn_reg(use_sample=True),
+        generated.ifs_fct_pstt(use_sample=True),
+    ]
+
+    for response in text_responses:
+        table = response.text_table()
+
+        assert response.status_code == 200
+        assert response.content
+        assert response.text.strip()
+        _assert_apihub_response_is_sanitized(response)
+        assert table.raw_lines
+        assert "SERVICE_KEY" not in response.text.upper()
+
+    zone_response = generic.open_api(
+        "FcstZoneInfoService",
+        "getFcstZoneCd",
+        {"regId": "11A00101"},
+        data_type="JSON",
+        num_of_rows=10,
+    )
+    payload = zone_response.json()
+    body = payload["response"]["body"]
+
+    assert zone_response.status_code == 200
+    _assert_apihub_response_is_sanitized(zone_response)
+    assert payload["response"]["header"]["resultCode"] == "00"
+    assert body["items"]["item"]
+    assert int(body["totalCount"]) >= 1
 
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
