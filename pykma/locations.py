@@ -1,4 +1,4 @@
-"""Standardized location value objects for pykma."""
+"""`pykma`에서 사용하는 표준 위치 값 객체."""
 
 from __future__ import annotations
 
@@ -14,10 +14,10 @@ from .grid import validate_latlon as _validate_latlon
 
 @dataclass(frozen=True)
 class LatLon:
-    """WGS84 latitude/longitude coordinate.
+    """WGS84 위도/경도 좌표.
 
-    Use `lat` and `lon` as canonical field names. `latitude` and `longitude`
-    properties are provided for integration with external geospatial code.
+    표준 필드명은 `lat`, `lon`입니다. 외부 지리정보 코드와 연결하기 쉽도록
+    `latitude`, `longitude` 속성도 제공합니다.
     """
 
     lat: float
@@ -60,10 +60,9 @@ class LatLon:
 
 @dataclass(frozen=True)
 class GridPoint:
-    """KMA DFS grid coordinate.
+    """기상청 DFS 격자 좌표.
 
-    `nx` and `ny` are not longitude/latitude. They are the grid coordinates used
-    by KMA forecast APIs.
+    `nx`, `ny`는 위도/경도가 아니라 기상청 예보 API가 사용하는 격자 좌표입니다.
     """
 
     nx: int
@@ -105,7 +104,7 @@ def normalize_location(
     nx: int | None = None,
     ny: int | None = None,
 ) -> GridPoint:
-    """Normalize any supported location input to a KMA DFS grid point."""
+    """지원하는 위치 입력을 기상청 DFS `GridPoint`로 표준화합니다."""
 
     explicit = [lat is not None, lon is not None, nx is not None, ny is not None]
     if location is not None and any(explicit):

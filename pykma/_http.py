@@ -1,4 +1,4 @@
-"""HTTP session helpers."""
+"""HTTP 세션 생성 도우미."""
 
 from __future__ import annotations
 

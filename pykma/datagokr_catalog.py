@@ -1,4 +1,4 @@
-"""Catalog of KMA data.go.kr OpenAPI datasets from the public portal."""
+"""공공데이터포털의 기상청 data.go.kr OpenAPI dataset catalog."""
 # ruff: noqa: E501
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class DataGoKrDatasetSpec:
-    """A KMA OpenAPI dataset listed on data.go.kr."""
+    """data.go.kr에 공개된 기상청 OpenAPI dataset 명세."""
 
     dataset_id: str
     title: str

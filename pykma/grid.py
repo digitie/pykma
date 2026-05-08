@@ -1,4 +1,4 @@
-"""KMA LCC DFS grid conversion helpers."""
+"""기상청 LCC DFS 격자 변환 도우미."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ NY = 253
 
 
 def validate_latlon(lat: float, lon: float) -> None:
-    """Validate WGS84 latitude and longitude before projecting to the KMA grid."""
+    """기상청 격자로 투영하기 전에 WGS84 위도/경도를 검증합니다."""
 
     if not -90.0 <= lat <= 90.0:
         raise ValueError("lat must be between -90 and 90")
@@ -30,7 +30,7 @@ def validate_latlon(lat: float, lon: float) -> None:
 
 
 def validate_grid(nx: int, ny: int) -> None:
-    """Validate official KMA DFS grid bounds."""
+    """공식 기상청 DFS 격자 범위를 검증합니다."""
 
     if not 1 <= nx <= NX:
         raise ValueError(f"nx must be between 1 and {NX}")
@@ -58,7 +58,7 @@ def _project() -> tuple[float, float, float, float, float, float]:
 
 
 def to_grid(lat: float, lon: float) -> tuple[int, int]:
-    """Convert WGS84 latitude and longitude to KMA nx, ny grid coordinates."""
+    """WGS84 위도/경도를 기상청 `nx`, `ny` 격자 좌표로 변환합니다."""
 
     validate_latlon(lat, lon)
     degrad, re, sn, sf, ro, olon = _project()
@@ -76,7 +76,7 @@ def to_grid(lat: float, lon: float) -> tuple[int, int]:
 
 
 def to_latlon(nx: int, ny: int) -> tuple[float, float]:
-    """Convert KMA nx, ny grid coordinates back to WGS84 latitude and longitude."""
+    """기상청 `nx`, `ny` 격자 좌표를 WGS84 위도/경도로 역변환합니다."""
 
     validate_grid(nx, ny)
     degrad, re, sn, sf, ro, olon = _project()
@@ -102,10 +102,10 @@ def to_latlon(nx: int, ny: int) -> tuple[float, float]:
 
 
 def wgs84_to_kma_grid(latitude: float, longitude: float) -> GridPoint:
-    """Convert WGS84 latitude/longitude to a `GridPoint`.
+    """WGS84 위도/경도를 `GridPoint`로 변환합니다.
 
-    This is the explicit public alias for application boundaries that store
-    coordinates as `latitude`/`longitude`.
+    `latitude`/`longitude` 이름으로 좌표를 저장하는 application boundary에서
+    명시적으로 쓰기 위한 공개 alias입니다.
     """
 
     from .locations import GridPoint
@@ -115,7 +115,7 @@ def wgs84_to_kma_grid(latitude: float, longitude: float) -> GridPoint:
 
 
 def kma_grid_to_wgs84(nx: int, ny: int) -> LatLon:
-    """Convert KMA DFS `nx`/`ny` coordinates to a WGS84 `LatLon` value."""
+    """기상청 DFS `nx`/`ny` 좌표를 WGS84 `LatLon` 값으로 변환합니다."""
 
     from .locations import LatLon
 

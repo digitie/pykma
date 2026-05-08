@@ -1,4 +1,4 @@
-"""Pydantic models returned by the public clients."""
+"""공개 클라이언트가 반환하는 Pydantic 모델."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .metadata import ResponseMetadata
 
 
 class PykmaModel(BaseModel):
-    """Base class for immutable public pykma response models."""
+    """불변 공개 `pykma` 응답 모델의 기본 클래스."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -40,13 +40,13 @@ class WeatherSnapshot(PykmaModel):
 
     @property
     def grid(self) -> GridPoint:
-        """Return this snapshot's KMA DFS grid coordinate."""
+        """이 관측값의 KMA DFS 격자 좌표를 반환합니다."""
 
         return GridPoint(self.nx, self.ny)
 
     @property
     def latlon(self) -> LatLon:
-        """Return the approximate WGS84 coordinate for this snapshot's grid cell."""
+        """이 관측값 격자 셀의 근사 WGS84 좌표를 반환합니다."""
 
         return self.grid.to_latlon()
 
@@ -74,31 +74,31 @@ class ForecastItem(PykmaModel):
 
     @property
     def category_enum(self) -> WeatherCategory | None:
-        """Return `WeatherCategory` when this item uses a known KMA category."""
+        """알려진 KMA category이면 `WeatherCategory`를 반환합니다."""
 
         return category_or_none(self.category)
 
     @property
     def unit(self) -> str | None:
-        """Return the conventional unit for this item's category, if known."""
+        """알려진 category이면 관례적인 단위를 반환합니다."""
 
         return unit_for(self.category)
 
     @property
     def grid(self) -> GridPoint:
-        """Return this forecast item's KMA DFS grid coordinate."""
+        """이 예보 항목의 KMA DFS 격자 좌표를 반환합니다."""
 
         return GridPoint(self.nx, self.ny)
 
     @property
     def latlon(self) -> LatLon:
-        """Return the approximate WGS84 coordinate for this item's grid cell."""
+        """이 예보 항목 격자 셀의 근사 WGS84 좌표를 반환합니다."""
 
         return self.grid.to_latlon()
 
 
 class DataGoKrItem(PykmaModel):
-    """Generic typed wrapper for data.go.kr rows without endpoint-specific models."""
+    """endpoint별 전용 모델이 없는 data.go.kr row용 범용 타입 wrapper."""
 
     service: str
     operation: str
@@ -107,7 +107,7 @@ class DataGoKrItem(PykmaModel):
 
 
 class BeachForecastItem(PykmaModel):
-    """Forecast row from `BeachInfoservice` beach forecast endpoints."""
+    """`BeachInfoservice` 해수욕장 예보 endpoint의 예보 row."""
 
     operation: str
     base_at: datetime
@@ -136,19 +136,19 @@ class BeachForecastItem(PykmaModel):
 
     @property
     def category_enum(self) -> WeatherCategory | None:
-        """Return `WeatherCategory` when this item uses a known KMA category."""
+        """알려진 KMA category이면 `WeatherCategory`를 반환합니다."""
 
         return category_or_none(self.category)
 
     @property
     def unit(self) -> str | None:
-        """Return the conventional unit for this item's category, if known."""
+        """알려진 category이면 관례적인 단위를 반환합니다."""
 
         return unit_for(self.category)
 
     @property
     def grid(self) -> GridPoint | None:
-        """Return this forecast item's KMA DFS grid coordinate, when present."""
+        """격자 좌표가 있으면 이 예보 항목의 KMA DFS 좌표를 반환합니다."""
 
         if self.nx is None or self.ny is None:
             return None
@@ -156,7 +156,7 @@ class BeachForecastItem(PykmaModel):
 
     @property
     def latlon(self) -> LatLon | None:
-        """Return the approximate WGS84 coordinate for this item's grid cell."""
+        """이 예보 항목 격자 셀의 근사 WGS84 좌표를 반환합니다."""
 
         grid = self.grid
         if grid is None:
@@ -165,7 +165,7 @@ class BeachForecastItem(PykmaModel):
 
 
 class BeachWaveHeight(PykmaModel):
-    """Wave-height observation row from `getWhBuoyBeach`."""
+    """`getWhBuoyBeach`의 파고 관측 row."""
 
     observed_at: datetime
     beach_num: str
@@ -175,7 +175,7 @@ class BeachWaveHeight(PykmaModel):
 
 
 class BeachWaterTemperature(PykmaModel):
-    """Water-temperature observation row from `getTwBuoyBeach`."""
+    """`getTwBuoyBeach`의 수온 관측 row."""
 
     observed_at: datetime
     beach_num: str
@@ -185,7 +185,7 @@ class BeachWaterTemperature(PykmaModel):
 
 
 class BeachTideItem(PykmaModel):
-    """Tide row from `getTideInfoBeach`."""
+    """`getTideInfoBeach`의 조석 row."""
 
     base_date: str
     beach_num: str
@@ -198,7 +198,7 @@ class BeachTideItem(PykmaModel):
 
 
 class BeachSunTime(PykmaModel):
-    """Sunrise/sunset row from `getSunInfoBeach`."""
+    """`getSunInfoBeach`의 일출/일몰 row."""
 
     base_date: str
     beach_num: str
@@ -243,7 +243,7 @@ class RestAreaWeather(PykmaModel):
 
     @property
     def latlon(self) -> LatLon | None:
-        """Return WGS84 location when the API row includes valid coordinates."""
+        """API row에 유효한 좌표가 있으면 WGS84 위치를 반환합니다."""
 
         if self.latitude is None or self.longitude is None:
             return None
@@ -251,11 +251,11 @@ class RestAreaWeather(PykmaModel):
 
 
 class MidForecastItem(PykmaModel):
-    """Typed row wrapper for KMA `MidFcstInfoService` responses.
+    """기상청 `MidFcstInfoService` 응답용 타입화 row wrapper.
 
-    `reg_id` is the mid-term forecast region identifier from KMA. It is not
-    interchangeable with short-term forecast `nx`/`ny` DFS grid coordinates,
-    and pykma does not guess mappings between those coordinate systems.
+    `reg_id`는 기상청 중기예보 구역 식별자입니다. 단기예보 `nx`/`ny`
+    DFS 격자 좌표와 서로 바꿔 쓸 수 없으며, `pykma`는 두 좌표계 사이의
+    mapping을 추정하지 않습니다.
     """
 
     operation: str

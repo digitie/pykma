@@ -1,4 +1,4 @@
-"""Public metadata and sanitization helpers for pykma responses."""
+"""`pykma` 응답 metadata와 민감정보 제거 도우미."""
 
 from __future__ import annotations
 
@@ -27,10 +27,10 @@ _CREDENTIAL_TEXT_RE = re.compile(
 
 
 class ResponseMetadata(BaseModel):
-    """Provider provenance for a pykma response model.
+    """`pykma` 응답 모델의 제공자 출처 정보.
 
-    `request_params` is sanitized on input and never keeps raw credential
-    values such as `serviceKey`, `authKey`, or `key`.
+    `request_params`는 입력 시 정리되며 `serviceKey`, `authKey`, `key` 같은
+    원본 인증값을 보관하지 않습니다.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -55,18 +55,17 @@ class ResponseMetadata(BaseModel):
 
 
 def is_credential_param(name: str) -> bool:
-    """Return whether a parameter name is known to carry API credentials."""
+    """파라미터 이름이 API 인증값을 담는 것으로 알려져 있는지 반환합니다."""
 
     return name.replace("-", "_").lower() in _CREDENTIAL_PARAM_NAMES
 
 
 def sanitize_request_params(params: Mapping[str, Any]) -> dict[str, Any]:
-    """Return request params with credential-bearing keys removed.
+    """인증값을 담는 key를 제거한 요청 파라미터를 반환합니다.
 
-    The helper is intentionally conservative: any key named `serviceKey`,
-    `authKey`, `key`, or common snake_case variants is omitted instead of
-    redacted so downstream logs, cache keys, and model reprs cannot contain
-    credential values.
+    이 도우미는 의도적으로 보수적입니다. `serviceKey`, `authKey`, `key`와
+    흔한 snake_case 변형은 masking이 아니라 삭제해서 로그, cache key,
+    모델 repr에 인증값이 들어가지 않게 합니다.
     """
 
     sanitized: dict[str, Any] = {}
@@ -79,16 +78,15 @@ def sanitize_request_params(params: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def redact_credentials_in_text(text: str) -> str:
-    """Redact credential query values from free-form provider text."""
+    """자유 형식 제공자 텍스트에서 인증 query 값을 가립니다."""
 
     return _CREDENTIAL_TEXT_RE.sub(lambda match: f"{match.group(1)}=***", text)
 
 
 def request_params_from_url(url: str) -> dict[str, Any]:
-    """Extract a sanitized query mapping from a URL.
+    """URL에서 민감정보가 제거된 query mapping을 추출합니다.
 
-    Bare query parts used by some APIHub legacy URLs are stored as `arg1`,
-    `arg2`, and so on.
+    일부 APIHub legacy URL의 이름 없는 query 조각은 `arg1`, `arg2`처럼 저장합니다.
     """
 
     query = urlsplit(url).query
@@ -120,7 +118,7 @@ def make_response_metadata(
     base_time: str | None = None,
     reference_time: datetime | None = None,
 ) -> ResponseMetadata:
-    """Build sanitized provenance metadata for a provider response."""
+    """제공자 응답의 민감정보 제거된 출처 metadata를 만듭니다."""
 
     return ResponseMetadata(
         provider=provider,
@@ -144,7 +142,7 @@ def make_cache_key(
     ny: int | None = None,
     namespace: str = "pykma:v1",
 ) -> str:
-    """Return a stable cache key from endpoint and sanitized request inputs."""
+    """endpoint와 민감정보 제거된 요청 입력으로 안정적인 cache key를 반환합니다."""
 
     clean_params = sanitize_request_params(params or {})
     if base_date is not None:

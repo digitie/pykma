@@ -1,4 +1,4 @@
-"""Generic client and discovery helpers for the KMA APIHub."""
+"""기상청 APIHub 범용 클라이언트와 탐색 도우미."""
 
 from __future__ import annotations
 
@@ -150,11 +150,11 @@ class ApiHubResponse:
 
 
 class ApiHubClient:
-    """Generic client for KMA APIHub `authKey` APIs.
+    """기상청 APIHub `authKey` API용 범용 클라이언트.
 
-    APIHub exposes many text, JSON, XML, image, and file endpoints. This client
-    intentionally provides a generic path caller plus discovery helpers instead
-    of pretending every endpoint has the same schema.
+    APIHub는 text, JSON, XML, image, file endpoint를 함께 제공합니다.
+    모든 endpoint의 schema가 같다고 가정하지 않고, 범용 path 호출과
+    탐색 helper를 제공합니다.
     """
 
     def __init__(
@@ -185,7 +185,7 @@ class ApiHubClient:
         path: str,
         params: Mapping[str, Any] | None = None,
     ) -> ApiHubResponse:
-        """Call any APIHub path under `/api/...` and append `authKey`."""
+        """`/api/...` 아래 APIHub path를 호출하고 `authKey`를 추가합니다."""
 
         clean_path = _normalize_apihub_path(path)
         request_params: dict[str, Any] = {}
@@ -200,13 +200,13 @@ class ApiHubClient:
         query_parts: Iterable[tuple[str, str]],
         params: Mapping[str, Any] | None = None,
     ) -> ApiHubResponse:
-        """Call an APIHub endpoint whose query string may contain bare parts.
+        """이름 없는 query string 조각이 있는 APIHub endpoint를 호출합니다.
 
-        Some legacy graphic endpoints use URLs such as
-        ``...?202305031000&0&stn-list&authKey=...``. These are not normal
-        key-value query parameters, so `requests.get(..., params=...)` cannot
-        reproduce them. `query_parts` stores each item as `("bare", name)` or
-        `("named", name)` and this method serializes the query string directly.
+        일부 legacy 그래픽 endpoint는 ``...?202305031000&0&stn-list&authKey=...``
+        같은 URL을 사용합니다. 일반적인 key-value query parameter가 아니므로
+        `requests.get(..., params=...)`로 재현할 수 없습니다. `query_parts`는 각
+        항목을 `("bare", name)` 또는 `("named", name)`으로 저장하고, 이 메서드는
+        query string을 직접 직렬화합니다.
         """
 
         clean_path = _normalize_apihub_path(path)
@@ -237,7 +237,7 @@ class ApiHubClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> ApiHubResponse:
-        """Call a `/api/typ02/openApi/{service}/{operation}` endpoint."""
+        """`/api/typ02/openApi/{service}/{operation}` endpoint를 호출합니다."""
 
         request_params: dict[str, Any] = {
             "pageNo": page_no,
@@ -255,7 +255,7 @@ class ApiHubClient:
         self,
         category_ids: tuple[int, ...] = APIHUB_CATEGORY_IDS,
     ) -> list[ApiHubService]:
-        """Fetch APIHub service lists for official category ids."""
+        """공식 category id 목록에 대한 APIHub service 목록을 가져옵니다."""
 
         services: list[ApiHubService] = []
         for category_id in category_ids:
@@ -264,7 +264,7 @@ class ApiHubClient:
         return services
 
     def discover_endpoints(self, category_id: int, service_id: int) -> list[ApiHubEndpoint]:
-        """Fetch endpoint samples for one APIHub service page."""
+        """하나의 APIHub service page에서 endpoint 예제를 가져옵니다."""
 
         response = self._portal_get(
             "/apiList.do",
@@ -359,7 +359,7 @@ class ApiHubClient:
 
 
 def parse_apihub_services(html_text: str, category_id: int) -> list[ApiHubService]:
-    """Parse APIHub's `const apiList = [...]` service list."""
+    """APIHub의 `const apiList = [...]` service 목록을 파싱합니다."""
 
     match = re.search(r"const\s+apiList\s*=\s*(\[.*?\]);", html_text, re.S)
     if not match:
@@ -387,7 +387,7 @@ def parse_apihub_services(html_text: str, category_id: int) -> list[ApiHubServic
 
 
 def extract_apihub_endpoints(html_text: str) -> list[ApiHubEndpoint]:
-    """Extract generated API sample URLs from an APIHub service page."""
+    """APIHub service page에서 생성 API 예제 URL을 추출합니다."""
 
     endpoints: list[ApiHubEndpoint] = []
     seen: set[tuple[str, tuple[str, ...]]] = set()
@@ -401,7 +401,7 @@ def extract_apihub_endpoints(html_text: str) -> list[ApiHubEndpoint]:
 
 
 def parse_apihub_sample_url(raw_url: str) -> ApiHubEndpoint:
-    """Parse one APIHub sample URL into path, params, and sample values."""
+    """APIHub 예제 URL 하나를 path, parameter, 예제 값으로 파싱합니다."""
 
     cleaned = html.unescape(raw_url).replace("&amp;", "&")
     parts = urlsplit(cleaned)
@@ -419,11 +419,11 @@ def parse_apihub_sample_url(raw_url: str) -> ApiHubEndpoint:
 
 
 def parse_apihub_text_table(text: str, delimiter: str | None = None) -> ApiHubTextTable:
-    """Parse common APIHub text responses into comments and dictionary rows.
+    """일반적인 APIHub text 응답을 comment와 dict row로 파싱합니다.
 
-    APIHub text endpoints are not one uniform format. This parser handles CSV
-    when a delimiter is supplied, whitespace tables with a discoverable header,
-    and falls back to `_raw` rows when no reliable header is present.
+    APIHub text endpoint는 하나의 format으로 통일되어 있지 않습니다. delimiter가
+    주어지면 CSV를 처리하고, header를 찾을 수 있는 공백 table을 처리하며,
+    신뢰할 수 있는 header가 없으면 `_raw` row로 되돌립니다.
     """
 
     raw_lines = tuple(line.rstrip("\r") for line in text.splitlines())
@@ -457,7 +457,7 @@ def parse_apihub_text_table(text: str, delimiter: str | None = None) -> ApiHubTe
 
 
 def detect_image_info(content: bytes) -> tuple[str | None, int | None, int | None]:
-    """Return image format and pixel size for common APIHub image bytes."""
+    """일반적인 APIHub image bytes의 format과 pixel 크기를 반환합니다."""
 
     if content.startswith(b"\x89PNG\r\n\x1a\n") and len(content) >= 24:
         return (
@@ -480,7 +480,7 @@ def detect_image_info(content: bytes) -> tuple[str | None, int | None, int | Non
 
 
 def redact_url_credentials(url: str) -> str:
-    """Return a URL with API credential query values redacted."""
+    """API credential query 값을 마스킹한 URL을 반환합니다."""
 
     parts = urlsplit(url)
     if not parts.query:

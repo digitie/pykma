@@ -1,4 +1,4 @@
-"""Public KMA API client."""
+"""기상청 단기예보 공개 API 클라이언트."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ class _FetchedItems:
 
 
 class KmaClient:
-    """Client for KMA VilageFcstInfoService_2.0 endpoints."""
+    """기상청 `VilageFcstInfoService_2.0` endpoint 클라이언트."""
 
     def __init__(
         self,
@@ -85,10 +85,10 @@ class KmaClient:
         ny: int | None = None,
         when: datetime | None = None,
     ) -> WeatherSnapshot:
-        """Fetch current ultra-short observations.
+        """초단기실황 관측값을 조회합니다.
 
-        Uses `getUltraSrtNcst` and automatically selects the latest usable KST
-        base time when `when` is omitted.
+        `when`을 생략하면 `getUltraSrtNcst`의 최신 조회 가능 KST 기준시각을
+        자동으로 선택합니다.
         """
 
         grid_x, grid_y = self._coordinates(
@@ -145,7 +145,7 @@ class KmaClient:
         ny: int | None = None,
         when: datetime | None = None,
     ) -> list[ForecastItem]:
-        """Fetch ultra-short forecast items from `getUltraSrtFcst`."""
+        """`getUltraSrtFcst` 초단기예보 항목을 조회합니다."""
 
         grid_x, grid_y = self._coordinates(
             location=location,
@@ -177,7 +177,7 @@ class KmaClient:
         ny: int | None = None,
         when: datetime | None = None,
     ) -> list[ForecastItem]:
-        """Fetch village forecast items from `getVilageFcst`."""
+        """`getVilageFcst` 단기예보 항목을 조회합니다."""
 
         grid_x, grid_y = self._coordinates(
             location=location,
@@ -200,7 +200,7 @@ class KmaClient:
         ]
 
     def version(self, ftype: str, when: datetime) -> Mapping[str, Any]:
-        """Fetch forecast version metadata from `getFcstVersion`."""
+        """`getFcstVersion` 예보 버전 metadata를 조회합니다."""
 
         when_kst = as_kst(when)
         base_date = when_kst.strftime("%Y%m%d")

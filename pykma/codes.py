@@ -1,4 +1,4 @@
-"""KMA category and code mappings."""
+"""기상청 category와 code 매핑."""
 
 from __future__ import annotations
 
@@ -96,22 +96,22 @@ def normalize_value(category: str | WeatherCategory, value: object) -> str | flo
 
 
 def unit_for(category: str | WeatherCategory) -> str | None:
-    """Return the conventional unit for a KMA category, if pykma knows one."""
+    """알려진 기상청 category의 관례적 단위를 반환합니다."""
 
     return CATEGORY_UNITS.get(enum_value(category))
 
 
 def is_numeric_category(category: str | WeatherCategory) -> bool:
-    """Return true when pykma normally converts the category value to float."""
+    """`pykma`가 해당 category 값을 보통 float로 변환하는지 반환합니다."""
 
     return enum_value(category) in _NUMERIC_CATEGORIES
 
 
 def parse_amount(value: object) -> float | None:
-    """Parse KMA precipitation or snowfall amount labels into a representative float.
+    """기상청 강수량/적설량 라벨을 대표 float 값으로 파싱합니다.
 
-    Range labels are represented by their midpoint. Open-ended labels use the boundary.
-    Unrecognized non-empty values return None instead of raising.
+    범위 라벨은 중간값으로, 열린 범위 라벨은 경계값으로 표현합니다.
+    알 수 없는 비어 있지 않은 값은 예외 대신 `None`을 반환합니다.
     """
 
     if value is None:

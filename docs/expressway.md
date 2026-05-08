@@ -90,7 +90,7 @@ rows = client.latest_weather(lookback_hours=72)
 
 ```powershell
 $env:PYKMA_RUN_LIVE="1"
-python -m pytest tests\test_live_services.py::test_live_expressway_rest_area_weather_shape
+python -m pytest tests/test_live_services.py::test_live_expressway_rest_area_weather_shape
 Remove-Item Env:\PYKMA_RUN_LIVE
 ```
 

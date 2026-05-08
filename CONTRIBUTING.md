@@ -32,6 +32,7 @@ python -m pytest
 - `PTY` 매핑은 endpoint별로 다르게 처리합니다.
 - KMA `resultCode`가 `00`이 아니면 typed exception으로 변환합니다.
 - APIHub의 이름 없는 query string은 순서를 보존합니다.
+- Python docstring과 내부 설명 문구는 한글로 작성합니다.
 - 동작 변경에는 테스트를 함께 추가합니다.
 
 ## 테스트
@@ -61,6 +62,8 @@ KMA_SERVICE_KEY=<decoded key> python -m pytest -m integration
 ## 문서화
 
 사용자에게 보이는 동작이 바뀌면 다음 중 하나 이상을 갱신합니다.
+
+문서의 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 적습니다. 로컬 절대 경로는 문서에 남기지 않습니다. 코드 식별자, 명령어, URL, API 파라미터 이름은 원문을 유지합니다.
 
 - `README.md`: 사용법과 예제.
 - `kma-api.md`: API 세부 사항.

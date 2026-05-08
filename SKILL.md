@@ -24,6 +24,8 @@ description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python �
 13. 기본 테스트는 실제 KMA/APIHub/도로공사 API를 호출하지 않습니다.
 14. APIHub 응답은 JSON, XML, 텍스트, 이미지, 바이너리가 섞여 있으므로 하나의 모델로 강제하지 않습니다.
 15. APIHub legacy 그래픽 URL의 이름 없는 query string은 순서가 의미이므로 `arg1`, `arg2` 순서를 보존합니다.
+16. 문서의 파일 위치 정보는 프로젝트 루트 기준 상대 경로로 작성하고, 로컬 절대 경로는 남기지 않습니다.
+17. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
 
 ## 현재 구현 범위
 
@@ -57,6 +59,7 @@ pykma/
 ├── __init__.py          # public client, model, exception, 좌표 helper export
 ├── client.py            # KmaClient 타입화 단기예보 client
 ├── datagokr.py          # DataGoKrClient data.go.kr 범용 client
+├── datagokr_catalog.py  # 공공데이터포털 기상청 OpenAPI dataset catalog
 ├── apihub.py            # ApiHubClient APIHub 범용 client, 탐색, TXT/이미지 helper
 ├── apihub_endpoints.py  # 생성된 APIHub 함수형 endpoint 래퍼
 ├── expressway.py        # 한국도로공사 휴게소별 날씨 client
@@ -380,6 +383,8 @@ KmaError
 ## 문서 갱신 규칙
 
 - 사용자-facing API가 바뀌면 `README.md`를 갱신합니다.
+- 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
+- Python 내부 문서와 docstring은 한글로 작성합니다.
 - endpoint 세부 사항이나 KMA 동작이 바뀌면 `kma-api.md`를 갱신합니다.
 - APIHub 분류, 탐색 기능, 응답 형식 규칙이 바뀌면 `docs/apihub.md`를 갱신합니다.
 - APIHub 함수형 endpoint 목록이 바뀌면 `tools/update_apihub_endpoints.py`를 실행하고 `docs/apihub-endpoints.md`를 함께 갱신합니다.

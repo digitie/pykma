@@ -1,4 +1,4 @@
-"""Generic client for KMA APIs served through data.go.kr."""
+"""data.go.kr gateway로 제공되는 기상청 API 범용 클라이언트."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ class _DataGoKrItems:
 
 
 class DataGoKrClient:
-    """Generic KMA public-data client for `apis.data.go.kr/1360000` services."""
+    """`apis.data.go.kr/1360000` 서비스용 기상청 공공데이터 범용 클라이언트."""
 
     def __init__(
         self,
@@ -115,10 +115,10 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> Mapping[str, Any]:
-        """Call any JSON-capable data.go.kr KMA service operation.
+        """JSON 응답을 지원하는 data.go.kr 기상청 service operation을 호출합니다.
 
-        `service` is the path segment such as `MidFcstInfoService`.
-        `operation` is the endpoint such as `getMidFcst`.
+        `service`는 `MidFcstInfoService` 같은 path segment이고,
+        `operation`은 `getMidFcst` 같은 endpoint입니다.
         """
 
         return self._request_with_metadata(
@@ -140,7 +140,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> tuple[Mapping[str, Any], ResponseMetadata]:
-        """Call a service operation and return `(body, metadata)`."""
+        """service operation을 호출하고 `(body, metadata)`를 반환합니다."""
 
         response = self._request_with_metadata(
             service,
@@ -260,18 +260,18 @@ class DataGoKrClient:
         params: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[Mapping[str, Any]]:
-        """Call an operation and return `response.body.items.item` as a list."""
+        """operation을 호출하고 `response.body.items.item`을 list로 반환합니다."""
 
         body = self.request(service, operation, params, **kwargs)
         return _items_from_body(body, endpoint=f"{service.strip('/')}/{operation.strip('/')}")
 
     def datasets(self) -> tuple[DataGoKrDatasetSpec, ...]:
-        """Return KMA-only data.go.kr OpenAPI datasets from the public portal."""
+        """공공데이터포털의 기상청 data.go.kr OpenAPI dataset 목록을 반환합니다."""
 
         return KMA_DATA_GOKR_DATASETS
 
     def dataset(self, dataset_id: str | int) -> DataGoKrDatasetSpec:
-        """Return one KMA data.go.kr dataset spec by public-data id."""
+        """공공데이터포털 dataset id로 기상청 data.go.kr dataset 명세를 반환합니다."""
 
         clean_id = str(dataset_id)
         try:
@@ -289,7 +289,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> Mapping[str, Any]:
-        """Call a KMA data.go.kr dataset by public-data id."""
+        """공공데이터포털 dataset id로 기상청 data.go.kr dataset을 호출합니다."""
 
         _, service, selected_operation = self._dataset_service_operation(dataset_id, operation)
         return self.request(
@@ -311,7 +311,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call a KMA data.go.kr dataset and return raw rows with metadata."""
+        """기상청 data.go.kr dataset을 호출하고 metadata가 있는 원본 row를 반환합니다."""
 
         _, service, selected_operation = self._dataset_service_operation(dataset_id, operation)
         return self._raw_items(
@@ -335,7 +335,7 @@ class DataGoKrClient:
         max_pages: int = 100,
         max_items: int | None = None,
     ) -> Iterator[Mapping[str, Any]]:
-        """Iterate paginated data.go.kr response bodies with explicit guards."""
+        """명시적 안전장치와 함께 data.go.kr 페이지네이션 응답 body를 순회합니다."""
 
         return _iter_pages(
             lambda page_no: self.request(
@@ -359,7 +359,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
-        """Call `MidFcstInfoService/getMidFcst` without guessing regions."""
+        """지역을 추정하지 않고 `MidFcstInfoService/getMidFcst`를 호출합니다."""
 
         return self._mid_items(
             "getMidFcst",
@@ -376,10 +376,10 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
-        """Call `getMidLandFcst` for a KMA mid-term `reg_id`.
+        """기상청 중기예보 `reg_id`로 `getMidLandFcst`를 호출합니다.
 
-        `reg_id` is not a short-term forecast `nx`/`ny` grid coordinate.
-        pykma does not infer or maintain mappings between those identifiers.
+        `reg_id`는 단기예보 `nx`/`ny` 격자 좌표가 아닙니다.
+        `pykma`는 두 식별자 사이의 mapping을 추정하거나 유지하지 않습니다.
         """
 
         return self._mid_items(
@@ -397,9 +397,9 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
-        """Call `getMidTa` for a KMA mid-term `reg_id`.
+        """기상청 중기예보 `reg_id`로 `getMidTa`를 호출합니다.
 
-        `reg_id` is not a short-term forecast `nx`/`ny` grid coordinate.
+        `reg_id`는 단기예보 `nx`/`ny` 격자 좌표가 아닙니다.
         """
 
         return self._mid_items(
@@ -417,7 +417,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
-        """Call `getMidSeaFcst` for a KMA mid-term sea forecast `reg_id`."""
+        """기상청 중기해상예보 `reg_id`로 `getMidSeaFcst`를 호출합니다."""
 
         return self._mid_items(
             "getMidSeaFcst",
@@ -437,7 +437,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `AsosDalyInfoService/getWthrDataList`."""
+        """`AsosDalyInfoService/getWthrDataList` 일자료를 호출합니다."""
 
         params: dict[str, Any] = {
             "dataCd": data_cd,
@@ -468,7 +468,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `AsosHourlyInfoService/getWthrDataList`."""
+        """`AsosHourlyInfoService/getWthrDataList` 시간자료를 호출합니다."""
 
         params: dict[str, Any] = {
             "dataCd": data_cd,
@@ -496,12 +496,12 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call a `WthrWrnInfoService` operation.
+        """`WthrWrnInfoService` operation을 호출합니다.
 
-        Common operations include `getWthrWrnList`, `getWthrWrnMsg`,
+        주로 쓰는 operation에는 `getWthrWrnList`, `getWthrWrnMsg`,
         `getWthrInfoList`, `getWthrInfo`, `getWthrBrkNewsList`,
         `getWthrBrkNews`, `getWthrPwnList`, `getWthrPwn`, `getPwnCd`,
-        and `getPwnStatus`.
+        `getPwnStatus`가 있습니다.
         """
 
         return self._raw_items(
@@ -521,7 +521,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `WthrWrnInfoService/getWthrWrnList`."""
+        """`WthrWrnInfoService/getWthrWrnList`를 호출합니다."""
 
         return self.weather_warning(
             "getWthrWrnList",
@@ -538,7 +538,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call a `VilageFcstMsgService` operation."""
+        """`VilageFcstMsgService` operation을 호출합니다."""
 
         return self._raw_items(
             VILAGE_FCST_MSG_SERVICE,
@@ -555,7 +555,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `VilageFcstMsgService/getWthrSituation`."""
+        """`VilageFcstMsgService/getWthrSituation`을 호출합니다."""
 
         return self.forecast_message(
             "getWthrSituation",
@@ -571,7 +571,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `VilageFcstMsgService/getLandFcst`."""
+        """`VilageFcstMsgService/getLandFcst`를 호출합니다."""
 
         return self.forecast_message(
             "getLandFcst",
@@ -587,7 +587,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `VilageFcstMsgService/getSeaFcst`."""
+        """`VilageFcstMsgService/getSeaFcst`를 호출합니다."""
 
         return self.forecast_message(
             "getSeaFcst",
@@ -606,11 +606,10 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 1000,
     ) -> list[BeachForecastItem]:
-        """Call `BeachInfoservice/getUltraSrtFcstBeach`.
+        """`BeachInfoservice/getUltraSrtFcstBeach`를 호출합니다.
 
-        When `base_date` and `base_time` are omitted, the latest usable KST
-        ultra-short forecast base time is selected with the same rule as
-        `KmaClient.forecast_short()`.
+        `base_date`와 `base_time`을 생략하면 `KmaClient.forecast_short()`와
+        같은 규칙으로 최신 조회 가능 KST 초단기예보 base time을 선택합니다.
         """
 
         base_date_text, base_time_text = _resolve_base_date_time(
@@ -645,11 +644,10 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 1000,
     ) -> list[BeachForecastItem]:
-        """Call `BeachInfoservice/getVilageFcstBeach`.
+        """`BeachInfoservice/getVilageFcstBeach`를 호출합니다.
 
-        When `base_date` and `base_time` are omitted, the latest usable KST
-        short-term forecast base time is selected with the same rule as
-        `KmaClient.forecast()`.
+        `base_date`와 `base_time`을 생략하면 `KmaClient.forecast()`와
+        같은 규칙으로 최신 조회 가능 KST 단기예보 base time을 선택합니다.
         """
 
         base_date_text, base_time_text = _resolve_base_date_time(
@@ -682,7 +680,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[BeachWaveHeight]:
-        """Call `BeachInfoservice/getWhBuoyBeach` for wave height."""
+        """해수욕장 파고 조회용 `BeachInfoservice/getWhBuoyBeach`를 호출합니다."""
 
         fetched = self._items_with_metadata(
             BEACH_INFO_SERVICE,
@@ -704,7 +702,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[BeachTideItem]:
-        """Call `BeachInfoservice/getTideInfoBeach` for tide information."""
+        """해수욕장 조석 조회용 `BeachInfoservice/getTideInfoBeach`를 호출합니다."""
 
         fetched = self._items_with_metadata(
             BEACH_INFO_SERVICE,
@@ -726,10 +724,10 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[BeachSunTime]:
-        """Call `BeachInfoservice/getSunInfoBeach` for sunrise and sunset.
+        """해수욕장 일출/일몰 조회용 `BeachInfoservice/getSunInfoBeach`를 호출합니다.
 
-        The upstream Swagger for this endpoint spells the request date as
-        `Base_date`, unlike the other beach endpoints.
+        upstream Swagger는 다른 해수욕장 endpoint와 달리 요청 날짜 이름을
+        `Base_date`로 표기합니다.
         """
 
         fetched = self._items_with_metadata(
@@ -752,7 +750,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[BeachWaterTemperature]:
-        """Call `BeachInfoservice/getTwBuoyBeach` for water temperature."""
+        """해수욕장 수온 조회용 `BeachInfoservice/getTwBuoyBeach`를 호출합니다."""
 
         fetched = self._items_with_metadata(
             BEACH_INFO_SERVICE,
@@ -775,7 +773,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `TourStnInfoService1/getTourStnVilageFcst1`."""
+        """`TourStnInfoService1/getTourStnVilageFcst1`을 호출합니다."""
 
         return self._raw_items(
             TOUR_STN_SERVICE,
@@ -798,7 +796,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `TourStnInfoService1/getCityTourClmIdx1`."""
+        """`TourStnInfoService1/getCityTourClmIdx1`을 호출합니다."""
 
         return self._raw_items(
             TOUR_STN_SERVICE,
@@ -821,7 +819,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `LivingWthrIdxServiceV4/getSenTaIdxV4`."""
+        """`LivingWthrIdxServiceV4/getSenTaIdxV4`를 호출합니다."""
 
         return self._living_weather_index(
             "getSenTaIdxV4",
@@ -840,7 +838,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `LivingWthrIdxServiceV4/getUVIdxV4`."""
+        """`LivingWthrIdxServiceV4/getUVIdxV4`를 호출합니다."""
 
         return self._living_weather_index(
             "getUVIdxV4",
@@ -858,7 +856,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `LivingWthrIdxServiceV4/getAirDiffusionIdxV4`."""
+        """`LivingWthrIdxServiceV4/getAirDiffusionIdxV4`를 호출합니다."""
 
         return self._living_weather_index(
             "getAirDiffusionIdxV4",
@@ -877,7 +875,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call an `EqkInfoService` operation."""
+        """`EqkInfoService` operation을 호출합니다."""
 
         return self._raw_items(
             EQK_INFO_SERVICE,
@@ -895,7 +893,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `EqkInfoService/getEqkMsg`."""
+        """`EqkInfoService/getEqkMsg`를 호출합니다."""
 
         return self.earthquake_info(
             "getEqkMsg",
@@ -913,7 +911,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `EqkInfoService/getEqkMsgList`."""
+        """`EqkInfoService/getEqkMsgList`를 호출합니다."""
 
         return self.earthquake_info(
             "getEqkMsgList",
@@ -931,7 +929,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `EqkInfoService/getTsunamiMsg`."""
+        """`EqkInfoService/getTsunamiMsg`를 호출합니다."""
 
         return self.earthquake_info(
             "getTsunamiMsg",
@@ -949,7 +947,7 @@ class DataGoKrClient:
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[DataGoKrItem]:
-        """Call `EqkInfoService/getTsunamiMsgList`."""
+        """`EqkInfoService/getTsunamiMsgList`를 호출합니다."""
 
         return self.earthquake_info(
             "getTsunamiMsgList",

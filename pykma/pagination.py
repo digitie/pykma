@@ -1,4 +1,4 @@
-"""Pagination helpers for data.go.kr-style response bodies."""
+"""data.go.kr 스타일 응답 body용 페이지네이션 도우미."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 
 def has_next_page(body: Mapping[str, Any]) -> bool:
-    """Return whether a data.go.kr response body has another page."""
+    """data.go.kr 응답 body에 다음 페이지가 있는지 반환합니다."""
 
     page_no = _int_from_body(body, "pageNo", default=1)
     num_of_rows = _int_from_body(body, "numOfRows", default=0)
@@ -18,7 +18,7 @@ def has_next_page(body: Mapping[str, Any]) -> bool:
 
 
 def next_page_no(body: Mapping[str, Any]) -> int | None:
-    """Return the next page number, or `None` when the body is the last page."""
+    """다음 페이지 번호를 반환하고, 마지막 페이지이면 `None`을 반환합니다."""
 
     if not has_next_page(body):
         return None
@@ -32,10 +32,10 @@ def iter_pages(
     max_pages: int = 100,
     max_items: int | None = None,
 ) -> Iterator[Mapping[str, Any]]:
-    """Yield data.go.kr response bodies by following `pageNo` metadata.
+    """`pageNo` metadata를 따라 data.go.kr 응답 body를 순회합니다.
 
-    `max_pages` and `max_items` are explicit guards against endless loops when
-    an upstream API returns inconsistent pagination metadata.
+    `max_pages`와 `max_items`는 upstream API가 일관되지 않은 페이지네이션
+    metadata를 반환할 때 무한 루프를 막는 명시적 안전장치입니다.
     """
 
     if start_page < 1:

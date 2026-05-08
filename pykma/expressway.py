@@ -1,4 +1,4 @@
-"""Client for Korea Expressway Corporation rest-area weather data."""
+"""한국도로공사 휴게소별 날씨 데이터 클라이언트."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ except ModuleNotFoundError:  # pragma: no cover
     RequestException = ()  # type: ignore[assignment,misc]
 
 EXPRESSWAY_REST_AREA_WEATHER_URL = "http://data.ex.co.kr/openapi/restinfo/restWeatherList"
-EXPRESSWAY_SERVICE_NAME = "Korea Expressway rest-area weather"
+EXPRESSWAY_SERVICE_NAME = "한국도로공사 휴게소별 날씨"
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class _ExpresswayPayload:
 
 
 class ExpresswayRestAreaWeatherClient:
-    """Client for Korea Expressway Corporation rest-area weather API."""
+    """한국도로공사 휴게소별 날씨 API 클라이언트."""
 
     def __init__(
         self,
@@ -69,7 +69,7 @@ class ExpresswayRestAreaWeatherClient:
         std_hour: str | int,
         response_type: str = "json",
     ) -> Mapping[str, Any]:
-        """Call the raw rest-area weather endpoint and return its JSON payload."""
+        """휴게소별 날씨 원본 endpoint를 호출하고 JSON payload를 반환합니다."""
 
         return self._request_with_metadata(
             sdate=sdate,
@@ -84,7 +84,7 @@ class ExpresswayRestAreaWeatherClient:
         std_hour: str | int,
         response_type: str = "json",
     ) -> tuple[Mapping[str, Any], ResponseMetadata]:
-        """Call the endpoint and return `(payload, metadata)`."""
+        """endpoint를 호출하고 `(payload, metadata)`를 반환합니다."""
 
         response = self._request_with_metadata(
             sdate=sdate,
@@ -192,7 +192,7 @@ class ExpresswayRestAreaWeatherClient:
         sdate: str | date | datetime,
         std_hour: str | int,
     ) -> list[RestAreaWeather]:
-        """Return rest-area weather rows as typed dataclasses."""
+        """휴게소별 날씨 row를 타입화된 Pydantic 모델 목록으로 반환합니다."""
 
         response = self._request_with_metadata(sdate=sdate, std_hour=std_hour)
         rows = response.payload.get("list", [])
@@ -214,7 +214,7 @@ class ExpresswayRestAreaWeatherClient:
         when: datetime | None = None,
         lookback_hours: int = 48,
     ) -> list[RestAreaWeather]:
-        """Return the newest non-empty rest-area weather rows within a lookback window."""
+        """lookback 구간 안에서 가장 최신의 비어 있지 않은 휴게소 날씨 row를 반환합니다."""
 
         if lookback_hours < 0:
             raise ValueError("lookback_hours must be >= 0")

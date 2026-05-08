@@ -624,24 +624,44 @@ mypy pykma
 
 ## 프로젝트 파일
 
+이 문서와 프로젝트 문서의 파일 위치는 모두 프로젝트 루트 기준 상대 경로로 적습니다. 예를 들어 `pykma/client.py`, `docs/testing.md`처럼 쓰고, 작업자 로컬 절대 경로는 문서에 남기지 않습니다. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
+
 ```text
 pykma/
 ├── __init__.py
+├── _http.py
 ├── apihub.py
 ├── apihub_endpoints.py
-├── datagokr.py
+├── cli.py
 ├── client.py
-├── grid.py
-├── time_utils.py
 ├── codes.py
-├── models.py
+├── datagokr.py
+├── datagokr_catalog.py
+├── enums.py
 ├── exceptions.py
-├── _http.py
-└── cli.py
+├── expressway.py
+├── grid.py
+├── locations.py
+├── metadata.py
+├── models.py
+├── pagination.py
+├── py.typed
+└── time_utils.py
 tests/
+├── test_apihub.py
+├── test_apihub_endpoints.py
+├── test_apihub_generator.py
+├── test_cli.py
 ├── test_client.py
 ├── test_codes.py
+├── test_datagokr.py
+├── test_enums.py
+├── test_expressway.py
 ├── test_grid.py
+├── test_live_services.py
+├── test_locations.py
+├── test_public_api.py
+├── test_pydantic_models.py
 └── test_time_utils.py
 ```
 
@@ -657,6 +677,7 @@ tests/
 - [docs/apihub.md](docs/apihub.md): APIHub 범용 클라이언트와 탐색
 - [docs/datagokr.md](docs/datagokr.md): data.go.kr 범용 클라이언트
 - [docs/datagokr-apihub-overlap.md](docs/datagokr-apihub-overlap.md): data.go.kr/APIHub 중복 표
+- [docs/expressway.md](docs/expressway.md): 한국도로공사 휴게소별 날씨 API
 - [docs/testing.md](docs/testing.md): 테스트 작성과 live test 기준
 - [docs/troubleshooting.md](docs/troubleshooting.md): 흔한 오류 증상과 해결책
 - [CONTRIBUTING.md](CONTRIBUTING.md): 기여 절차

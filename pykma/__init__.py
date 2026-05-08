@@ -1,4 +1,4 @@
-"""Python helpers for KMA public weather APIs."""
+"""기상청 공공 날씨 API와 관련 도로 날씨 API용 Python 도구."""
 
 from .apihub import (
     ApiHubAttachment,

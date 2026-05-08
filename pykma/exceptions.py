@@ -1,10 +1,10 @@
-"""Exception hierarchy for pykma."""
+"""`pykma` 예외 계층."""
 
 from __future__ import annotations
 
 
 class KmaError(Exception):
-    """Base class for all pykma errors."""
+    """모든 `pykma` 예외의 기본 클래스."""
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class KmaError(Exception):
 
     @property
     def metadata(self) -> dict[str, object]:
-        """Return non-empty structured error metadata."""
+        """비어 있지 않은 구조화 오류 metadata를 반환합니다."""
 
         values: dict[str, object | None] = {
             "provider": self.provider,
@@ -41,16 +41,16 @@ class KmaError(Exception):
 
 
 class KmaAuthError(KmaError):
-    """Raised when the service key is invalid, expired, or not authorized."""
+    """인증키가 잘못되었거나 만료되었거나 권한이 없을 때 발생합니다."""
 
 
 class KmaRequestError(KmaError):
-    """Raised when the request is malformed or rejected by the API."""
+    """요청이 잘못되었거나 API가 요청을 거부했을 때 발생합니다."""
 
 
 class KmaServerError(KmaError):
-    """Raised when the KMA API returns a transient server-side failure."""
+    """API가 일시적인 서버 측 실패를 반환했을 때 발생합니다."""
 
 
 class KmaParseError(KmaError):
-    """Raised when the API response cannot be parsed as expected."""
+    """API 응답을 기대한 구조로 파싱할 수 없을 때 발생합니다."""

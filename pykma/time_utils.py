@@ -1,4 +1,4 @@
-"""KST-aware base date and base time calculations for KMA endpoints."""
+"""기상청 endpoint용 KST 기준 base date/time 계산."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ VILAGE_PUBLISH_HOURS = (2, 5, 8, 11, 14, 17, 20, 23)
 
 
 def as_kst(when: datetime | None = None) -> datetime:
-    """Return a timezone-aware datetime in Korea Standard Time."""
+    """한국표준시 timezone-aware `datetime`을 반환합니다."""
 
     if when is None:
         return datetime.now(KST)
@@ -24,9 +24,9 @@ def format_base(base_at: datetime) -> tuple[str, str]:
 
 
 def latest_ultra_srt_ncst_base(when: datetime | None = None) -> tuple[str, str]:
-    """Latest usable base for getUltraSrtNcst.
+    """`getUltraSrtNcst`에서 사용할 수 있는 최신 base를 반환합니다.
 
-    Observations are published every hour at HH:00 and usually available after HH:40.
+    관측값은 매시 `HH:00`에 발표되고 보통 `HH:40` 이후 조회 가능합니다.
     """
 
     cutoff = as_kst(when) - timedelta(minutes=40)
@@ -35,9 +35,9 @@ def latest_ultra_srt_ncst_base(when: datetime | None = None) -> tuple[str, str]:
 
 
 def latest_ultra_srt_fcst_base(when: datetime | None = None) -> tuple[str, str]:
-    """Latest usable base for getUltraSrtFcst.
+    """`getUltraSrtFcst`에서 사용할 수 있는 최신 base를 반환합니다.
 
-    Forecasts are published every hour at HH:30 and usually available after HH:45.
+    예보는 매시 `HH:30`에 발표되고 보통 `HH:45` 이후 조회 가능합니다.
     """
 
     cutoff = as_kst(when) - timedelta(minutes=15)
@@ -49,7 +49,7 @@ def latest_ultra_srt_fcst_base(when: datetime | None = None) -> tuple[str, str]:
 
 
 def latest_vilage_base(when: datetime | None = None) -> tuple[str, str]:
-    """Latest usable base for getVilageFcst."""
+    """`getVilageFcst`에서 사용할 수 있는 최신 base를 반환합니다."""
 
     cutoff = as_kst(when) - timedelta(minutes=10)
     candidates = [
@@ -65,7 +65,6 @@ def latest_vilage_base(when: datetime | None = None) -> tuple[str, str]:
 
 
 def parse_kma_datetime(date_value: str, time_value: str) -> datetime:
-    """Parse KMA YYYYMMDD and HHMM fields into a KST-aware datetime."""
+    """기상청 `YYYYMMDD`와 `HHMM` 필드를 KST aware `datetime`으로 파싱합니다."""
 
     return datetime.strptime(f"{date_value}{time_value}", "%Y%m%d%H%M").replace(tzinfo=KST)
-

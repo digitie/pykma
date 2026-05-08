@@ -1,4 +1,4 @@
-"""Command line entrypoint for pykma."""
+"""`pykma` 명령행 진입점."""
 
 from __future__ import annotations
 

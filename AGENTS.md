@@ -49,6 +49,7 @@
 
 - `pykma/client.py`: `KmaClient`, 타입화된 단기예보 endpoint, 응답 파싱.
 - `pykma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
+- `pykma/datagokr_catalog.py`: 공공데이터포털 기상청 OpenAPI dataset catalog.
 - `pykma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
 - `pykma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
 - `pykma/expressway.py`: 한국도로공사 휴게소별 날씨 API 클라이언트.
@@ -75,6 +76,8 @@
 - data.go.kr와 APIHub의 인증 파라미터를 섞지 않습니다.
 - 한국도로공사 휴게소 날씨 API는 `key` 파라미터와 `EXPRESSWAY_API_KEY` 환경변수를 사용합니다.
 - APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
+- 문서의 파일 위치 정보는 프로젝트 루트 기준 상대 경로로 작성하고, 로컬 절대 경로는 남기지 않습니다.
+- Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
 
 ## 작업 소유권
 
@@ -196,6 +199,8 @@
 확인할 것:
 
 - 프로젝트 문서는 한글로 작성합니다.
+- 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
+- Python 내부 문서와 docstring은 한글로 작성합니다.
 - 코드 식별자, 명령어, URL은 원문을 유지합니다.
 - 사용자 예제는 실제 public API와 일치해야 합니다.
 - API 개수와 구현 범위는 `docs/api-coverage.md`에 반영합니다.
