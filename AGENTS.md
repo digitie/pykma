@@ -78,6 +78,8 @@
 - APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
 - 문서의 파일 위치 정보는 프로젝트 루트 기준 상대 경로로 작성하고, 로컬 절대 경로는 남기지 않습니다.
 - Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
+- 이 환경에서 `rg`가 실행 권한 문제로 실패하면 빈 결과로 보지 말고 PowerShell `Get-ChildItem`/`Select-String`으로 파일 목록과 검색을 우회합니다.
+- PowerShell로 한글 문서를 읽을 때는 UTF-8 출력을 명시하고 `Get-Content -Encoding UTF8`을 사용해 mojibake를 파일 깨짐으로 오판하지 않습니다.
 
 ## 작업 소유권
 

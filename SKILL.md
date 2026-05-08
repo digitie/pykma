@@ -26,6 +26,8 @@ description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python �
 15. APIHub legacy 그래픽 URL의 이름 없는 query string은 순서가 의미이므로 `arg1`, `arg2` 순서를 보존합니다.
 16. 문서의 파일 위치 정보는 프로젝트 루트 기준 상대 경로로 작성하고, 로컬 절대 경로는 남기지 않습니다.
 17. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
+18. `rg`가 실행 권한 문제로 실패하면 검색 결과가 없다고 판단하지 말고 PowerShell `Get-ChildItem`/`Select-String`으로 우회합니다.
+19. PowerShell에서 한글 Markdown을 확인할 때는 UTF-8 출력을 명시하고 `Get-Content -Encoding UTF8`을 사용합니다.
 
 ## 현재 구현 범위
 
@@ -377,6 +379,7 @@ KmaError
 9. APIHub endpoint가 항상 JSON이라고 가정하면 텍스트/이미지/파일 endpoint에서 실패합니다.
 10. APIHub의 이름 없는 query string을 `params=` mapping으로 바꾸면 그래픽 endpoint URL이 달라집니다.
 11. `apiList.do` 본문만 긁으면 `generateAPIUrl.do`나 텍스트 예제 첨부에만 있는 endpoint를 놓칠 수 있습니다.
+12. `rg` 실행 권한 오류를 빈 검색 결과로 착각하면 필요한 파일을 놓칠 수 있습니다.
 
 함정을 수정하면 `docs/repeated-mistakes.md`에 증상, 규칙, 방지 테스트를 기록합니다.
 

@@ -230,3 +230,40 @@
 **규칙:** Python docstring과 내부 설명 문구는 한글로 작성합니다. 코드 식별자, API 파라미터 이름, wire value는 원문을 유지합니다. 생성 파일은 원본 템플릿(`tools/update_apihub_endpoints.py`)도 함께 고칩니다.
 
 **방지 테스트:** `pykma/`와 `tools/`의 docstring을 스캔하고, 생성 파일을 다시 만들 때 영어 템플릿이 되살아나지 않는지 확인합니다.
+
+## `rg` 실행 권한 오류를 빈 검색 결과로 착각하지 않기
+
+**실수:** `rg --files`나 `rg "pattern"`이 `Access is denied`로 실패했는데 검색 결과가 없다고 판단함.
+
+**증상:** 파일 목록이나 검색 결과가 누락되어 문서/코드 갱신 범위를 잘못 잡습니다.
+
+**규칙:** 이 환경에서 `rg`가 실행 권한 문제로 실패하면 PowerShell native 명령으로 우회합니다. 파일 목록은 `Get-ChildItem -Recurse -File`, 이름 검색은 `Get-ChildItem -Recurse -Filter`, 내용 검색은 `Select-String`을 사용합니다.
+
+**우회 예시:**
+
+```powershell
+Get-ChildItem -Path pykma,tests -File -Recurse |
+    ForEach-Object { $_.FullName.Substring((Get-Location).Path.Length + 1) }
+
+Get-ChildItem -Path . -Recurse -File -Include *.md,*.py |
+    Select-String -Pattern "문서"
+```
+
+**방지 테스트:** `rg` 실패 메시지를 본 뒤에는 PowerShell 우회 명령으로 같은 범위를 다시 확인하고, 검색 실패를 빈 결과로 기록하지 않습니다.
+
+## PowerShell 출력 깨짐을 UTF-8 파일 깨짐으로 오판하지 않기
+
+**실수:** UTF-8 Markdown 파일을 PowerShell 기본 출력으로 읽어 글자가 깨져 보이는 것을 실제 파일 손상으로 판단함.
+
+**증상:** 정상 한글 문서를 불필요하게 고치거나, 깨진 출력 기준으로 잘못된 diff를 만듭니다.
+
+**규칙:** 한글 문서를 확인할 때는 PowerShell 출력 encoding과 파일 encoding을 명시합니다. 특히 Markdown은 `Get-Content -Encoding UTF8`로 읽고, 필요하면 console output encoding도 UTF-8로 맞춥니다.
+
+**확인 예시:**
+
+```powershell
+$OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+Get-Content -Path docs/repeated-mistakes.md -Encoding UTF8
+```
+
+**방지 테스트:** 한글이 깨져 보이면 먼저 UTF-8 명시 명령으로 다시 읽고, 파일 자체가 깨졌는지는 diff나 테스트 결과로 확인합니다.
