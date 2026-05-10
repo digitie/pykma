@@ -28,6 +28,8 @@ description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python �
 17. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
 18. `rg`가 실행 권한 문제로 실패하면 검색 결과가 없다고 판단하지 말고 PowerShell `Get-ChildItem`/`Select-String`으로 우회합니다.
 19. PowerShell에서 한글 Markdown을 확인할 때는 UTF-8 출력을 명시하고 `Get-Content -Encoding UTF8`을 사용합니다.
+20. 편의용 wrapper를 불필요하게 늘리지 않습니다. 단순 전달 계층은 기존 범용 클라이언트를 쓰고, 안정적인 public surface와 테스트 가능한 동작이 있을 때만 wrapper를 추가합니다.
+21. 다른 라이브러리에 검증된 구현이 있으면 라이선스와 출처를 확인한 뒤 adapter/wrapper로 감싸기보다 프로젝트 코드에 직접 반영합니다. 이 변경이 최소수정 원칙보다 커져도 동작 일치, 테스트 가능성, 장기 유지보수성을 우선합니다.
 
 ## 현재 구현 범위
 
@@ -52,7 +54,7 @@ description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python �
 | `KmaClient.version()` | `getFcstVersion` | 예보버전 |
 | `ExpresswayRestAreaWeatherClient.weather()` | `restWeatherList` | 휴게소별 날씨 |
 
-그 외 KMA 서비스는 우선 범용 클라이언트로 호출합니다. 안정적인 응답 schema와 사용례가 쌓이면 타입화된 wrapper를 추가합니다.
+그 외 KMA 서비스는 우선 범용 클라이언트로 호출합니다. 안정적인 응답 schema와 사용례가 쌓이고 public API 가치가 분명할 때만 타입화된 wrapper를 추가합니다. 단순히 다른 호출을 감싸는 wrapper는 만들지 않으며, 다른 라이브러리의 검증된 구현을 가져와야 할 때는 라이선스와 출처를 확인한 뒤 프로젝트 내부 구현으로 직접 흡수합니다.
 
 ## 처음부터 구현할 때 필요한 산출물
 
