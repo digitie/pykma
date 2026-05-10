@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
+from pykrtour import PlaceCoordinate
+
 from pykma import (
     KMA_DATA_GOKR_DATASETS,
     WeatherCategory,
@@ -388,6 +390,7 @@ def test_datagokr_beach_forecast_helper_builds_request_and_models_rows() -> None
     assert rows[0].value == 25.1
     assert rows[0].grid is not None
     assert rows[0].grid.nx == 51
+    assert isinstance(rows[0].coordinate, PlaceCoordinate)
     assert rows[0].metadata is not None
     assert rows[0].metadata.endpoint == "BeachInfoservice/getUltraSrtFcstBeach"
     assert rows[0].metadata.base_date == "20220622"

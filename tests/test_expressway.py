@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
+from pykrtour import PlaceCoordinate
+
 from pykma import ExpresswayRestAreaWeatherClient, RestAreaWeather
 from pykma.exceptions import KmaAuthError, KmaParseError
 from pykma.time_utils import KST
@@ -101,6 +103,7 @@ def test_expressway_weather_request_builds_params_and_parses_rows() -> None:
     assert item.latlon is not None
     assert item.latlon.lat == 37.332651
     assert item.latlon.lon == 127.104165
+    assert item.coordinate == PlaceCoordinate(lon=127.104165, lat=37.332651)
     assert item.raw["xValue"] == "127.104165"
     assert item.raw["yValue"] == "37.332651"
     assert item.metadata is not None
@@ -179,6 +182,7 @@ def test_expressway_missing_coordinate_values_normalize_but_raw_is_preserved() -
     assert row.longitude is None
     assert row.latitude is None
     assert row.latlon is None
+    assert row.coordinate is None
     assert row.raw["xValue"] == "-99.000000"
     assert row.raw["yValue"] == "-99.000000"
 

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from pykrtour import KmaGridPoint, PlaceCoordinate
+
 try:
     import requests
     from requests import HTTPError, RequestException
@@ -114,6 +116,7 @@ class KmaClient:
             observed_at=parse_kma_datetime(base_date, base_time),
             nx=grid_x,
             ny=grid_y,
+            coordinate=PlaceCoordinate.from_kma_grid(KmaGridPoint(grid_x, grid_y)),
             temperature=_float_or_none(
                 by_category.get(WeatherCategory.CURRENT_TEMPERATURE.value)
             ),
@@ -400,6 +403,7 @@ def _forecast_item(
             forecast_at=parse_kma_datetime(str(item["fcstDate"]), str(item["fcstTime"])),
             nx=nx,
             ny=ny,
+            coordinate=PlaceCoordinate.from_kma_grid(KmaGridPoint(nx, ny)),
             category=category,
             value=normalize_value(category, value),
             label=label_for(category, value, endpoint=endpoint),

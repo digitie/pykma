@@ -26,6 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "pydantic>=2.7",
+  "pykrtour>=0.1.2",
   "requests>=2.31",
 ]
 

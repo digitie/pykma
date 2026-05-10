@@ -20,7 +20,7 @@ python -m pytest
 
 - `tests/test_client.py`: 단기예보 typed client 요청 파라미터, fake session 응답 파싱, result code 매핑, 잘못된 응답 처리.
 - `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출, 기상청 전용 dataset 카탈로그 86개와 gateway operation 160개, pagination helper, sanitized cache key, 중기예보 typed row wrapper, 주요 서비스 helper, 해수욕장 날씨 helper.
-- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델, 결측값 정규화, 에러 매핑.
+- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델의 `PlaceCoordinate` 필드, 결측값 정규화, 에러 매핑.
 - `tests/test_pydantic_models.py`: public 응답 모델의 Pydantic 직렬화, frozen 동작, 좌표 검증.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.
@@ -29,7 +29,7 @@ python -m pytest
 - `tests/test_codes.py`: `SKY`/`PTY` 라벨, `PCP`/`SNO` 보존, `parse_amount()`.
 - `tests/test_enums.py`: public enum wire value, enum-aware code helper, 모델의 enum/category helper.
 - `tests/test_grid.py`: 알려진 격자 변환점과 좌표 범위.
-- `tests/test_locations.py`: `LatLon`, `GridPoint`, mapping 기반 `location=` 표준화와 모호한 입력 거부.
+- `tests/test_locations.py`: `LatLon`, `GridPoint`, `PlaceCoordinate`, mapping 기반 `location=` 표준화와 모호한 입력 거부.
 - `tests/test_public_api.py`: package-level `__all__`과 권장 public API 정렬.
 - `tests/test_time_utils.py`: KST 변환과 endpoint별 base time 선택.
 - `tests/test_cli.py`: CLI 인자 처리와 JSON/text 출력 형태.

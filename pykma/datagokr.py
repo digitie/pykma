@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
+from pykrtour import KmaGridPoint, PlaceCoordinate
+
 from ._http import build_session
 from .codes import label_for, normalize_value
 from .datagokr_catalog import (
@@ -1200,6 +1202,9 @@ def _beach_forecast_item(
             label=label_for(category, value, endpoint=operation),
             nx=nx,
             ny=ny,
+            coordinate=PlaceCoordinate.from_kma_grid(KmaGridPoint(nx, ny))
+            if nx is not None and ny is not None
+            else None,
             raw=dict(row),
             metadata=metadata,
         )

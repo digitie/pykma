@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pykrtour import PlaceCoordinate
 
 from .codes import unit_for
 from .enums import WeatherCategory, category_or_none, coerce_category
@@ -23,6 +24,7 @@ class WeatherSnapshot(PykmaModel):
     observed_at: datetime
     nx: int
     ny: int
+    coordinate: PlaceCoordinate | None = None
     temperature: float | None
     humidity: int | None
     wind_speed: float | None
@@ -56,6 +58,7 @@ class ForecastItem(PykmaModel):
     forecast_at: datetime
     nx: int
     ny: int
+    coordinate: PlaceCoordinate | None = None
     category: WeatherCategory | str
     value: str | float
     label: str | None
@@ -118,6 +121,7 @@ class BeachForecastItem(PykmaModel):
     label: str | None
     nx: int | None = None
     ny: int | None = None
+    coordinate: PlaceCoordinate | None = None
     raw: dict[str, Any] = Field(default_factory=dict)
     metadata: ResponseMetadata | None = None
 
@@ -217,6 +221,7 @@ class RestAreaWeather(PykmaModel):
     route_no: str
     route_name: str
     direction_code: str | None
+    coordinate: PlaceCoordinate | None = None
     longitude: float | None
     latitude: float | None
     address: str | None

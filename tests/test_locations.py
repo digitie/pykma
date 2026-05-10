@@ -1,5 +1,7 @@
 from typing import Callable
 
+from pykrtour import PlaceCoordinate
+
 from pykma import GridPoint, LatLon, normalize_location
 
 
@@ -38,6 +40,7 @@ def test_grid_point_standardizes_kma_dfs_and_converts_to_latlon() -> None:
 def test_normalize_location_accepts_objects_and_common_mappings() -> None:
     assert normalize_location(LatLon(37.5665, 126.9780)) == GridPoint(60, 127)
     assert normalize_location(GridPoint(60, 127)) == GridPoint(60, 127)
+    assert normalize_location(PlaceCoordinate(lon=126.9780, lat=37.5665)) == GridPoint(60, 127)
     assert normalize_location({"lat": 37.5665, "lon": 126.9780}) == GridPoint(60, 127)
     assert normalize_location({"latitude": 37.5665, "longitude": 126.9780}) == GridPoint(60, 127)
     assert normalize_location({"nx": "60", "ny": "127"}) == GridPoint(60, 127)
@@ -52,4 +55,3 @@ def test_normalize_location_rejects_ambiguous_or_partial_inputs() -> None:
     assert_raises(ValueError, lambda: normalize_location(lat=37.5))
     assert_raises(ValueError, lambda: normalize_location(nx=60))
     assert_raises(TypeError, lambda: normalize_location(object()))  # type: ignore[arg-type]
-

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from pykrtour import PlaceCoordinate
+
 from ._http import build_session
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
 from .metadata import ResponseMetadata, make_response_metadata, redact_credentials_in_text
@@ -238,6 +240,7 @@ def _rest_area_weather(row: object, metadata: ResponseMetadata | None = None) ->
             retryable=False,
         )
     try:
+        coordinate = PlaceCoordinate.from_mapping(row)
         return RestAreaWeather(
             observed_at=_parse_observed_at(row.get("sdate"), row.get("stdHour")),
             sdate=_clean_str(row.get("sdate")),
@@ -247,8 +250,9 @@ def _rest_area_weather(row: object, metadata: ResponseMetadata | None = None) ->
             route_no=_clean_str(row.get("routeNo")),
             route_name=_clean_str(row.get("routeName")),
             direction_code=_str_or_none(row.get("updownTypeCode")),
-            longitude=_float_or_none(row.get("xValue")),
-            latitude=_float_or_none(row.get("yValue")),
+            coordinate=coordinate,
+            longitude=coordinate.lon if coordinate is not None else None,
+            latitude=coordinate.lat if coordinate is not None else None,
             address=_str_or_none(row.get("addr")),
             measurement_station=_str_or_none(row.get("measurement")),
             weather=_str_or_none(row.get("weatherContents")),

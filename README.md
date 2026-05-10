@@ -14,8 +14,8 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 - **data.go.kr 범용 호출, 기상청 카탈로그, 주요 helper 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `AsosDalyInfoService`, `WthrWrnInfoService` 같은 KMA REST 서비스를 호출하고, 공공데이터포털 `기상청` 검색 전체 페이지의 KMA 항목 86개와 gateway operation 160개를 카탈로그로 조회합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
 - **한국도로공사 휴게소별 날씨 지원**: `ExpresswayRestAreaWeatherClient`로 고속도로 휴게소별 날씨 정보를 조회합니다.
-- **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현합니다.
-- **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
+- **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현하고, 앱 공통 장소 좌표는 `pykrtour.PlaceCoordinate`로 연결합니다.
+- **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `location=PlaceCoordinate(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
 - **명시적 좌표 변환 alias**: 앱 경계에서는 `wgs84_to_kma_grid(latitude, longitude)`, `kma_grid_to_wgs84(nx, ny)`를 사용할 수 있습니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
 - **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, data.go.kr raw row, 해수욕장 날씨 row, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
@@ -107,9 +107,11 @@ items = kma.forecast(nx=60, ny=127)
 
 ```python
 from pykma import GridPoint, LatLon
+from pykrtour import PlaceCoordinate
 
 snap = kma.now(location=LatLon(37.5665, 126.9780))
 items = kma.forecast(location=GridPoint(60, 127))
+short = kma.forecast_short(location=PlaceCoordinate(lon=126.9780, lat=37.5665))
 ```
 
 dict 기반 입력도 지원합니다. API 서버나 설정 파일에서 받은 값을 그대로 연결할 때 유용합니다.
@@ -155,6 +157,7 @@ latlon = kma_grid_to_wgs84(nx=60, ny=127)
 
 - `location=LatLon(...)`: WGS84 위도/경도 값 객체
 - `location=GridPoint(...)`: KMA DFS 격자 값 객체
+- `location=PlaceCoordinate(...)`: `pykrtour` 공통 장소 좌표 값 객체. 축 순서는 `(lon, lat)`입니다.
 - `location={"lat": ..., "lon": ...}` 또는 `{"latitude": ..., "longitude": ...}`: mapping 기반 WGS84 입력
 - `location={"nx": ..., "ny": ...}`: mapping 기반 KMA DFS 입력
 - `lat`, `lon`: WGS84 위도/경도
@@ -334,6 +337,7 @@ class WeatherSnapshot(BaseModel):
     observed_at: datetime
     nx: int
     ny: int
+    coordinate: PlaceCoordinate | None
     temperature: float | None
     humidity: int | None
     wind_speed: float | None
@@ -361,6 +365,7 @@ class ForecastItem(BaseModel):
     forecast_at: datetime
     nx: int
     ny: int
+    coordinate: PlaceCoordinate | None
     category: WeatherCategory | str
     value: str | float
     label: str | None
@@ -405,6 +410,10 @@ class RestAreaWeather(BaseModel):
     unit_name: str
     route_no: str
     route_name: str
+    coordinate: PlaceCoordinate | None
+    longitude: float | None
+    latitude: float | None
+    address: str | None
     weather: str | None
     temperature: float | None
     humidity: float | None
@@ -414,23 +423,26 @@ class RestAreaWeather(BaseModel):
     raw: dict
 ```
 
-한국도로공사 API의 `-99` 계열 결측값은 모델에서 `None`으로 정규화합니다.
+한국도로공사 API의 `-99` 계열 결측값은 모델에서 `None`으로 정규화합니다. 좌표가 유효하면 `coordinate` 필드에 `pykrtour.PlaceCoordinate`가 들어갑니다.
 
 ### 위치 타입
 
 ```python
 from pykma import GridPoint, LatLon, normalize_location
+from pykrtour import PlaceCoordinate
 
 seoul = LatLon(37.5665, 126.9780)
 grid = seoul.to_grid()          # GridPoint(nx=60, ny=127)
 center = grid.to_latlon()       # 격자 중심에 가까운 WGS84 좌표
 
+normalize_location(PlaceCoordinate(lon=126.9780, lat=37.5665))  # GridPoint(60, 127)
 normalize_location({"lat": 37.5665, "lon": 126.9780})  # GridPoint(60, 127)
 normalize_location({"nx": 60, "ny": 127})              # GridPoint(60, 127)
 ```
 
 - `LatLon.crs`는 `"EPSG:4326"`입니다.
 - `GridPoint.grid_system`은 `"KMA_DFS"`입니다.
+- `PlaceCoordinate`는 `pykrtour`의 공통 장소 좌표 DTO이며 `(lon, lat)` 순서를 사용합니다.
 - `nx`/`ny`는 위도/경도가 아니며, KMA DFS 격자 좌표입니다.
 - WGS84 좌표는 항상 `lat/lon` 순서로 다루며, 앱 API나 저장 경계에서는 `latitude/longitude` 이름을 사용해도 같은 의미입니다.
 

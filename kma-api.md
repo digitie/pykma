@@ -196,15 +196,18 @@ KMA 격자는 LCC DFS 좌표입니다.
 
 ```python
 from pykma import GridPoint, LatLon, normalize_location
+from pykrtour import PlaceCoordinate
 
 LatLon(37.5665, 126.9780).to_grid()  # GridPoint(nx=60, ny=127)
 GridPoint(60, 127).to_latlon()       # 격자 중심에 가까운 WGS84 좌표
+normalize_location(PlaceCoordinate(lon=126.9780, lat=37.5665))
 normalize_location({"latitude": 37.5665, "longitude": 126.9780})
 normalize_location({"nx": 60, "ny": 127})
 ```
 
 - `LatLon`은 WGS84(`EPSG:4326`) 위도/경도입니다.
 - `GridPoint`는 KMA DFS 격자 좌표입니다.
+- `PlaceCoordinate`는 `pykrtour` 공통 장소 좌표 DTO이며 `(lon, lat)` 순서입니다.
 - `nx`/`ny`를 위도/경도로 해석하지 않습니다.
 - `location=` 입력은 `lat/lon` 또는 `nx/ny`와 섞어 쓰지 않습니다.
 
