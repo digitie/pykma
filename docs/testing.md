@@ -20,7 +20,7 @@ python -m pytest
 
 - `tests/test_client.py`: 단기예보 typed client 요청 파라미터, fake session 응답 파싱, result code 매핑, 잘못된 응답 처리.
 - `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출, 기상청 전용 dataset 카탈로그 86개와 gateway operation 160개, pagination helper, sanitized cache key, 중기예보 typed row wrapper, 주요 서비스 helper, 해수욕장 날씨 helper.
-- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델의 `PlaceCoordinate` 필드, 결측값 정규화, 에러 매핑.
+- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델의 `PlaceCoordinate`/`Address` 필드, 결측값 정규화, 에러 매핑.
 - `tests/test_pydantic_models.py`: public 응답 모델의 Pydantic 직렬화, frozen 동작, 좌표 검증.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.

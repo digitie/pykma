@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from pykrtour import Address
 
 from pykma import (
     ApiHubClient,
@@ -164,4 +165,7 @@ def test_live_expressway_rest_area_weather_shape() -> None:
     assert rows[0].unit_name
     assert rows[0].route_name
     assert rows[0].observed_at.tzinfo is not None
+    if rows[0].raw.get("addr"):
+        assert isinstance(rows[0].address, Address)
+        assert rows[0].address.display_address
     assert rows[0].raw

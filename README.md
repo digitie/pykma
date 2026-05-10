@@ -14,7 +14,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 - **data.go.kr 범용 호출, 기상청 카탈로그, 주요 helper 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `AsosDalyInfoService`, `WthrWrnInfoService` 같은 KMA REST 서비스를 호출하고, 공공데이터포털 `기상청` 검색 전체 페이지의 KMA 항목 86개와 gateway operation 160개를 카탈로그로 조회합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
 - **한국도로공사 휴게소별 날씨 지원**: `ExpresswayRestAreaWeatherClient`로 고속도로 휴게소별 날씨 정보를 조회합니다.
-- **표준 위치 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현하고, 앱 공통 장소 좌표는 `pykrtour.PlaceCoordinate`로 연결합니다.
+- **표준 장소 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현하고, 앱 공통 장소 좌표/주소는 `pykrtour.PlaceCoordinate`와 `pykrtour.Address`로 연결합니다.
 - **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `location=PlaceCoordinate(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
 - **명시적 좌표 변환 alias**: 앱 경계에서는 `wgs84_to_kma_grid(latitude, longitude)`, `kma_grid_to_wgs84(nx, ny)`를 사용할 수 있습니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
@@ -413,7 +413,7 @@ class RestAreaWeather(BaseModel):
     coordinate: PlaceCoordinate | None
     longitude: float | None
     latitude: float | None
-    address: str | None
+    address: Address | None
     weather: str | None
     temperature: float | None
     humidity: float | None
@@ -423,7 +423,7 @@ class RestAreaWeather(BaseModel):
     raw: dict
 ```
 
-한국도로공사 API의 `-99` 계열 결측값은 모델에서 `None`으로 정규화합니다. 좌표가 유효하면 `coordinate` 필드에 `pykrtour.PlaceCoordinate`가 들어갑니다.
+한국도로공사 API의 `-99` 계열 결측값은 모델에서 `None`으로 정규화합니다. 좌표가 유효하면 `coordinate` 필드에 `pykrtour.PlaceCoordinate`가 들어가고, 주소가 있으면 `address` 필드에 `pykrtour.Address`가 들어갑니다.
 
 ### 위치 타입
 

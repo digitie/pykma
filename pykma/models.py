@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from pykrtour import PlaceCoordinate
+from pykrtour import Address, PlaceCoordinate
 
 from .codes import unit_for
 from .enums import WeatherCategory, category_or_none, coerce_category
@@ -224,7 +224,7 @@ class RestAreaWeather(PykmaModel):
     coordinate: PlaceCoordinate | None = None
     longitude: float | None
     latitude: float | None
-    address: str | None
+    address: Address | None
     measurement_station: str | None
     weather: str | None
     temperature: float | None

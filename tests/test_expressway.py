@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
-from pykrtour import PlaceCoordinate
+from pykrtour import Address, PlaceCoordinate
 
 from pykma import ExpresswayRestAreaWeatherClient, RestAreaWeather
 from pykma.exceptions import KmaAuthError, KmaParseError
@@ -104,6 +104,9 @@ def test_expressway_weather_request_builds_params_and_parses_rows() -> None:
     assert item.latlon.lat == 37.332651
     assert item.latlon.lon == 127.104165
     assert item.coordinate == PlaceCoordinate(lon=127.104165, lat=37.332651)
+    assert isinstance(item.address, Address)
+    assert item.address.address == "경기도 용인시 수지구 풍덕천동 42-1"
+    assert item.address.display_address == "경기도 용인시 수지구 풍덕천동 42-1"
     assert item.raw["xValue"] == "127.104165"
     assert item.raw["yValue"] == "37.332651"
     assert item.metadata is not None

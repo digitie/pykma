@@ -65,7 +65,7 @@ rows = client.latest_weather(lookback_hours=72)
 | `latitude`, `longitude` | WGS84 좌표 |
 | `latlon` | 좌표가 유효할 때 `LatLon` 객체 |
 | `coordinate` | 좌표가 유효할 때 `pykrtour.PlaceCoordinate` 객체 |
-| `address` | 주소 |
+| `address` | 주소가 유효할 때 `pykrtour.Address` 객체 |
 | `measurement_station` | 관측 지점명 |
 | `weather` | 날씨 설명 |
 | `temperature` | 기온 |
@@ -83,7 +83,7 @@ rows = client.latest_weather(lookback_hours=72)
 
 한국도로공사 API는 결측값을 `-99`, `-99.0`, `-99.000000` 같은 숫자로 내려보내는 경우가 있습니다. `pykma`는 이런 sentinel 값을 모델 필드에서 `None`으로 정규화하고, 원문은 `raw`에 보존합니다.
 
-좌표 원문도 `raw["xValue"]`, `raw["yValue"]`에 그대로 남습니다. 모델의 `coordinate`, `longitude`, `latitude`는 유효한 WGS84 숫자일 때만 채워지고, `-99` 계열 결측값이면 `None`입니다. 장소/POI 저장 경계에서는 `coordinate`의 `pykrtour.PlaceCoordinate`를 바로 사용할 수 있습니다.
+좌표 원문도 `raw["xValue"]`, `raw["yValue"]`에 그대로 남습니다. 모델의 `coordinate`, `longitude`, `latitude`는 유효한 WGS84 숫자일 때만 채워지고, `-99` 계열 결측값이면 `None`입니다. 장소/POI 저장 경계에서는 `coordinate`의 `pykrtour.PlaceCoordinate`와 `address`의 `pykrtour.Address`를 바로 사용할 수 있습니다.
 
 ## 실서버 테스트
 
