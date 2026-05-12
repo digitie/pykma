@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pykma.apihub_endpoints import (
+from kma.apihub_endpoints import (
     APIHUB_ATTACHMENTS,
     APIHUB_ENDPOINTS,
     APIHUB_ENDPOINTS_BY_NAME,

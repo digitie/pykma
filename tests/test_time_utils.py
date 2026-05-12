@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from pykma.time_utils import (
+from kma.time_utils import (
     KST,
     as_kst,
     latest_ultra_srt_fcst_base,

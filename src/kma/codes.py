@@ -102,7 +102,7 @@ def unit_for(category: str | WeatherCategory) -> str | None:
 
 
 def is_numeric_category(category: str | WeatherCategory) -> bool:
-    """`pykma`가 해당 category 값을 보통 float로 변환하는지 반환합니다."""
+    """`kma`가 해당 category 값을 보통 float로 변환하는지 반환합니다."""
 
     return enum_value(category) in _NUMERIC_CATEGORIES
 

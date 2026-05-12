@@ -1,6 +1,6 @@
 # 반복 실수 방지 기록
 
-`pykma`를 만들면서 반복되기 쉬운 실수를 기록합니다. 이 문서에 있는 문제가 다시 발견되면 테스트를 추가하고, 해결 규칙도 함께 갱신합니다.
+`kma`를 만들면서 반복되기 쉬운 실수를 기록합니다. 이 문서에 있는 문제가 다시 발견되면 테스트를 추가하고, 해결 규칙도 함께 갱신합니다.
 
 ## serviceKey 인코딩
 
@@ -18,7 +18,7 @@
 
 **증상:** 빈 `items`, `NODATA_ERROR`, 발표 경계 시각에서 흔들리는 테스트.
 
-**규칙:** 항상 `pykma/time_utils.py`의 helper를 사용합니다.
+**규칙:** 항상 `src/kma/time_utils.py`의 helper를 사용합니다.
 
 | Endpoint | helper |
 |---|---|
@@ -36,7 +36,7 @@
 
 **규칙:** WGS84는 `LatLon` 또는 `lat`/`lon`, KMA DFS 격자는 `GridPoint` 또는 `nx`/`ny`를 사용합니다. 외부 프로그램과 연결할 때는 `location=LatLon(...)`, `location=GridPoint(...)`, `normalize_location()`을 우선 사용합니다.
 
-**방지 테스트:** `pykma/grid.py`가 WGS84 범위와 공식 격자 범위를 검증하고, `tests/test_locations.py`와 클라이언트 테스트가 혼합/부분 좌표를 거부합니다.
+**방지 테스트:** `src/kma/grid.py`가 WGS84 범위와 공식 격자 범위를 검증하고, `tests/test_locations.py`와 클라이언트 테스트가 혼합/부분 좌표를 거부합니다.
 
 ## `PCP`, `SNO`는 항상 숫자가 아님
 
@@ -209,7 +209,7 @@
 
 **규칙:** 401/403은 `KmaAuthError`로 다루되, 포털 활용신청/승인 상태도 함께 확인합니다. 실서버 integration 테스트는 APIHub 키가 endpoint 권한을 갖지 못한 경우 명확한 이유로 skip합니다.
 
-**방지 테스트:** `tests/test_live_services.py`는 `PYKMA_RUN_LIVE=1`이 있을 때만 실제 서버를 호출하고, APIHub 권한 403과 data.go.kr 성공 경로를 분리해 검증합니다.
+**방지 테스트:** `tests/test_live_services.py`는 `KMA_RUN_LIVE=1`이 있을 때만 실제 서버를 호출하고, APIHub 권한 403과 data.go.kr 성공 경로를 분리해 검증합니다.
 
 ## 문서에 로컬 절대 경로를 남기지 않기
 
@@ -217,7 +217,7 @@
 
 **증상:** 다른 환경에서 그대로 따라 할 수 없고, 프로젝트 문서가 특정 PC 구조에 묶입니다.
 
-**규칙:** 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`, `tests/test_live_services.py::test_name`처럼 프로젝트 루트 기준 상대 경로와 `/` 구분자로 작성합니다. PowerShell provider 경로(`Env:\PYKMA_RUN_LIVE`)처럼 파일 위치가 아닌 명령 문법은 예외입니다.
+**규칙:** 파일 위치 정보는 `src/kma/client.py`, `docs/testing.md`, `tests/test_live_services.py::test_name`처럼 프로젝트 루트 기준 상대 경로와 `/` 구분자로 작성합니다. PowerShell provider 경로(`Env:\KMA_RUN_LIVE`)처럼 파일 위치가 아닌 명령 문법은 예외입니다.
 
 **방지 테스트:** 문서 변경 후 `.md` 파일에서 로컬 절대 경로와 Windows식 파일 경로 표기가 남지 않았는지 검색합니다.
 
@@ -225,11 +225,11 @@
 
 **실수:** 새 모듈이나 생성 템플릿에 영어 docstring을 추가해 Python 내부 문서 언어가 섞임.
 
-**증상:** `help(pykma...)`, IDE hover, 생성된 API 문서에서 한글/영어 설명이 섞여 프로젝트 문서 정책과 어긋납니다.
+**증상:** `help(kma...)`, IDE hover, 생성된 API 문서에서 한글/영어 설명이 섞여 프로젝트 문서 정책과 어긋납니다.
 
 **규칙:** Python docstring과 내부 설명 문구는 한글로 작성합니다. 코드 식별자, API 파라미터 이름, wire value는 원문을 유지합니다. 생성 파일은 원본 템플릿(`tools/update_apihub_endpoints.py`)도 함께 고칩니다.
 
-**방지 테스트:** `pykma/`와 `tools/`의 docstring을 스캔하고, 생성 파일을 다시 만들 때 영어 템플릿이 되살아나지 않는지 확인합니다.
+**방지 테스트:** `src/kma/`와 `tools/`의 docstring을 스캔하고, 생성 파일을 다시 만들 때 영어 템플릿이 되살아나지 않는지 확인합니다.
 
 ## `rg` 실행 권한 오류를 빈 검색 결과로 착각하지 않기
 
@@ -242,7 +242,7 @@
 **우회 예시:**
 
 ```powershell
-Get-ChildItem -Path pykma,tests -File -Recurse |
+Get-ChildItem -Path kma,tests -File -Recurse |
     ForEach-Object { $_.FullName.Substring((Get-Location).Path.Length + 1) }
 
 Get-ChildItem -Path . -Recurse -File -Include *.md,*.py |

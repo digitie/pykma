@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable
 
-import pykma.cli as cli
-from pykma.time_utils import KST
+import kma.cli as cli
+from kma.time_utils import KST
 
 
 def assert_raises(exc_type: type[BaseException], func: Callable[[], object]) -> None:

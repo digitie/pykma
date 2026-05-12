@@ -5,7 +5,7 @@ from typing import Any, Callable
 
 from pykrtour import PlaceCoordinate
 
-from pykma import (
+from kma import (
     KMA_DATA_GOKR_DATASETS,
     WeatherCategory,
     has_next_page,
@@ -13,10 +13,10 @@ from pykma import (
     next_page_no,
     sanitize_request_params,
 )
-from pykma.datagokr import DataGoKrClient
-from pykma.exceptions import KmaAuthError, KmaParseError
-from pykma.metadata import redact_credentials_in_text
-from pykma.time_utils import KST
+from kma.datagokr import DataGoKrClient
+from kma.exceptions import KmaAuthError, KmaParseError
+from kma.metadata import redact_credentials_in_text
+from kma.time_utils import KST
 
 
 class FakeResponse:

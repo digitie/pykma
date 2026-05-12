@@ -1,6 +1,6 @@
 # 기여 가이드
 
-`pykma` 개선에 참여할 때 참고하는 문서입니다. 이 프로젝트는 까다로운 공공 API를 감싸므로, 좋은 변경은 작고 테스트가 있으며 KMA 특유의 예외 상황을 명시적으로 다룹니다.
+`kma` 개선에 참여할 때 참고하는 문서입니다. 이 프로젝트는 까다로운 공공 API를 감싸므로, 좋은 변경은 작고 테스트가 있으며 KMA 특유의 예외 상황을 명시적으로 다룹니다.
 
 ## 로컬 준비
 
@@ -25,7 +25,7 @@ python -m pytest
 - 의도적이고 문서화된 변경이 아니라면 public API를 안정적으로 유지합니다.
 - timezone 없는 `datetime`은 KST로 해석합니다.
 - 외부 프로그램용 위치 입력은 `LatLon`, `GridPoint`, `location=`으로 표준화하고, 기존 `lat/lon`, `nx/ny` API는 호환성을 유지합니다.
-- 새 코드 식별자를 추가할 때는 가능한 경우 `pykma/enums.py`의 public enum과 `pykma/codes.py` helper를 함께 갱신합니다.
+- 새 코드 식별자를 추가할 때는 가능한 경우 `src/kma/enums.py`의 public enum과 `src/kma/codes.py` helper를 함께 갱신합니다.
 - `requests`의 `params=`에는 data.go.kr Decoding 인증키를 전달합니다.
 - 한국도로공사 휴게소별 날씨 API는 `EXPRESSWAY_API_KEY`와 `key` 파라미터를 사용합니다.
 - 예보 항목의 `PCP`, `SNO` 범주 문자열은 보존합니다.
@@ -41,14 +41,14 @@ python -m pytest
 
 ```bash
 python -m pytest
-python -m compileall pykma tests
+python -m compileall src/kma tests
 ```
 
 선택 검증:
 
 ```bash
 ruff check .
-mypy pykma
+mypy src/kma
 ```
 
 실제 API 호출 테스트는 반드시 opt-in이어야 합니다.
@@ -63,7 +63,7 @@ KMA_SERVICE_KEY=<decoded key> python -m pytest -m integration
 
 사용자에게 보이는 동작이 바뀌면 다음 중 하나 이상을 갱신합니다.
 
-문서의 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 적습니다. 로컬 절대 경로는 문서에 남기지 않습니다. 코드 식별자, 명령어, URL, API 파라미터 이름은 원문을 유지합니다.
+문서의 파일 위치 정보는 `src/kma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 적습니다. 로컬 절대 경로는 문서에 남기지 않습니다. 코드 식별자, 명령어, URL, API 파라미터 이름은 원문을 유지합니다.
 
 - `README.md`: 사용법과 예제.
 - `kma-api.md`: API 세부 사항.

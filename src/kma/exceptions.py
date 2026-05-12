@@ -1,10 +1,10 @@
-"""`pykma` 예외 계층."""
+"""`kma` 예외 계층."""
 
 from __future__ import annotations
 
 
 class KmaError(Exception):
-    """모든 `pykma` 예외의 기본 클래스."""
+    """모든 `kma` 예외의 기본 클래스."""
 
     def __init__(
         self,

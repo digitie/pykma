@@ -5,7 +5,7 @@ from typing import Callable
 
 from pydantic import ValidationError
 
-from pykma import (
+from kma import (
     ForecastItem,
     MidForecastItem,
     ResponseMetadata,
@@ -13,7 +13,7 @@ from pykma import (
     WeatherCategory,
     WeatherSnapshot,
 )
-from pykma.time_utils import KST
+from kma.time_utils import KST
 
 
 def assert_raises(exc_type: type[BaseException], func: Callable[[], object]) -> BaseException:

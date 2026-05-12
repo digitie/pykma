@@ -1,6 +1,6 @@
 # APIHub 함수형 endpoint 목록
 
-이 문서는 `pykma/apihub_endpoints.py`와 같은 원천에서 생성한 함수 목록입니다.
+이 문서는 `src/kma/apihub_endpoints.py`와 같은 원천에서 생성한 함수 목록입니다.
 
 - 생성일: 2026-05-06
 - 원천: https://apihub.kma.go.kr/apiList.do
@@ -21,7 +21,7 @@
 ## 사용법
 
 ```python
-from pykma import ApiHubGeneratedClient
+from kma import ApiHubGeneratedClient
 
 hub = ApiHubGeneratedClient.from_env()
 response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")

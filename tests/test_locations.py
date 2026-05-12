@@ -2,7 +2,7 @@ from typing import Callable
 
 from pykrtour import PlaceCoordinate
 
-from pykma import GridPoint, LatLon, normalize_location
+from kma import GridPoint, LatLon, normalize_location
 
 
 def assert_raises(exc_type: type[BaseException], func: Callable[[], object]) -> None:

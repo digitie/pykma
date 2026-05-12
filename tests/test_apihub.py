@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from pykma.apihub import (
+from kma.apihub import (
     ApiHubClient,
     detect_image_info,
     extract_apihub_endpoints,
@@ -11,7 +11,7 @@ from pykma.apihub import (
     parse_apihub_text_table,
     redact_url_credentials,
 )
-from pykma.exceptions import KmaAuthError
+from kma.exceptions import KmaAuthError
 
 try:
     from requests import HTTPError

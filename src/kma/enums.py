@@ -66,7 +66,7 @@ class ForecastPrecipitationType(str, Enum):
 
 
 def enum_value(value: object) -> str:
-    """일반 값과 `pykma` enum 값을 전송용 문자열로 반환합니다."""
+    """일반 값과 `kma` enum 값을 전송용 문자열로 반환합니다."""
 
     if isinstance(value, Enum):
         return str(value.value)

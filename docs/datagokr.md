@@ -1,6 +1,6 @@
 # data.go.kr KMA 지원
 
-`pykma.KmaClient`는 사용량이 높은 단기예보 서비스를 타입화된 모델로 감싼 클라이언트입니다. `apis.data.go.kr/1360000`의 다른 KMA 공공데이터 서비스는 `DataGoKrClient`로 범용 호출합니다.
+`kma.KmaClient`는 사용량이 높은 단기예보 서비스를 타입화된 모델로 감싼 클라이언트입니다. `apis.data.go.kr/1360000`의 다른 KMA 공공데이터 서비스는 `DataGoKrClient`로 범용 호출합니다.
 
 공식 확인 출처:
 
@@ -14,7 +14,7 @@
 ## 타입화 클라이언트
 
 ```python
-from pykma import KmaClient
+from kma import KmaClient
 
 kma = KmaClient.from_env()
 kma.now(nx=60, ny=127)
@@ -32,7 +32,7 @@ kma.forecast(nx=60, ny=127)
 ## 범용 클라이언트
 
 ```python
-from pykma import DataGoKrClient
+from kma import DataGoKrClient
 
 client = DataGoKrClient.from_env()
 body = client.request(
@@ -69,7 +69,7 @@ body, metadata = client.request_with_metadata(
 카탈로그 86개 중 기존 data.go.kr `serviceKey` gateway 항목은 38개이며, 포털 상세기능에서 확인한 operation 160개를 함께 보존합니다. APIHub로 연결되는 48개 항목은 `gateway="apihub"`로 구분합니다. APIHub와 정확히 같은 `{service}/{operation}` 조합은 [data.go.kr/APIHub 중복 확인](datagokr-apihub-overlap.md)에 표로 정리했습니다.
 
 ```python
-from pykma import KMA_DATA_GOKR_DATASETS, DataGoKrClient
+from kma import KMA_DATA_GOKR_DATASETS, DataGoKrClient
 
 client = DataGoKrClient.from_env()
 
@@ -116,7 +116,7 @@ client = DataGoKrClient.from_env(service_key_param="ServiceKey")
 data.go.kr 계열 response body가 `pageNo`, `numOfRows`, `totalCount`를 포함하면 다음 helper를 사용할 수 있습니다.
 
 ```python
-from pykma import has_next_page, next_page_no
+from kma import has_next_page, next_page_no
 
 body = client.request("MidFcstInfoService", "getMidLandFcst", {...})
 if has_next_page(body):
@@ -138,7 +138,7 @@ for body in client.iter_pages(
 
 ## 중기예보 helper
 
-중기예보는 `MidFcstInfoService` 호출과 row parsing까지만 책임집니다. `reg_id`는 단기예보 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `pykma`는 임의 매핑을 추측하지 않습니다.
+중기예보는 `MidFcstInfoService` 호출과 row parsing까지만 책임집니다. `reg_id`는 단기예보 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다.
 
 ```python
 client.mid_forecast(stn_id="108", tm_fc="202605010600")
@@ -154,7 +154,7 @@ client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
 2026-05-07에 공공데이터포털 `기상청` 오픈 API 검색에서 확인한 주요 data.go.kr 서비스는 전용 helper를 제공합니다. endpoint별 안정적인 도메인 모델을 확정하기 어려운 서비스는 `DataGoKrItem`으로 감싸며, 각 row의 `raw`와 인증키가 제거된 `metadata`를 보존합니다.
 
 ```python
-from pykma import DataGoKrClient
+from kma import DataGoKrClient
 
 client = DataGoKrClient.from_env()
 
@@ -210,7 +210,7 @@ quake = client.earthquake_message_list(from_tm_fc="20260501", to_tm_fc="20260502
 (`BeachInfoservice`)는 `DataGoKrClient`의 전용 helper로 호출할 수 있습니다.
 
 ```python
-from pykma import DataGoKrClient
+from kma import DataGoKrClient
 
 client = DataGoKrClient.from_env()
 

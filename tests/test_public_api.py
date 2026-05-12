@@ -1,4 +1,4 @@
-import pykma
+import kma
 
 
 def test_package_all_contains_recommended_public_api() -> None:
@@ -30,4 +30,4 @@ def test_package_all_contains_recommended_public_api() -> None:
         "iter_pages",
     }
 
-    assert recommended.issubset(set(pykma.__all__))
+    assert recommended.issubset(set(kma.__all__))

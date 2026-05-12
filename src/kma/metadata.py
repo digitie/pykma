@@ -1,4 +1,4 @@
-"""`pykma` 응답 metadata와 민감정보 제거 도우미."""
+"""`kma` 응답 metadata와 민감정보 제거 도우미."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ _CREDENTIAL_TEXT_RE = re.compile(
 
 
 class ResponseMetadata(BaseModel):
-    """`pykma` 응답 모델의 제공자 출처 정보.
+    """`kma` 응답 모델의 제공자 출처 정보.
 
     `request_params`는 입력 시 정리되며 `serviceKey`, `authKey`, `key` 같은
     원본 인증값을 보관하지 않습니다.
@@ -140,7 +140,7 @@ def make_cache_key(
     base_time: str | None = None,
     nx: int | None = None,
     ny: int | None = None,
-    namespace: str = "pykma:v1",
+    namespace: str = "kma:v1",
 ) -> str:
     """endpoint와 민감정보 제거된 요청 입력으로 안정적인 cache key를 반환합니다."""
 

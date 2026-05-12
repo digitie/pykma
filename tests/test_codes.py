@@ -1,4 +1,4 @@
-from pykma.codes import label_for, normalize_value, parse_amount
+from kma.codes import label_for, normalize_value, parse_amount
 
 
 def test_labels() -> None:

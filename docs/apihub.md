@@ -16,7 +16,7 @@
 
 ## 공식 이용안내 요약
 
-APIHub 소개 페이지는 기상청이 방대한 기상기후데이터를 APIHub로 제공해 사용자가 날씨데이터를 활용할 수 있도록 하는 서비스라고 설명합니다. `pykma`는 APIHub 데이터를 저장하거나 재배포하지 않고, 호출과 응답 처리를 돕는 Python client 역할만 합니다.
+APIHub 소개 페이지는 기상청이 방대한 기상기후데이터를 APIHub로 제공해 사용자가 날씨데이터를 활용할 수 있도록 하는 서비스라고 설명합니다. `kma`는 APIHub 데이터를 저장하거나 재배포하지 않고, 호출과 응답 처리를 돕는 Python client 역할만 합니다.
 
 APIHub를 쓰려면 회원가입 후 인증키를 발급받아야 합니다.
 
@@ -34,7 +34,7 @@ APIHub를 쓰려면 회원가입 후 인증키를 발급받아야 합니다.
 
 ## 공식 제공 범위
 
-`apiInfo.do`의 “API 제공내역”은 사용자용 번호로 13개 분류를 설명합니다. `apiList.do`의 `seqApi` 값은 내부 페이지 라우팅용 id라서 이 번호와 1:1로 같지 않습니다. `pykma`의 470개 함수형 래퍼는 실제로 접근 가능한 `apiList.do`/`generateAPIUrl.do` metadata를 기준으로 생성합니다.
+`apiInfo.do`의 “API 제공내역”은 사용자용 번호로 13개 분류를 설명합니다. `apiList.do`의 `seqApi` 값은 내부 페이지 라우팅용 id라서 이 번호와 1:1로 같지 않습니다. `kma`의 470개 함수형 래퍼는 실제로 접근 가능한 `apiList.do`/`generateAPIUrl.do` metadata를 기준으로 생성합니다.
 
 | 제공내역 번호 | 분류 | 공식 설명 요약 |
 |---:|---|---|
@@ -81,11 +81,11 @@ APIHub 사용방법 안내 문서는 호출 URL을 세 부분으로 나눕니다
 | `help=1` | 출력 변수 설명 또는 헤더정보 표출 | `text_table()`이 comment/header를 찾는 데 유리함 |
 | `help=2` | 헤더정보와 시작·종료 지시부 미표출 | row 원문 보존 가능성 고려 |
 
-위성/파일 계열은 `typ=img`, `typ=bin`처럼 다운로드 포맷을 고르는 인자가 있을 수 있습니다. `pykma`는 이런 응답을 임의로 텍스트 변환하지 않고 `ApiHubResponse.content`와 `response.image()`를 제공합니다.
+위성/파일 계열은 `typ=img`, `typ=bin`처럼 다운로드 포맷을 고르는 인자가 있을 수 있습니다. `kma`는 이런 응답을 임의로 텍스트 변환하지 않고 `ApiHubResponse.content`와 `response.image()`를 제공합니다.
 
 ## 구현 방식
 
-APIHub는 같은 포털 안에서도 응답 형식이 크게 다릅니다. `pykma`는 두 층으로 지원합니다.
+APIHub는 같은 포털 안에서도 응답 형식이 크게 다릅니다. `kma`는 두 층으로 지원합니다.
 
 | 층 | 클래스 | 용도 |
 |---|---|---|
@@ -102,7 +102,7 @@ APIHub는 같은 포털 안에서도 응답 형식이 크게 다릅니다. `pykm
 - 확인한 서비스: 59개
 - 생성한 endpoint 함수형 래퍼: **470개**
 - 첨부 자료 metadata: **77개**
-- 생성 파일: `pykma/apihub_endpoints.py`
+- 생성 파일: `src/kma/apihub_endpoints.py`
 - 전체 함수 목록 문서: [docs/apihub-endpoints.md](apihub-endpoints.md)
 
 응답 종류별 개수:
@@ -123,7 +123,7 @@ APIHub는 같은 포털 안에서도 응답 형식이 크게 다릅니다. `pykm
 ## 기본 사용
 
 ```python
-from pykma import ApiHubGeneratedClient
+from kma import ApiHubGeneratedClient
 
 hub = ApiHubGeneratedClient.from_env()  # KMA_APIHUB_AUTH_KEY 또는 KMA_APIHUB_KEY
 
@@ -152,7 +152,7 @@ response = hub.kma_sfctm2(use_sample=True, stn="108")
 모든 함수형 래퍼는 `APIHUB_ENDPOINTS`에 metadata를 함께 갖습니다.
 
 ```python
-from pykma import APIHUB_ENDPOINTS
+from kma import APIHUB_ENDPOINTS
 
 for endpoint in APIHUB_ENDPOINTS:
     print(endpoint.name, endpoint.path, endpoint.parameters, endpoint.response_kind)
@@ -201,7 +201,7 @@ content = image.content
 포맷정보, 예제 파일, 코드표 같은 APIHub 첨부 링크는 `APIHUB_ATTACHMENTS`에 metadata로 보관합니다.
 
 ```python
-from pykma import APIHUB_ATTACHMENTS
+from kma import APIHUB_ATTACHMENTS
 
 for attachment in APIHUB_ATTACHMENTS:
     if attachment.kind in {"format", "sample"}:
@@ -237,7 +237,7 @@ response = hub.aws3_nph_awsm_tms_h06(
 목록에 없는 새 endpoint나 실험적 path는 `request_path()`로 직접 호출합니다.
 
 ```python
-from pykma import ApiHubClient
+from kma import ApiHubClient
 
 hub = ApiHubClient.from_env()
 response = hub.request_path(

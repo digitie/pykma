@@ -1,4 +1,4 @@
-"""`pykma`에서 사용하는 표준 위치 값 객체."""
+"""`kma`에서 사용하는 표준 위치 값 객체."""
 
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from pykma import (
+from kma import (
     ForecastItem,
     ForecastPrecipitationType,
     GridPoint,
@@ -13,9 +13,9 @@ from pykma import (
     label_for,
     unit_for,
 )
-from pykma.codes import normalize_value
-from pykma.enums import category_or_none, coerce_category, coerce_endpoint
-from pykma.time_utils import KST
+from kma.codes import normalize_value
+from kma.enums import category_or_none, coerce_category, coerce_endpoint
+from kma.time_utils import KST
 
 
 def test_public_enums_keep_kma_wire_values() -> None:

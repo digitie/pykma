@@ -5,7 +5,7 @@ description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python �
 
 # KMA Python 라이브러리 빌더
 
-`pykma`는 기상청 공공 날씨 API와 관련 도로 날씨 API를 위한 Python 클라이언트입니다. public 동작을 바꾸기 전 `README.md`, `kma-api.md`, `docs/api-coverage.md`, `docs/apihub.md`, `docs/apihub-endpoints.md`, `docs/datagokr.md`, `docs/expressway.md`, `AGENTS.md`를 확인합니다.
+`python-kma-api`는 기상청 공공 날씨 API와 관련 도로 날씨 API를 위한 Python 클라이언트이며 import package 이름은 `kma`입니다. public 동작을 바꾸기 전 `README.md`, `kma-api.md`, `docs/api-coverage.md`, `docs/apihub.md`, `docs/apihub-endpoints.md`, `docs/datagokr.md`, `docs/expressway.md`, `AGENTS.md`를 확인합니다.
 
 ## 프로젝트 불변조건
 
@@ -59,7 +59,7 @@ description: 기상청 공공 날씨 API와 관련 도로 날씨 API용 Python �
 ## 처음부터 구현할 때 필요한 산출물
 
 ```text
-pykma/
+src/kma/
 ├── __init__.py          # public client, model, exception, 좌표 helper export
 ├── client.py            # KmaClient 타입화 단기예보 client
 ├── datagokr.py          # DataGoKrClient data.go.kr 범용 client
@@ -160,7 +160,7 @@ hub.open_api("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "20260
 ### `ApiHubGeneratedClient`
 
 ```python
-from pykma import ApiHubGeneratedClient
+from kma import ApiHubGeneratedClient
 
 hub = ApiHubGeneratedClient.from_env()
 hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
@@ -170,7 +170,7 @@ hub.aws3_nph_awsm_tms_h06(use_sample=True)
 규칙:
 
 - 함수형 wrapper 목록은 `tools/update_apihub_endpoints.py`로 생성합니다.
-- 생성 결과는 `pykma/apihub_endpoints.py`와 `docs/apihub-endpoints.md`가 함께 바뀌어야 합니다.
+- 생성 결과는 `src/kma/apihub_endpoints.py`와 `docs/apihub-endpoints.md`가 함께 바뀌어야 합니다.
 - 포맷정보/예제/코드표 첨부 링크는 `APIHUB_ATTACHMENTS`에 metadata로 남깁니다.
 - 예제 URL의 `authKey`는 버리고 사용자의 `authKey`만 붙입니다.
 - 이름 없는 query string은 `request_query_parts()`를 통해 순서를 보존합니다.
@@ -339,7 +339,7 @@ KmaError
 
 ## HTTP 계층 규칙
 
-- session/retry 설정은 `pykma/_http.py` 한 곳에서 관리합니다.
+- session/retry 설정은 `src/kma/_http.py` 한 곳에서 관리합니다.
 - transient GET 실패(`429`, `500`, `502`, `503`, `504`)만 retry합니다.
 - 인증 실패를 retry하지 않습니다.
 - 인증키를 로그로 남기지 않습니다.
@@ -388,7 +388,7 @@ KmaError
 ## 문서 갱신 규칙
 
 - 사용자-facing API가 바뀌면 `README.md`를 갱신합니다.
-- 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
+- 파일 위치 정보는 `src/kma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
 - Python 내부 문서와 docstring은 한글로 작성합니다.
 - endpoint 세부 사항이나 KMA 동작이 바뀌면 `kma-api.md`를 갱신합니다.
 - APIHub 분류, 탐색 기능, 응답 형식 규칙이 바뀌면 `docs/apihub.md`를 갱신합니다.

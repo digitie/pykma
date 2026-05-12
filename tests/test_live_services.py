@@ -7,14 +7,14 @@ from pathlib import Path
 import pytest
 from pykrtour import Address
 
-from pykma import (
+from kma import (
     ApiHubClient,
     ApiHubGeneratedClient,
     ApiHubResponse,
     DataGoKrClient,
     ExpresswayRestAreaWeatherClient,
 )
-from pykma.time_utils import latest_ultra_srt_ncst_base
+from kma.time_utils import latest_ultra_srt_ncst_base
 
 pytestmark = pytest.mark.integration
 
@@ -33,7 +33,7 @@ def _load_local_env() -> None:
 
 _load_local_env()
 
-RUN_LIVE = os.getenv("PYKMA_RUN_LIVE") == "1"
+RUN_LIVE = os.getenv("KMA_RUN_LIVE") == "1"
 
 
 def _apihub_key() -> str | None:
@@ -67,7 +67,7 @@ def _assert_apihub_response_is_sanitized(response: ApiHubResponse) -> None:
     assert "authKey" not in response.metadata.request_params
 
 
-@pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(not _apihub_key(), reason="KMA_APIHUB_AUTH_KEY is not set")
 def test_live_apihub_forecast_region_endpoints_shape() -> None:
     client = ApiHubGeneratedClient(_apihub_key() or "", timeout=30, retries=1)
@@ -88,7 +88,7 @@ def test_live_apihub_forecast_region_endpoints_shape() -> None:
         assert "SERVICE_KEY" not in response.text.upper()
 
 
-@pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(not _apihub_key(), reason="KMA_APIHUB_AUTH_KEY is not set")
 def test_live_apihub_warning_impact_and_zone_endpoints_shape() -> None:
     generated = ApiHubGeneratedClient(_apihub_key() or "", timeout=30, retries=1)
@@ -126,7 +126,7 @@ def test_live_apihub_warning_impact_and_zone_endpoints_shape() -> None:
     assert int(body["totalCount"]) >= 1
 
 
-@pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(
     not _data_gokr_key(),
     reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set",
@@ -154,7 +154,7 @@ def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
     assert all(str(item.get("ny")) == "127" for item in items)
 
 
-@pytest.mark.skipif(not RUN_LIVE, reason="set PYKMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(not _expressway_key(), reason="EXPRESSWAY_API_KEY is not set")
 def test_live_expressway_rest_area_weather_shape() -> None:
     client = ExpresswayRestAreaWeatherClient(_expressway_key() or "", timeout=30, retries=1)

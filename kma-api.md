@@ -1,6 +1,6 @@
 # KMA 단기예보 API 명세
 
-> 이 문서는 `pykma` 구현자를 위한 API 레퍼런스입니다. 사용자용 빠른 설명은 `README.md`, 에이전트 구현 규칙은 `SKILL.md`를 보세요.
+> 이 문서는 `kma` 구현자를 위한 API 레퍼런스입니다. 사용자용 빠른 설명은 `README.md`, 에이전트 구현 규칙은 `SKILL.md`를 보세요.
 
 APIHub 전체 범위와 generic 호출 방식은 [docs/apihub.md](docs/apihub.md), APIHub 함수형 endpoint 목록은 [docs/apihub-endpoints.md](docs/apihub-endpoints.md), data.go.kr generic 호출 방식은 [docs/datagokr.md](docs/datagokr.md)를 함께 보세요.
 
@@ -22,7 +22,7 @@ APIHub 전체 범위와 generic 호출 방식은 [docs/apihub.md](docs/apihub.md
 
 공공데이터포털은 Encoding 키와 Decoding 키를 함께 보여줍니다.
 
-`pykma`의 기본 HTTP 호출은 다음 형태입니다.
+`kma`의 기본 HTTP 호출은 다음 형태입니다.
 
 ```python
 requests.get(url, params={"serviceKey": service_key, ...})
@@ -195,7 +195,7 @@ KMA 격자는 LCC DFS 좌표입니다.
 라이브러리 public API에서는 외부 프로그램이 좌표계를 섞지 않도록 다음 값 객체를 제공합니다.
 
 ```python
-from pykma import GridPoint, LatLon, normalize_location
+from kma import GridPoint, LatLon, normalize_location
 from pykrtour import PlaceCoordinate
 
 LatLon(37.5665, 126.9780).to_grid()  # GridPoint(nx=60, ny=127)
@@ -238,7 +238,7 @@ YO = 136
 코드 식별자는 외부 프로그램에서 문자열 오타를 줄일 수 있도록 public enum으로도 제공합니다.
 
 ```python
-from pykma import KmaEndpoint, WeatherCategory, label_for, unit_for
+from kma import KmaEndpoint, WeatherCategory, label_for, unit_for
 
 unit_for(WeatherCategory.TEMPERATURE)  # "C"
 label_for(WeatherCategory.SKY, "1")    # "맑음"

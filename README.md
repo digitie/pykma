@@ -1,8 +1,8 @@
-# pykma
+# python-kma-api
 
 Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관련 공공 날씨 API를 Python에서 편하게 쓰기 위한 공용 클라이언트 라이브러리입니다.
 
-`pykma`는 특정 앱의 adapter나 DB 스키마를 전제로 하지 않습니다. `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸고, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, provenance metadata, 예외 처리를 함께 제공합니다.
+`python-kma-api`는 `kma`라는 import package를 제공합니다. 특정 앱의 adapter나 DB 스키마를 전제로 하지 않고, `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸며, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, provenance metadata, 예외 처리를 함께 제공합니다.
 
 > 이 저장소는 라이브러리 구현과 유지보수를 위한 명세가 함께 들어 있는 초기 패키지입니다. 세부 API 규칙은 [kma-api.md](kma-api.md), 에이전트 구현 규칙은 [SKILL.md](SKILL.md), 작업 운영 규칙은 [AGENTS.md](AGENTS.md)를 참고하세요.
 
@@ -30,7 +30,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 
 ## 권장 Public API
 
-여러 프로젝트에서 직접 의존해도 되는 안정 API는 아래 항목입니다. 이 목록은 package-level `pykma.__all__`과 맞춰 관리합니다.
+여러 프로젝트에서 직접 의존해도 되는 안정 API는 아래 항목입니다. 이 목록은 package-level `kma.__all__`과 맞춰 관리합니다.
 
 | 분류 | 권장 API |
 |---|---|
@@ -45,7 +45,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 
 `ApiHubGeneratedClient`, `APIHUB_ENDPOINTS`, `APIHUB_ATTACHMENTS`도 public API입니다. 다만 공식 APIHub 목록을 생성한 산출물이므로 endpoint 수와 함수 이름은 upstream 목록 갱신에 따라 바뀔 수 있습니다.
 
-위 표에 없는 모듈별 parser/helper는 internal 또는 maintenance API로 보며 하위 호환을 보장하지 않습니다. 모듈 내부의 `_` prefix 함수와 상수, 그리고 `pykma.grid`의 LCC DFS 보정 상수(`RE`, `GRID`, `SLAT1`, `SLAT2`, `OLON`, `OLAT`, `XO`, `YO`)는 구현 세부사항입니다. 검증 근거 없이 바꾸지 않지만, 앱 코드는 이 값들에 직접 의존하지 않는 것을 권장합니다.
+위 표에 없는 모듈별 parser/helper는 internal 또는 maintenance API로 보며 하위 호환을 보장하지 않습니다. 모듈 내부의 `_` prefix 함수와 상수, 그리고 `kma.grid`의 LCC DFS 보정 상수(`RE`, `GRID`, `SLAT1`, `SLAT2`, `OLON`, `OLAT`, `XO`, `YO`)는 구현 세부사항입니다. 검증 근거 없이 바꾸지 않지만, 앱 코드는 이 값들에 직접 의존하지 않는 것을 권장합니다.
 
 ---
 
@@ -56,7 +56,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 1. [공공데이터포털](https://www.data.go.kr)에 가입하고 로그인합니다.
 2. `기상청_단기예보 ((구)_동네예보) 조회서비스` 또는 `VilageFcstInfoService_2.0`을 찾아 활용신청합니다.
 3. 마이페이지에서 승인된 인증키를 확인합니다.
-4. `pykma`는 `requests.get(..., params=...)`를 사용하므로 **Decoding 인증키**를 환경변수에 넣는 것을 권장합니다.
+4. `kma`는 `requests.get(..., params=...)`를 사용하므로 **Decoding 인증키**를 환경변수에 넣는 것을 권장합니다.
 
 ```bash
 export KMA_SERVICE_KEY="발급받은_decoding_인증키"
@@ -73,7 +73,7 @@ $env:KMA_SERVICE_KEY="발급받은_decoding_인증키"
 PyPI 배포 후:
 
 ```bash
-pip install pykma
+pip install python-kma-api
 ```
 
 개발 중인 로컬 저장소에서는:
@@ -85,7 +85,7 @@ pip install -e ".[dev]"
 ### 3단계: 사용
 
 ```python
-from pykma import KmaClient
+from kma import KmaClient
 
 kma = KmaClient.from_env()
 
@@ -106,7 +106,7 @@ items = kma.forecast(nx=60, ny=127)
 외부 프로그램에서는 위치를 명시적인 값 객체로 넘기는 방식을 권장합니다.
 
 ```python
-from pykma import GridPoint, LatLon
+from kma import GridPoint, LatLon
 from pykrtour import PlaceCoordinate
 
 snap = kma.now(location=LatLon(37.5665, 126.9780))
@@ -124,7 +124,7 @@ kma.now(location={"nx": 60, "ny": 127})
 좌표 변환만 사용할 수도 있습니다. 기존 tuple 기반 API는 하위 호환용으로 유지합니다.
 
 ```python
-from pykma import LatLon, to_grid, to_latlon
+from kma import LatLon, to_grid, to_latlon
 
 nx, ny = to_grid(37.5665, 126.9780)  # (60, 127)
 lat, lon = to_latlon(60, 127)
@@ -136,7 +136,7 @@ latlon = grid.to_latlon()
 앱의 API 저장 경계처럼 필드명이 `latitude`/`longitude`인 곳에서는 의미가 더 분명한 alias를 권장합니다.
 
 ```python
-from pykma import kma_grid_to_wgs84, wgs84_to_kma_grid
+from kma import kma_grid_to_wgs84, wgs84_to_kma_grid
 
 grid = wgs84_to_kma_grid(latitude=37.5665, longitude=126.9780)
 latlon = kma_grid_to_wgs84(nx=60, ny=127)
@@ -172,7 +172,7 @@ APIHub 공식 목록 기반 함수형 래퍼는 470개이며, 포맷정보/예�
 `data.go.kr`의 다른 KMA 서비스는 `DataGoKrClient`를 사용합니다.
 
 ```python
-from pykma import DataGoKrClient
+from kma import DataGoKrClient
 
 client = DataGoKrClient.from_env()
 items = client.items(
@@ -191,7 +191,7 @@ client = DataGoKrClient.from_env(service_key_param="ServiceKey")
 공공데이터포털 `기상청` 오픈 API 검색 전체 페이지에서 확인한 KMA 항목은 카탈로그로 확인할 수 있습니다. 제목이 `기상청`으로 시작하지 않는 검색 결과는 포함하지 않습니다. 카탈로그에는 KMA 항목 86개, 기존 data.go.kr `serviceKey` gateway operation 160개, APIHub LINK 항목 48개가 들어 있습니다.
 
 ```python
-from pykma import KMA_DATA_GOKR_DATASETS
+from kma import KMA_DATA_GOKR_DATASETS
 
 print(len(KMA_DATA_GOKR_DATASETS))  # 86
 spec = client.dataset("15059093")
@@ -208,7 +208,7 @@ rows = client.dataset_items(
 
 여러 operation을 가진 dataset은 `operation=`을 명시합니다. APIHub로 연결된 항목은 `gateway="apihub"`로 표시되며 `ApiHubClient` 또는 `ApiHubGeneratedClient`를 사용합니다.
 
-중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `pykma`는 임의 매핑을 추측하지 않습니다.
+중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다.
 
 ```python
 rows = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
@@ -255,7 +255,7 @@ for body in client.iter_pages(
 APIHub는 별도 인증키(`authKey`)를 사용합니다.
 
 ```python
-from pykma import ApiHubClient, ApiHubGeneratedClient
+from kma import ApiHubClient, ApiHubGeneratedClient
 
 hub = ApiHubClient.from_env()  # KMA_APIHUB_AUTH_KEY 또는 KMA_APIHUB_KEY
 response = hub.request_path(
@@ -276,7 +276,7 @@ rows = asos.text_table().rows
 한국도로공사 `data.ex.co.kr`의 휴게소별 날씨 정보도 사용할 수 있습니다. 이 API는 기상청 gateway가 아니므로 별도 인증키를 `EXPRESSWAY_API_KEY`에 둡니다.
 
 ```python
-from pykma import ExpresswayRestAreaWeatherClient
+from kma import ExpresswayRestAreaWeatherClient
 
 client = ExpresswayRestAreaWeatherClient.from_env()
 rows = client.latest_weather(lookback_hours=72)
@@ -390,7 +390,7 @@ class ForecastItem(BaseModel):
 ### `MidForecastItem`
 
 ```python
-from pykma import DataGoKrClient
+from kma import DataGoKrClient
 
 client = DataGoKrClient.from_env()
 items = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
@@ -428,7 +428,7 @@ class RestAreaWeather(BaseModel):
 ### 위치 타입
 
 ```python
-from pykma import GridPoint, LatLon, normalize_location
+from kma import GridPoint, LatLon, normalize_location
 from pykrtour import PlaceCoordinate
 
 seoul = LatLon(37.5665, 126.9780)
@@ -449,7 +449,7 @@ normalize_location({"nx": 60, "ny": 127})              # GridPoint(60, 127)
 ### Public enum
 
 ```python
-from pykma import KmaEndpoint, WeatherCategory, label_for, unit_for
+from kma import KmaEndpoint, WeatherCategory, label_for, unit_for
 
 WeatherCategory.TEMPERATURE == "TMP"  # True
 unit_for(WeatherCategory.TEMPERATURE)  # "C"
@@ -465,7 +465,7 @@ label_for(
 
 ## Python 타입 정책
 
-KMA API는 대부분의 값을 문자열로 반환합니다. `pykma`는 사용자에게 불필요한 캐스팅을 요구하지 않도록 모델 경계에서 변환합니다.
+KMA API는 대부분의 값을 문자열로 반환합니다. `kma`는 사용자에게 불필요한 캐스팅을 요구하지 않도록 모델 경계에서 변환합니다.
 
 | KMA 원본 | Python 타입 | 예시 |
 |---|---|---|
@@ -476,10 +476,10 @@ KMA API는 대부분의 값을 문자열로 반환합니다. `pykma`는 사용�
 | `PCP`, `SNO` 범주 | `str` | `"1.0mm 미만"` 보존 |
 | 빈 값 또는 파싱 불가 값 | `None` 또는 원문 | 모델별로 안전하게 처리 |
 
-강수량/적설량 범주를 대표값으로 바꾸고 싶을 때는 `pykma.codes.parse_amount()`를 사용할 수 있습니다.
+강수량/적설량 범주를 대표값으로 바꾸고 싶을 때는 `kma.codes.parse_amount()`를 사용할 수 있습니다.
 
 ```python
-from pykma.codes import parse_amount
+from kma.codes import parse_amount
 
 parse_amount("1.0mm 미만")   # 0.5
 parse_amount("30.0~50.0mm") # 40.0
@@ -490,7 +490,7 @@ parse_amount("강수없음")     # 0.0
 
 ## 발표시각 규칙
 
-KMA는 요청한 시각의 데이터를 즉시 제공하지 않습니다. `pykma`는 아래 규칙으로 가장 최근의 조회 가능한 발표시각을 자동 선택합니다.
+KMA는 요청한 시각의 데이터를 즉시 제공하지 않습니다. `kma`는 아래 규칙으로 가장 최근의 조회 가능한 발표시각을 자동 선택합니다.
 
 | endpoint | 발표 주기 | 조회 가능 기준 |
 |---|---|---|
@@ -537,7 +537,7 @@ KMA는 요청한 시각의 데이터를 즉시 제공하지 않습니다. `pykma
 
 ## 좌표계 처리
 
-KMA 단기예보 API의 `nx`, `ny`는 위도/경도가 아니라 LCC DFS 격자 좌표입니다. `pykma.grid`는 기상청 공식 변환식을 사용합니다.
+KMA 단기예보 API의 `nx`, `ny`는 위도/경도가 아니라 LCC DFS 격자 좌표입니다. `kma.grid`는 기상청 공식 변환식을 사용합니다.
 
 검증 기준:
 
@@ -588,7 +588,7 @@ except KmaError as exc:
 ## Pagination과 Cache Key
 
 ```python
-from pykma import has_next_page, make_cache_key, next_page_no
+from kma import has_next_page, make_cache_key, next_page_no
 
 body = client.request("MidFcstInfoService", "getMidLandFcst", {...})
 if has_next_page(body):
@@ -607,9 +607,9 @@ key = make_cache_key(
 ## 명령줄 사용
 
 ```bash
-pykma now --lat 37.5665 --lon 126.9780
-pykma forecast --lat 37.5665 --lon 126.9780
-pykma forecast --short --nx 60 --ny 127
+kma now --lat 37.5665 --lon 126.9780
+kma forecast --lat 37.5665 --lon 126.9780
+kma forecast --short --nx 60 --ny 127
 ```
 
 출력은 기본적으로 JSON입니다.
@@ -619,13 +619,13 @@ pykma forecast --short --nx 60 --ny 127
 ## 개발
 
 ```bash
-git clone https://github.com/digitie/pykma.git
-cd pykma
+git clone https://github.com/digitie/python-kma-api.git
+cd python-kma-api
 python -m venv .venv
 pip install -e ".[dev]"
 python -m pytest
 ruff check .
-mypy pykma
+mypy src/kma
 ```
 
 기본 테스트는 실제 API를 호출하지 않아야 합니다. 실제 KMA 호출 테스트를 추가할 경우 `KMA_SERVICE_KEY`가 있을 때만 실행되도록 별도 marker를 사용하세요.
@@ -636,10 +636,10 @@ mypy pykma
 
 ## 프로젝트 파일
 
-이 문서와 프로젝트 문서의 파일 위치는 모두 프로젝트 루트 기준 상대 경로로 적습니다. 예를 들어 `pykma/client.py`, `docs/testing.md`처럼 쓰고, 작업자 로컬 절대 경로는 문서에 남기지 않습니다. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
+이 문서와 프로젝트 문서의 파일 위치는 모두 프로젝트 루트 기준 상대 경로로 적습니다. 예를 들어 `src/kma/client.py`, `docs/testing.md`처럼 쓰고, 작업자 로컬 절대 경로는 문서에 남기지 않습니다. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
 
 ```text
-pykma/
+src/kma/
 ├── __init__.py
 ├── _http.py
 ├── apihub.py
@@ -713,7 +713,7 @@ tests/
 
 GPL-3.0-or-later. 자세한 내용은 [LICENSE](LICENSE)를 참고하세요.
 
-KMA 원천 데이터의 저작권과 이용조건은 기상청 및 공공데이터포털 정책을 따릅니다. `pykma`는 데이터를 저장하거나 재배포하지 않고 API 응답을 사용자가 다루기 쉬운 형태로 변환합니다.
+KMA 원천 데이터의 저작권과 이용조건은 기상청 및 공공데이터포털 정책을 따릅니다. `kma`는 데이터를 저장하거나 재배포하지 않고 API 응답을 사용자가 다루기 쉬운 형태로 변환합니다.
 
 ---
 

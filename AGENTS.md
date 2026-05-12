@@ -2,7 +2,7 @@
 
 ## 역할
 
-이 문서는 `pykma`에서 작업하는 에이전트를 위한 운영 가이드입니다. 빠르게 방향을 잡는 문서이며, 세부 구현 규칙은 `SKILL.md`, API 세부 내용은 `kma-api.md`와 `docs/` 아래 문서를 함께 확인합니다.
+이 문서는 `python-kma-api` 저장소에서 작업하는 에이전트를 위한 운영 가이드입니다. import package는 `kma`이며, 세부 구현 규칙은 `SKILL.md`, API 세부 내용은 `kma-api.md`와 `docs/` 아래 문서를 함께 확인합니다.
 
 ## 지시 우선순위
 
@@ -18,7 +18,7 @@
 
 ## 프로젝트 기준
 
-- `pykma`는 기상청 공공 날씨 API용 Python 클라이언트입니다.
+- `python-kma-api`는 기상청 공공 날씨 API용 Python 클라이언트이며 import package 이름은 `kma`입니다.
 - 타입화된 클라이언트의 1차 대상은 `VilageFcstInfoService_2.0`입니다.
 - 안정적으로 모델링한 endpoint는 초단기실황, 초단기예보, 단기예보, 예보버전입니다.
 - data.go.kr의 다른 KMA REST 서비스는 `DataGoKrClient`로 범용 호출합니다.
@@ -49,21 +49,21 @@
 
 ## 모듈 지도
 
-- `pykma/client.py`: `KmaClient`, 타입화된 단기예보 endpoint, 응답 파싱.
-- `pykma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
-- `pykma/datagokr_catalog.py`: 공공데이터포털 기상청 OpenAPI dataset catalog.
-- `pykma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
-- `pykma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
-- `pykma/expressway.py`: 한국도로공사 휴게소별 날씨 API 클라이언트.
-- `pykma/enums.py`: endpoint, category, SKY/PTY public enum.
-- `pykma/locations.py`: `LatLon`, `GridPoint`, `normalize_location()` 위치 표준화.
-- `pykma/_http.py`: session 생성과 retry 설정.
-- `pykma/grid.py`: LCC DFS 격자 변환.
-- `pykma/time_utils.py`: KST 기준 base date/time 계산.
-- `pykma/codes.py`: category map, 라벨, 단위 힌트, 강수량 문자열 파싱.
-- `pykma/models.py`: 사용자에게 반환하는 frozen Pydantic 모델.
-- `pykma/exceptions.py`: 예외 계층.
-- `pykma/cli.py`: JSON CLI와 APIHub path 호출.
+- `src/kma/client.py`: `KmaClient`, 타입화된 단기예보 endpoint, 응답 파싱.
+- `src/kma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
+- `src/kma/datagokr_catalog.py`: 공공데이터포털 기상청 OpenAPI dataset catalog.
+- `src/kma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
+- `src/kma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
+- `src/kma/expressway.py`: 한국도로공사 휴게소별 날씨 API 클라이언트.
+- `src/kma/enums.py`: endpoint, category, SKY/PTY public enum.
+- `src/kma/locations.py`: `LatLon`, `GridPoint`, `normalize_location()` 위치 표준화.
+- `src/kma/_http.py`: session 생성과 retry 설정.
+- `src/kma/grid.py`: LCC DFS 격자 변환.
+- `src/kma/time_utils.py`: KST 기준 base date/time 계산.
+- `src/kma/codes.py`: category map, 라벨, 단위 힌트, 강수량 문자열 파싱.
+- `src/kma/models.py`: 사용자에게 반환하는 frozen Pydantic 모델.
+- `src/kma/exceptions.py`: 예외 계층.
+- `src/kma/cli.py`: JSON CLI와 APIHub path 호출.
 - `tests/`: 네트워크 없는 단위 테스트.
 
 ## 반드시 지킬 것
@@ -90,8 +90,8 @@
 
 담당 파일:
 
-- `pykma/client.py`
-- `pykma/_http.py`
+- `src/kma/client.py`
+- `src/kma/_http.py`
 
 확인할 것:
 
@@ -105,7 +105,7 @@
 
 담당 파일:
 
-- `pykma/datagokr.py`
+- `src/kma/datagokr.py`
 - `docs/datagokr.md`
 
 확인할 것:
@@ -119,8 +119,8 @@
 
 담당 파일:
 
-- `pykma/apihub.py`
-- `pykma/apihub_endpoints.py`
+- `src/kma/apihub.py`
+- `src/kma/apihub_endpoints.py`
 - `docs/apihub.md`
 - `docs/apihub-endpoints.md`
 - `tools/update_apihub_endpoints.py`
@@ -139,7 +139,7 @@
 
 담당 파일:
 
-- `pykma/expressway.py`
+- `src/kma/expressway.py`
 - `docs/expressway.md`
 - `tests/test_expressway.py`
 
@@ -150,13 +150,13 @@
 - 요청 파라미터는 `type=json`, `sdate=YYYYMMDD`, `stdHour=HH`입니다.
 - `code != SUCCESS`는 typed exception입니다.
 - `-99` 계열 결측값은 모델 필드에서 `None`으로 정규화하고 원문은 `raw`에 보존합니다.
-- 실서버 테스트는 `PYKMA_RUN_LIVE=1`과 `EXPRESSWAY_API_KEY`가 있을 때만 실행합니다.
+- 실서버 테스트는 `KMA_RUN_LIVE=1`과 `EXPRESSWAY_API_KEY`가 있을 때만 실행합니다.
 
 ### 시간 계산
 
 담당 파일:
 
-- `pykma/time_utils.py`
+- `src/kma/time_utils.py`
 
 확인할 것:
 
@@ -169,8 +169,8 @@
 
 담당 파일:
 
-- `pykma/grid.py`
-- `pykma/locations.py`
+- `src/kma/grid.py`
+- `src/kma/locations.py`
 
 확인할 것:
 
@@ -184,8 +184,8 @@
 
 담당 파일:
 
-- `pykma/codes.py`
-- `pykma/enums.py`
+- `src/kma/codes.py`
+- `src/kma/enums.py`
 
 확인할 것:
 
@@ -204,7 +204,7 @@
 확인할 것:
 
 - 프로젝트 문서는 한글로 작성합니다.
-- 파일 위치 정보는 `pykma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
+- 파일 위치 정보는 `src/kma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
 - Python 내부 문서와 docstring은 한글로 작성합니다.
 - 코드 식별자, 명령어, URL은 원문을 유지합니다.
 - 사용자 예제는 실제 public API와 일치해야 합니다.
@@ -215,7 +215,7 @@
 기본 검증:
 
 ```bash
-python -m compileall pykma tests
+python -m compileall src/kma tests
 python -m pytest
 ```
 
@@ -223,7 +223,7 @@ python -m pytest
 
 ```bash
 ruff check .
-mypy pykma
+mypy src/kma
 ```
 
 실제 API 테스트를 추가할 경우 opt-in으로 둡니다.

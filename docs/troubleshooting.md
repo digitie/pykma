@@ -63,7 +63,7 @@ except KmaError as exc:
 - Python UTF-8 읽기나 테스트로 확인합니다.
 
 ```bash
-python -c "from pykma.codes import label_for; print(repr(label_for('SKY', '1')))"
+python -c "from kma.codes import label_for; print(repr(label_for('SKY', '1')))"
 ```
 
 기대값:
@@ -84,7 +84,7 @@ python -c "from pykma.codes import label_for; print(repr(label_for('SKY', '1')))
 - 대표 숫자가 필요할 때만 `parse_amount()`를 사용합니다.
 
 ```python
-from pykma.codes import parse_amount
+from kma.codes import parse_amount
 
 parse_amount("1.0mm 미만")    # 0.5
 parse_amount("30.0~50.0mm")  # 40.0
@@ -106,8 +106,8 @@ parse_amount("30.0~50.0mm")  # 40.0
 예:
 
 ```bash
-pykma now --lat 37.5665
-pykma now --nx 60
+kma now --lat 37.5665
+kma now --nx 60
 ```
 
 해결:
@@ -115,20 +115,20 @@ pykma now --nx 60
 좌표는 쌍으로 입력합니다.
 
 ```bash
-pykma now --lat 37.5665 --lon 126.9780
-pykma now --nx 60 --ny 127
+kma now --lat 37.5665 --lon 126.9780
+kma now --nx 60 --ny 127
 ```
 
 좌표계를 섞지 않습니다.
 
 ```bash
-pykma now --lat 37.5665 --lon 126.9780 --nx 60 --ny 127
+kma now --lat 37.5665 --lon 126.9780 --nx 60 --ny 127
 ```
 
 Python 코드에서는 좌표계를 명확히 하기 위해 값 객체를 사용할 수 있습니다.
 
 ```python
-from pykma import GridPoint, LatLon
+from kma import GridPoint, LatLon
 
 kma.now(location=LatLon(37.5665, 126.9780))
 kma.now(location=GridPoint(60, 127))
@@ -137,14 +137,14 @@ kma.now(location=GridPoint(60, 127))
 앱 저장 경계에서 `latitude`/`longitude` 이름을 쓴다면 명시적 alias를 사용할 수 있습니다.
 
 ```python
-from pykma import wgs84_to_kma_grid
+from kma import wgs84_to_kma_grid
 
 grid = wgs84_to_kma_grid(latitude=37.5665, longitude=126.9780)
 ```
 
 ## import는 되지만 네트워크 호출에서 `requests`가 없다고 나옴
 
-`pykma`는 최소 환경에서도 좌표 helper를 import할 수 있게 해두었지만, `KmaClient` 네트워크 호출에는 `requests`가 필요합니다.
+`kma`는 최소 환경에서도 좌표 helper를 import할 수 있게 해두었지만, `KmaClient` 네트워크 호출에는 `requests`가 필요합니다.
 
 해결:
 
@@ -184,7 +184,7 @@ pip install requests
 - 순서형 값은 `arg1`, `arg2`로 넘깁니다.
 
 ```python
-from pykma import ApiHubGeneratedClient
+from kma import ApiHubGeneratedClient
 
 hub = ApiHubGeneratedClient.from_env()
 response = hub.aws3_nph_awsm_tms_h06(use_sample=True)
@@ -198,7 +198,7 @@ response = hub.aws3_nph_awsm_tms_h06(use_sample=True)
 - 코드에서는 `APIHUB_ENDPOINTS`를 검색할 수 있습니다.
 
 ```python
-from pykma import APIHUB_ENDPOINTS
+from kma import APIHUB_ENDPOINTS
 
 for endpoint in APIHUB_ENDPOINTS:
     if "wrn" in endpoint.path:
@@ -227,7 +227,7 @@ payload = snapshot.model_dump(mode="json")
 
 ## 중기예보 `reg_id`를 단기예보 좌표로 바꾸고 싶음
 
-`reg_id`는 중기예보 권역 코드이고 `nx`/`ny`는 단기예보 KMA DFS 격자입니다. 서로 다른 체계이므로 `pykma`는 임의 매핑을 제공하지 않습니다.
+`reg_id`는 중기예보 권역 코드이고 `nx`/`ny`는 단기예보 KMA DFS 격자입니다. 서로 다른 체계이므로 `kma`는 임의 매핑을 제공하지 않습니다.
 
 해결:
 
@@ -251,9 +251,9 @@ payload = snapshot.model_dump(mode="json")
 로컬 실서버 테스트는 다음처럼 명시적으로만 실행합니다.
 
 ```powershell
-$env:PYKMA_RUN_LIVE="1"
+$env:KMA_RUN_LIVE="1"
 python -m pytest -m integration
-Remove-Item Env:\PYKMA_RUN_LIVE
+Remove-Item Env:\KMA_RUN_LIVE
 ```
 
 ## 휴게소별 날씨가 빈 목록을 반환함
@@ -268,7 +268,7 @@ Remove-Item Env:\PYKMA_RUN_LIVE
 
 - `latest_weather(lookback_hours=72)`를 사용해 최근 비어 있지 않은 시간대를 찾습니다.
 - 특정 시각을 조회할 때는 `sdate="YYYYMMDD"`, `std_hour=0~23` 형식을 지킵니다.
-- 실서버 테스트는 `EXPRESSWAY_API_KEY`를 `.env.local`에 두고 `PYKMA_RUN_LIVE=1`로만 실행합니다.
+- 실서버 테스트는 `EXPRESSWAY_API_KEY`를 `.env.local`에 두고 `KMA_RUN_LIVE=1`로만 실행합니다.
 
 ## 휴게소별 날씨에 `-99` 같은 값이 보임
 

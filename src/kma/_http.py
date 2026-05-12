@@ -12,7 +12,7 @@ def build_session(retries: int = 3) -> Any:
         from urllib3.util.retry import Retry
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "requests is required for KmaClient network calls. Install pykma with its "
+            "requests is required for KmaClient network calls. Install python-kma-api with its "
             "project dependencies or pass a compatible custom session."
         ) from exc
 

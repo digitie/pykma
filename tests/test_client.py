@@ -5,11 +5,11 @@ from typing import Any, Callable, TypeVar
 
 from pykrtour import PlaceCoordinate
 
-from pykma.client import KmaClient
-from pykma.enums import WeatherCategory
-from pykma.exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
-from pykma.locations import GridPoint, LatLon
-from pykma.time_utils import KST
+from kma.client import KmaClient
+from kma.enums import WeatherCategory
+from kma.exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
+from kma.locations import GridPoint, LatLon
+from kma.time_utils import KST
 
 T = TypeVar("T", bound=BaseException)
 

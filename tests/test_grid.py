@@ -1,7 +1,7 @@
 from typing import Callable
 
-from pykma import GridPoint, LatLon
-from pykma.grid import kma_grid_to_wgs84, to_grid, to_latlon, wgs84_to_kma_grid
+from kma import GridPoint, LatLon
+from kma.grid import kma_grid_to_wgs84, to_grid, to_latlon, wgs84_to_kma_grid
 
 
 def assert_raises(exc_type: type[BaseException], func: Callable[[], object]) -> None:

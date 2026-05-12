@@ -1,6 +1,6 @@
 # 테스트 가이드
 
-`pykma` 테스트는 실제 날씨값에 의존하지 않고 KMA 특유의 실수를 잡도록 설계합니다.
+`kma` 테스트는 실제 날씨값에 의존하지 않고 KMA 특유의 실수를 잡도록 설계합니다.
 
 ## 기본 테스트
 
@@ -25,7 +25,7 @@ python -m pytest
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.
 - `tests/test_apihub_generator.py`: APIHub 보조 metadata 페이지가 실패해도 생성기가 본문 endpoint 수집을 유지하는지 검증.
-- `tests/test_live_services.py`: `.env.local` 인증키와 `PYKMA_RUN_LIVE=1`이 있을 때만 실행되는 APIHub/data.go.kr 실서버 smoke test.
+- `tests/test_live_services.py`: `.env.local` 인증키와 `KMA_RUN_LIVE=1`이 있을 때만 실행되는 APIHub/data.go.kr 실서버 smoke test.
 - `tests/test_codes.py`: `SKY`/`PTY` 라벨, `PCP`/`SNO` 보존, `parse_amount()`.
 - `tests/test_enums.py`: public enum wire value, enum-aware code helper, 모델의 enum/category helper.
 - `tests/test_grid.py`: 알려진 격자 변환점과 좌표 범위.
@@ -44,13 +44,13 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
-@pytest.mark.skipif(os.getenv("PYKMA_RUN_LIVE") != "1", reason="set PYKMA_RUN_LIVE=1")
+@pytest.mark.skipif(os.getenv("KMA_RUN_LIVE") != "1", reason="set KMA_RUN_LIVE=1")
 @pytest.mark.skipif(not os.getenv("KMA_SERVICE_KEY"), reason="KMA_SERVICE_KEY is not set")
 def test_live_now_shape():
     ...
 ```
 
-실제 API 테스트는 `PYKMA_RUN_LIVE=1`과 해당 인증키가 모두 있을 때만 실행합니다. 정확한 날씨값이 아니라 구조와 타입을 검증합니다.
+실제 API 테스트는 `KMA_RUN_LIVE=1`과 해당 인증키가 모두 있을 때만 실행합니다. 정확한 날씨값이 아니라 구조와 타입을 검증합니다.
 
 좋은 검증:
 
@@ -71,22 +71,22 @@ def test_live_now_shape():
 data.go.kr Decoding 키가 있을 때:
 
 ```bash
-KMA_SERVICE_KEY=<decoded key> pykma now --nx 60 --ny 127
-KMA_SERVICE_KEY=<decoded key> pykma forecast --lat 37.5665 --lon 126.9780
+KMA_SERVICE_KEY=<decoded key> kma now --nx 60 --ny 127
+KMA_SERVICE_KEY=<decoded key> kma forecast --lat 37.5665 --lon 126.9780
 ```
 
 PowerShell:
 
 ```powershell
 $env:KMA_SERVICE_KEY="<decoded key>"
-pykma now --nx 60 --ny 127
+kma now --nx 60 --ny 127
 ```
 
 APIHub 키가 있을 때:
 
 ```powershell
 $env:KMA_APIHUB_AUTH_KEY="<APIHub authKey>"
-pykma apihub /api/typ01/url/wrn_reg.php --param tmfc=0
+kma apihub /api/typ01/url/wrn_reg.php --param tmfc=0
 ```
 
 로컬에서만 쓰는 인증키는 `.env.local`에 둘 수 있습니다. 이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다.
@@ -98,15 +98,15 @@ DATA_GOKR_SERVICE_KEY=<data.go.kr decoded service key>
 EXPRESSWAY_API_KEY=<한국도로공사 API key>
 ```
 
-실제 서버 integration 테스트는 의도치 않은 네트워크 호출을 막기 위해 marker와 `PYKMA_RUN_LIVE=1`을 함께 요구합니다.
+실제 서버 integration 테스트는 의도치 않은 네트워크 호출을 막기 위해 marker와 `KMA_RUN_LIVE=1`을 함께 요구합니다.
 
 ```powershell
-$env:PYKMA_RUN_LIVE="1"
+$env:KMA_RUN_LIVE="1"
 python -m pytest -m integration
-Remove-Item Env:\PYKMA_RUN_LIVE
+Remove-Item Env:\KMA_RUN_LIVE
 ```
 
-`PYKMA_RUN_LIVE`가 없으면 integration 테스트도 실제 서버를 호출하지 않고 skip됩니다. 기본 테스트에서 integration 테스트 자체를 제외하려면:
+`KMA_RUN_LIVE`가 없으면 integration 테스트도 실제 서버를 호출하지 않고 skip됩니다. 기본 테스트에서 integration 테스트 자체를 제외하려면:
 
 ```bash
 python -m pytest -m "not integration"
@@ -115,7 +115,7 @@ python -m pytest -m "not integration"
 함수형 래퍼를 직접 smoke test할 때:
 
 ```python
-from pykma import ApiHubGeneratedClient
+from kma import ApiHubGeneratedClient
 
 hub = ApiHubGeneratedClient.from_env()
 response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")
@@ -135,6 +135,6 @@ print(response.text[:200])
 APIHub endpoint 목록을 갱신할 때:
 
 1. `python -X utf8 tools/update_apihub_endpoints.py`를 실행합니다.
-2. `pykma/apihub_endpoints.py`와 `docs/apihub-endpoints.md`가 함께 바뀌었는지 확인합니다.
+2. `src/kma/apihub_endpoints.py`와 `docs/apihub-endpoints.md`가 함께 바뀌었는지 확인합니다.
 3. `python -m pytest tests/test_apihub.py tests/test_apihub_endpoints.py`를 실행합니다.
 4. endpoint 개수가 바뀌면 `docs/api-coverage.md`와 `docs/apihub.md`의 숫자를 맞춥니다.

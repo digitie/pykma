@@ -381,7 +381,7 @@ class DataGoKrClient:
         """기상청 중기예보 `reg_id`로 `getMidLandFcst`를 호출합니다.
 
         `reg_id`는 단기예보 `nx`/`ny` 격자 좌표가 아닙니다.
-        `pykma`는 두 식별자 사이의 mapping을 추정하거나 유지하지 않습니다.
+        `kma`는 두 식별자 사이의 mapping을 추정하거나 유지하지 않습니다.
         """
 
         return self._mid_items(

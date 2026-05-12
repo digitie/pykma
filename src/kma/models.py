@@ -14,13 +14,13 @@ from .locations import GridPoint, LatLon
 from .metadata import ResponseMetadata
 
 
-class PykmaModel(BaseModel):
-    """불변 공개 `pykma` 응답 모델의 기본 클래스."""
+class kmaModel(BaseModel):
+    """불변 공개 `kma` 응답 모델의 기본 클래스."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-class WeatherSnapshot(PykmaModel):
+class WeatherSnapshot(kmaModel):
     observed_at: datetime
     nx: int
     ny: int
@@ -53,7 +53,7 @@ class WeatherSnapshot(PykmaModel):
         return self.grid.to_latlon()
 
 
-class ForecastItem(PykmaModel):
+class ForecastItem(kmaModel):
     base_at: datetime
     forecast_at: datetime
     nx: int
@@ -100,7 +100,7 @@ class ForecastItem(PykmaModel):
         return self.grid.to_latlon()
 
 
-class DataGoKrItem(PykmaModel):
+class DataGoKrItem(kmaModel):
     """endpoint별 전용 모델이 없는 data.go.kr row용 범용 타입 wrapper."""
 
     service: str
@@ -109,7 +109,7 @@ class DataGoKrItem(PykmaModel):
     metadata: ResponseMetadata | None = None
 
 
-class BeachForecastItem(PykmaModel):
+class BeachForecastItem(kmaModel):
     """`BeachInfoservice` 해수욕장 예보 endpoint의 예보 row."""
 
     operation: str
@@ -168,7 +168,7 @@ class BeachForecastItem(PykmaModel):
         return grid.to_latlon()
 
 
-class BeachWaveHeight(PykmaModel):
+class BeachWaveHeight(kmaModel):
     """`getWhBuoyBeach`의 파고 관측 row."""
 
     observed_at: datetime
@@ -178,7 +178,7 @@ class BeachWaveHeight(PykmaModel):
     metadata: ResponseMetadata | None = None
 
 
-class BeachWaterTemperature(PykmaModel):
+class BeachWaterTemperature(kmaModel):
     """`getTwBuoyBeach`의 수온 관측 row."""
 
     observed_at: datetime
@@ -188,7 +188,7 @@ class BeachWaterTemperature(PykmaModel):
     metadata: ResponseMetadata | None = None
 
 
-class BeachTideItem(PykmaModel):
+class BeachTideItem(kmaModel):
     """`getTideInfoBeach`의 조석 row."""
 
     base_date: str
@@ -201,7 +201,7 @@ class BeachTideItem(PykmaModel):
     metadata: ResponseMetadata | None = None
 
 
-class BeachSunTime(PykmaModel):
+class BeachSunTime(kmaModel):
     """`getSunInfoBeach`의 일출/일몰 row."""
 
     base_date: str
@@ -212,7 +212,7 @@ class BeachSunTime(PykmaModel):
     metadata: ResponseMetadata | None = None
 
 
-class RestAreaWeather(PykmaModel):
+class RestAreaWeather(kmaModel):
     observed_at: datetime
     sdate: str
     std_hour: str
@@ -255,11 +255,11 @@ class RestAreaWeather(PykmaModel):
         return LatLon(self.latitude, self.longitude)
 
 
-class MidForecastItem(PykmaModel):
+class MidForecastItem(kmaModel):
     """기상청 `MidFcstInfoService` 응답용 타입화 row wrapper.
 
     `reg_id`는 기상청 중기예보 구역 식별자입니다. 단기예보 `nx`/`ny`
-    DFS 격자 좌표와 서로 바꿔 쓸 수 없으며, `pykma`는 두 좌표계 사이의
+    DFS 격자 좌표와 서로 바꿔 쓸 수 없으며, `kma`는 두 좌표계 사이의
     mapping을 추정하지 않습니다.
     """
 

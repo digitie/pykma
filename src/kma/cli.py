@@ -1,4 +1,4 @@
-"""`pykma` 명령행 진입점."""
+"""`kma` 명령행 진입점."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from .client import KmaClient
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="pykma")
+    parser = argparse.ArgumentParser(prog="kma")
     parser.add_argument(
         "--service-key",
         help="KMA decoded service key. Defaults to KMA_SERVICE_KEY.",

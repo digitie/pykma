@@ -1,6 +1,6 @@
 # API 구현 범위
 
-이 문서는 현재 `pykma`가 구현한 API 개수를 명확히 세기 위한 기준입니다.
+이 문서는 현재 `kma`가 구현한 API 개수를 명확히 세기 위한 기준입니다.
 
 ## 요약
 
@@ -107,12 +107,12 @@ hub.request_path("/api/typ01/url/wrn_reg.php", {"tmfc": "0"})
 hub.open_api("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202605010600"})
 ```
 
-APIHub는 텍스트, JSON, XML, 이미지, 바이너리 파일 응답이 섞여 있습니다. `pykma`는 endpoint별 반환 스키마를 모두 Pydantic 모델로 고정하지는 않지만, 공식 목록에서 확인한 endpoint를 `ApiHubGeneratedClient`의 함수형 메서드로 제공합니다.
+APIHub는 텍스트, JSON, XML, 이미지, 바이너리 파일 응답이 섞여 있습니다. `kma`는 endpoint별 반환 스키마를 모두 Pydantic 모델로 고정하지는 않지만, 공식 목록에서 확인한 endpoint를 `ApiHubGeneratedClient`의 함수형 메서드로 제공합니다.
 
 예:
 
 ```python
-from pykma import ApiHubGeneratedClient
+from kma import ApiHubGeneratedClient
 
 hub = ApiHubGeneratedClient.from_env()
 response = hub.kma_sfctm2(tm="202605010900", stn="108", help="1")

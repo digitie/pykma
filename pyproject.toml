@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pykma"
+name = "python-kma-api"
 version = "0.1.0"
 description = "Python helper library for the Korea Meteorological Administration public weather APIs."
 readme = "README.md"
@@ -40,10 +40,14 @@ dev = [
 ]
 
 [project.scripts]
-pykma = "pykma.cli:main"
+kma = "kma.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["pykma*"]
+where = ["src"]
+include = ["kma*"]
+
+[tool.setuptools.package-data]
+kma = ["py.typed"]
 
 [tool.ruff]
 line-length = 100
@@ -59,6 +63,7 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 markers = [
   "integration: tests that call real KMA/APIHub servers and require local API keys",
 ]

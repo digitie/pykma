@@ -5,9 +5,9 @@ from typing import Any, Callable
 
 from pykrtour import Address, PlaceCoordinate
 
-from pykma import ExpresswayRestAreaWeatherClient, RestAreaWeather
-from pykma.exceptions import KmaAuthError, KmaParseError
-from pykma.time_utils import KST
+from kma import ExpresswayRestAreaWeatherClient, RestAreaWeather
+from kma.exceptions import KmaAuthError, KmaParseError
+from kma.time_utils import KST
 
 
 class FakeResponse:

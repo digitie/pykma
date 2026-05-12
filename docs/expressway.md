@@ -1,6 +1,6 @@
 # 한국도로공사 휴게소별 날씨
 
-`pykma`는 한국도로공사의 “휴게소별 날씨 정보” LINK API도 호출할 수 있습니다. 이 API는 기상청 APIHub나 data.go.kr `1360000` gateway가 아니라 한국도로공사 `data.ex.co.kr` gateway를 사용합니다.
+`kma`는 한국도로공사의 “휴게소별 날씨 정보” LINK API도 호출할 수 있습니다. 이 API는 기상청 APIHub나 data.go.kr `1360000` gateway가 아니라 한국도로공사 `data.ex.co.kr` gateway를 사용합니다.
 
 공식 정보:
 
@@ -21,7 +21,7 @@ EXPRESSWAY_API_KEY=<한국도로공사 API key>
 코드에서는 다음처럼 읽습니다.
 
 ```python
-from pykma import ExpresswayRestAreaWeatherClient
+from kma import ExpresswayRestAreaWeatherClient
 
 client = ExpresswayRestAreaWeatherClient.from_env()
 ```
@@ -33,7 +33,7 @@ client = ExpresswayRestAreaWeatherClient.from_env()
 특정 날짜와 시간대의 휴게소별 날씨를 조회합니다.
 
 ```python
-from pykma import ExpresswayRestAreaWeatherClient
+from kma import ExpresswayRestAreaWeatherClient
 
 client = ExpresswayRestAreaWeatherClient.from_env()
 rows = client.weather(sdate="20210507", std_hour=12)
@@ -81,7 +81,7 @@ rows = client.latest_weather(lookback_hours=72)
 | `raw` | 원본 row |
 | `metadata` | 인증키가 제거된 provider/request metadata |
 
-한국도로공사 API는 결측값을 `-99`, `-99.0`, `-99.000000` 같은 숫자로 내려보내는 경우가 있습니다. `pykma`는 이런 sentinel 값을 모델 필드에서 `None`으로 정규화하고, 원문은 `raw`에 보존합니다.
+한국도로공사 API는 결측값을 `-99`, `-99.0`, `-99.000000` 같은 숫자로 내려보내는 경우가 있습니다. `kma`는 이런 sentinel 값을 모델 필드에서 `None`으로 정규화하고, 원문은 `raw`에 보존합니다.
 
 좌표 원문도 `raw["xValue"]`, `raw["yValue"]`에 그대로 남습니다. 모델의 `coordinate`, `longitude`, `latitude`는 유효한 WGS84 숫자일 때만 채워지고, `-99` 계열 결측값이면 `None`입니다. 장소/POI 저장 경계에서는 `coordinate`의 `pykrtour.PlaceCoordinate`와 `address`의 `pykrtour.Address`를 바로 사용할 수 있습니다.
 
@@ -90,9 +90,9 @@ rows = client.latest_weather(lookback_hours=72)
 실제 서버 테스트는 기본 테스트에서 실행되지 않습니다.
 
 ```powershell
-$env:PYKMA_RUN_LIVE="1"
+$env:KMA_RUN_LIVE="1"
 python -m pytest tests/test_live_services.py::test_live_expressway_rest_area_weather_shape
-Remove-Item Env:\PYKMA_RUN_LIVE
+Remove-Item Env:\KMA_RUN_LIVE
 ```
 
 테스트는 `.env.local`의 `EXPRESSWAY_API_KEY`를 읽고, 최근 72시간 안에서 비어 있지 않은 시간대를 찾아 응답 구조를 검증합니다.

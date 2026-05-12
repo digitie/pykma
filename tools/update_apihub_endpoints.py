@@ -1,6 +1,6 @@
 """APIHub endpoint wrapper 생성기.
 
-이 스크립트는 공개 APIHub 목록 페이지를 읽어 `pykma/apihub_endpoints.py`를
+이 스크립트는 공개 APIHub 목록 페이지를 읽어 `src/kma/apihub_endpoints.py`를
 작성합니다. 개별 데이터 endpoint를 호출하지 않으며 실제 `authKey`가 필요하지
 않습니다.
 """
@@ -25,7 +25,7 @@ import requests
 
 BASE_URL = "https://apihub.kma.go.kr"
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "pykma" / "apihub_endpoints.py"
+OUTPUT = ROOT / "src" / "kma" / "apihub_endpoints.py"
 DOC_OUTPUT = ROOT / "docs" / "apihub-endpoints.md"
 CATEGORY_IDS = (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15)
 CATEGORY_NAMES = {
@@ -603,7 +603,7 @@ def render_docs(endpoints: list[Endpoint], attachments: list[Attachment]) -> str
         "## 사용법",
         "",
         "```python",
-        "from pykma import ApiHubGeneratedClient",
+        "from kma import ApiHubGeneratedClient",
         "",
         "hub = ApiHubGeneratedClient.from_env()",
         "response = hub.kma_sfctm2(tm=\"202605010900\", stn=\"108\", help=\"1\")",
