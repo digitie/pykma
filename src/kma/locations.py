@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from pykrtour import PlaceCoordinate
+from kraddr.base import PlaceCoordinate
 
 from .grid import to_grid as _to_grid
 from .grid import to_latlon as _to_latlon

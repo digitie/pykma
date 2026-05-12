@@ -1,6 +1,6 @@
 from typing import Callable
 
-from pykrtour import PlaceCoordinate
+from kraddr.base import PlaceCoordinate
 
 from kma import GridPoint, LatLon, normalize_location
 

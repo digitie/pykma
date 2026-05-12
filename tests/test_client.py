@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar
 
-from pykrtour import PlaceCoordinate
+from kraddr.base import PlaceCoordinate
 
 from kma.client import KmaClient
 from kma.enums import WeatherCategory

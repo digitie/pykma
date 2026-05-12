@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from pykrtour import Address, PlaceCoordinate
+from kraddr.base import Address, PlaceCoordinate
 
 from ._http import build_session
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError

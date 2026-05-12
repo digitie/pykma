@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from pykrtour import Address
+from kraddr.base import Address
 
 from kma import (
     ApiHubClient,

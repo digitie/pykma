@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
-from pykrtour import PlaceCoordinate
+from kraddr.base import PlaceCoordinate
 
 from kma import (
     KMA_DATA_GOKR_DATASETS,

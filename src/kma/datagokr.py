@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from pykrtour import KmaGridPoint, PlaceCoordinate
+from kraddr.base import KmaGridPoint, PlaceCoordinate
 
 from ._http import build_session
 from .codes import label_for, normalize_value

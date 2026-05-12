@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from pykrtour import KmaGridPoint, PlaceCoordinate
+from kraddr.base import KmaGridPoint, PlaceCoordinate
 
 try:
     import requests

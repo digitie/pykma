@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
-from pykrtour import Address, PlaceCoordinate
+from kraddr.base import Address, PlaceCoordinate
 
 from kma import ExpresswayRestAreaWeatherClient, RestAreaWeather
 from kma.exceptions import KmaAuthError, KmaParseError

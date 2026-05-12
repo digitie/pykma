@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from kraddr.base import Address, PlaceCoordinate
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from pykrtour import Address, PlaceCoordinate
 
 from .codes import unit_for
 from .enums import WeatherCategory, category_or_none, coerce_category
