@@ -279,6 +279,31 @@ def test_mid_forecast_helpers_do_not_guess_reg_id_mapping() -> None:
     assert "ny" not in rows[0].metadata.request_params
 
 
+def test_mid_forecast_helpers_can_select_latest_tm_fc() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "regId": "11B00000",
+                "tmFc": "202604301800",
+                "wf3Am": "맑음",
+            }
+        )
+    )
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.mid_land_forecast(
+        reg_id="11B00000",
+        when=datetime(2026, 5, 1, 6, 5, tzinfo=KST),
+    )
+
+    assert session.calls[0]["params"]["tmFc"] == "202604301800"
+    assert rows[0].tm_fc == "202604301800"
+    assert_raises(
+        ValueError,
+        lambda: client.mid_forecast(stn_id=108, tm_fc="202605010600", when=datetime.now(KST)),
+    )
+
+
 def test_datagokr_mid_sea_forecast_helper() -> None:
     session = FakeSession(
         _payload(

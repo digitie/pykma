@@ -9,7 +9,7 @@ from kraddr.base import Address, PlaceCoordinate
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .codes import unit_for
-from .enums import WeatherCategory, category_or_none, coerce_category
+from .enums import WeatherCategory, category_or_none, coerce_category, enum_value
 from .locations import GridPoint, LatLon
 from .metadata import ResponseMetadata
 
@@ -98,6 +98,53 @@ class ForecastItem(kmaModel):
         """이 예보 항목 격자 셀의 근사 WGS84 좌표를 반환합니다."""
 
         return self.grid.to_latlon()
+
+
+class ForecastTimepoint(kmaModel):
+    """예보 row를 `forecast_at` 기준으로 피벗한 시간대별 예보 묶음."""
+
+    base_at: datetime | None = None
+    forecast_at: datetime
+    nx: int
+    ny: int
+    coordinate: PlaceCoordinate | None = None
+    values: dict[str, str | float] = Field(default_factory=dict)
+    labels: dict[str, str] = Field(default_factory=dict)
+    units: dict[str, str] = Field(default_factory=dict)
+    raw_items: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: ResponseMetadata | None = None
+
+    @model_validator(mode="after")
+    def _validate_grid(self) -> ForecastTimepoint:
+        GridPoint(self.nx, self.ny)
+        return self
+
+    @property
+    def grid(self) -> GridPoint:
+        """이 시간대 예보의 KMA DFS 격자 좌표를 반환합니다."""
+
+        return GridPoint(self.nx, self.ny)
+
+    @property
+    def latlon(self) -> LatLon:
+        """이 시간대 예보 격자 셀의 근사 WGS84 좌표를 반환합니다."""
+
+        return self.grid.to_latlon()
+
+    def value(self, category: str | WeatherCategory) -> str | float | None:
+        """category code에 해당하는 예보값을 반환합니다."""
+
+        return self.values.get(enum_value(category))
+
+    def label(self, category: str | WeatherCategory) -> str | None:
+        """category code에 해당하는 사람이 읽을 수 있는 라벨을 반환합니다."""
+
+        return self.labels.get(enum_value(category))
+
+    def unit(self, category: str | WeatherCategory) -> str | None:
+        """category code에 해당하는 관례적 단위를 반환합니다."""
+
+        return self.units.get(enum_value(category))
 
 
 class DataGoKrItem(kmaModel):

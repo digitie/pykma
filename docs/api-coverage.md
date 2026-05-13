@@ -19,7 +19,7 @@
 | APIHub 함수형 래퍼 | 470개 | `apiList.do`와 `generateAPIUrl.do` 기반 함수형 endpoint |
 | APIHub 첨부 metadata | 77개 | 포맷정보, 예제, 코드표 등 첨부 링크 |
 | APIHub 탐색 기능 | 2개 메서드 | 서비스 목록과 endpoint sample 추출 |
-| 위치/코드 타입 계층 | 1개 계층 | `LatLon`, `GridPoint`, `WeatherCategory`, `KmaEndpoint` 등 public helper |
+| 위치/코드/시간축 타입 계층 | 1개 계층 | `LatLon`, `GridPoint`, `WeatherCategory`, `KmaEndpoint`, `ForecastTimepoint`, `pivot_forecast_items()` 등 public helper |
 | 한국도로공사 휴게소별 날씨 | 1개 | `ExpresswayRestAreaWeatherClient`가 `RestAreaWeather`로 반환 |
 
 ## 타입화 endpoint 4개
@@ -73,6 +73,8 @@ client.request("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202
 | `TourStnInfoService1/*` | `tour_village_forecast()`, `city_tour_climate_index()` |
 | `LivingWthrIdxServiceV4/*` | `sensible_temperature_index()`, `uv_index()`, `air_diffusion_index()` |
 | `EqkInfoService/*` | `earthquake_info()`, `earthquake_message()`, `earthquake_message_list()`, `tsunami_message()`, `tsunami_message_list()` |
+
+중기예보 helper의 `tm_fc`는 직접 지정할 수 있고, 생략하면 `latest_mid_fcst_time()`으로 06:00/18:00 발표와 10분 조회 지연을 반영한 최신 `tmFc`를 선택합니다.
 
 ## data.go.kr 해수욕장 날씨 helper 6개
 

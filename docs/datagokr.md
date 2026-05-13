@@ -138,11 +138,12 @@ for body in client.iter_pages(
 
 ## 중기예보 helper
 
-중기예보는 `MidFcstInfoService` 호출과 row parsing까지만 책임집니다. `reg_id`는 단기예보 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다.
+중기예보는 `MidFcstInfoService` 호출과 row parsing까지만 책임집니다. `reg_id`는 단기예보 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다. `tm_fc`를 생략하면 06:00/18:00 발표와 10분 조회 지연을 반영한 최신 `tmFc`를 사용합니다.
 
 ```python
 client.mid_forecast(stn_id="108", tm_fc="202605010600")
 client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
+client.mid_land_forecast(reg_id="11B00000")  # 최신 조회 가능 tmFc 자동 선택
 client.mid_temperature_forecast(reg_id="11B10101", tm_fc="202605010600")
 client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
 ```

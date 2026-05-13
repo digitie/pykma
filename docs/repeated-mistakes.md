@@ -81,6 +81,16 @@
 
 **방지 테스트:** 잘못된 envelope, 누락된 `items`, 잘못된 forecast item, 단일 dict 응답, result code 매핑을 테스트합니다.
 
+## 예보 row를 시간축 데이터로 착각하지 않기
+
+**실수:** `ForecastItem` 배열을 이미 시간대별 객체라고 가정하고 프론트엔드에 그대로 넘김.
+
+**증상:** 같은 `forecast_at`에 `TMP`, `SKY`, `PTY`, `POP` 같은 row가 여러 개 흩어져 있어 화면 코드가 category별 조립을 반복하거나 렌더링이 비효율적입니다.
+
+**규칙:** 시간대별 응답이 필요하면 `pivot_forecast_items()`로 `ForecastTimepoint` 목록을 만든 뒤 `values`, `labels`, `units`를 사용합니다. 단, 원문 category row가 필요한 저장/감사 경계에서는 `ForecastItem.raw` 또는 `ForecastTimepoint.raw_items`를 보존합니다.
+
+**방지 테스트:** `tests/test_timeline.py`에서 같은 시간대와 격자의 row가 하나의 `ForecastTimepoint`로 묶이는지 검증합니다.
+
 ## 한국어 텍스트는 UTF-8로 유지
 
 **실수:** PowerShell mojibake만 보고 파일이 깨졌다고 판단함.

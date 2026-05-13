@@ -19,6 +19,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 - **명시적 좌표 변환 alias**: 앱 경계에서는 `wgs84_to_kma_grid(latitude, longitude)`, `kma_grid_to_wgs84(nx, ny)`를 사용할 수 있습니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
 - **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, data.go.kr raw row, 해수욕장 날씨 row, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
+- **예보 row 피벗 helper**: category별 row로 흩어진 단기예보를 `ForecastTimepoint` 시간축 객체로 평탄화할 수 있습니다.
 - **Provider metadata와 raw 보존**: typed 모델은 원문 `raw`와 sanitized `metadata`를 담을 수 있어 앱이 직접 raw/serving 저장 전략을 선택할 수 있습니다.
 - **enum과 코드 라벨 매핑**: `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`를 제공하고, 사람이 읽을 수 있는 한국어 라벨도 함께 제공합니다.
 - **문자열 범주값 보존**: `PCP`, `SNO`처럼 `"1.0mm 미만"`, `"30.0~50.0mm"` 같은 범주 문자열은 무리하게 숫자로 바꾸지 않습니다.
@@ -38,8 +39,8 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 | data.go.kr 카탈로그 | `KMA_DATA_GOKR_DATASETS`, `DataGoKrDatasetSpec` |
 | 위치 값 객체 | `LatLon`, `GridPoint`, `normalize_location` |
 | 좌표 변환 | `to_grid`, `to_latlon`, `wgs84_to_kma_grid`, `kma_grid_to_wgs84` |
-| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `MidForecastItem`, `DataGoKrItem`, `BeachForecastItem`, `BeachWaveHeight`, `BeachWaterTemperature`, `BeachTideItem`, `BeachSunTime`, `RestAreaWeather`, `ResponseMetadata` |
-| pagination/cache | `has_next_page`, `next_page_no`, `iter_pages`, `make_cache_key`, `sanitize_request_params` |
+| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `ForecastTimepoint`, `MidForecastItem`, `DataGoKrItem`, `BeachForecastItem`, `BeachWaveHeight`, `BeachWaterTemperature`, `BeachTideItem`, `BeachSunTime`, `RestAreaWeather`, `ResponseMetadata` |
+| timeline/pagination/cache | `pivot_forecast_items`, `has_next_page`, `next_page_no`, `iter_pages`, `make_cache_key`, `base_available_at`, `cache_expire_at`, `latest_mid_fcst_base`, `latest_mid_fcst_time`, `sanitize_request_params` |
 | enum/라벨 | `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`, `label_for`, `unit_for`, `parse_amount` |
 | 예외 | `KmaError`, `KmaAuthError`, `KmaRequestError`, `KmaServerError`, `KmaParseError` |
 
@@ -95,6 +96,16 @@ print(snap.temperature, snap.precipitation_label)
 items = kma.forecast(lat=37.5665, lon=126.9780)
 for item in items[:5]:
     print(item.forecast_at, item.category, item.value, item.label)
+```
+
+KMA 예보 응답은 시간대가 아니라 category row 단위로 나뉘어 있으므로, 화면/저장 경계에서는 시간축으로 피벗하면 다루기 쉽습니다.
+
+```python
+from kma import WeatherCategory, pivot_forecast_items
+
+timeline = pivot_forecast_items(items)
+first = timeline[0]
+print(first.forecast_at, first.value(WeatherCategory.TEMPERATURE), first.label("SKY"))
 ```
 
 격자 좌표를 이미 알고 있다면 `nx`/`ny`를 직접 사용할 수 있습니다.
@@ -208,10 +219,11 @@ rows = client.dataset_items(
 
 여러 operation을 가진 dataset은 `operation=`을 명시합니다. APIHub로 연결된 항목은 `gateway="apihub"`로 표시되며 `ApiHubClient` 또는 `ApiHubGeneratedClient`를 사용합니다.
 
-중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다.
+중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다. `tm_fc`를 생략하면 06:00/18:00 발표와 10분 지연을 반영해 최신 조회 가능 `tmFc`를 고릅니다.
 
 ```python
 rows = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
+latest_rows = client.mid_land_forecast(reg_id="11B00000")
 temps = client.mid_temperature_forecast(reg_id="11B10101", tm_fc="202605010600")
 overview = client.mid_forecast(stn_id="108", tm_fc="202605010600")
 sea = client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
@@ -386,6 +398,17 @@ class ForecastItem(BaseModel):
 `ForecastItem.category`는 알려진 category일 때 `WeatherCategory` enum으로 들어갑니다. `WeatherCategory`는 `str` 기반 enum이라 `"TMP"` 같은 원문 문자열과 비교할 수 있고 JSON 직렬화도 자연스럽게 동작합니다. 알 수 없는 새 category는 원문 문자열을 보존합니다.
 
 `ForecastItem.value`는 숫자로 안전하게 해석되는 값만 `float`가 됩니다. `PCP`, `SNO` 범주 문자열은 원문을 보존합니다.
+
+### `ForecastTimepoint`
+
+```python
+from kma import pivot_forecast_items
+
+points = pivot_forecast_items(kma.forecast(nx=60, ny=127))
+print(points[0].forecast_at, points[0].values["TMP"])
+```
+
+`ForecastTimepoint`는 같은 `forecast_at`, `nx`, `ny`를 가진 `ForecastItem`을 하나로 묶고 category code를 `values`의 key로 둡니다. `labels`, `units`, `raw_items`, `metadata`도 함께 보존하므로 프론트엔드나 BFF 계층에서 row를 다시 조립하지 않아도 됩니다.
 
 ### `MidForecastItem`
 
@@ -588,7 +611,7 @@ except KmaError as exc:
 ## Pagination과 Cache Key
 
 ```python
-from kma import has_next_page, make_cache_key, next_page_no
+from kma import cache_expire_at, has_next_page, make_cache_key, next_page_no
 
 body = client.request("MidFcstInfoService", "getMidLandFcst", {...})
 if has_next_page(body):
@@ -598,9 +621,12 @@ key = make_cache_key(
     "getVilageFcst",
     {"base_date": "20260507", "base_time": "0200", "nx": 60, "ny": 127},
 )
+expire_at = cache_expire_at("getVilageFcst", "20260507", "0200")
 ```
 
 `make_cache_key()`는 `serviceKey`, `authKey`, `key`를 제거한 sanitized params를 사용합니다. 같은 endpoint, 같은 기준시각, 같은 `nx`/`ny` 조합이면 인증키가 달라도 같은 cache key가 만들어집니다.
+
+`base_available_at()`은 해당 base가 조회 가능해지는 시각을, `cache_expire_at()`은 다음 발표분이 조회 가능해지는 시각을 KST aware `datetime`으로 반환합니다. 예를 들어 `getVilageFcst`의 `0200` cache는 다음 발표인 `0500`에 10분 지연을 더한 `05:10`에 자연 만료시키면 됩니다.
 
 ---
 
@@ -658,6 +684,7 @@ src/kma/
 ├── models.py
 ├── pagination.py
 ├── py.typed
+├── timeline.py
 └── time_utils.py
 tests/
 ├── test_apihub.py
@@ -674,7 +701,8 @@ tests/
 ├── test_locations.py
 ├── test_public_api.py
 ├── test_pydantic_models.py
-└── test_time_utils.py
+├── test_time_utils.py
+└── test_timeline.py
 ```
 
 문서:

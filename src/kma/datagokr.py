@@ -33,6 +33,7 @@ from .pagination import iter_pages as _iter_pages
 from .time_utils import (
     KST,
     as_kst,
+    latest_mid_fcst_time,
     latest_ultra_srt_fcst_base,
     latest_vilage_base,
     parse_kma_datetime,
@@ -357,7 +358,8 @@ class DataGoKrClient:
         self,
         *,
         stn_id: str | int,
-        tm_fc: str | datetime,
+        tm_fc: str | datetime | None = None,
+        when: datetime | None = None,
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
@@ -365,7 +367,7 @@ class DataGoKrClient:
 
         return self._mid_items(
             "getMidFcst",
-            {"stnId": str(stn_id), "tmFc": _format_tm_fc(tm_fc)},
+            {"stnId": str(stn_id), "tmFc": _resolve_tm_fc(tm_fc, when=when)},
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
@@ -374,7 +376,8 @@ class DataGoKrClient:
         self,
         *,
         reg_id: str,
-        tm_fc: str | datetime,
+        tm_fc: str | datetime | None = None,
+        when: datetime | None = None,
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
@@ -386,7 +389,7 @@ class DataGoKrClient:
 
         return self._mid_items(
             "getMidLandFcst",
-            {"regId": reg_id, "tmFc": _format_tm_fc(tm_fc)},
+            {"regId": reg_id, "tmFc": _resolve_tm_fc(tm_fc, when=when)},
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
@@ -395,7 +398,8 @@ class DataGoKrClient:
         self,
         *,
         reg_id: str,
-        tm_fc: str | datetime,
+        tm_fc: str | datetime | None = None,
+        when: datetime | None = None,
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
@@ -406,7 +410,7 @@ class DataGoKrClient:
 
         return self._mid_items(
             "getMidTa",
-            {"regId": reg_id, "tmFc": _format_tm_fc(tm_fc)},
+            {"regId": reg_id, "tmFc": _resolve_tm_fc(tm_fc, when=when)},
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
@@ -415,7 +419,8 @@ class DataGoKrClient:
         self,
         *,
         reg_id: str,
-        tm_fc: str | datetime,
+        tm_fc: str | datetime | None = None,
+        when: datetime | None = None,
         page_no: int = 1,
         num_of_rows: int = 10,
     ) -> list[MidForecastItem]:
@@ -423,7 +428,7 @@ class DataGoKrClient:
 
         return self._mid_items(
             "getMidSeaFcst",
-            {"regId": reg_id, "tmFc": _format_tm_fc(tm_fc)},
+            {"regId": reg_id, "tmFc": _resolve_tm_fc(tm_fc, when=when)},
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
@@ -1388,11 +1393,19 @@ def _mid_forecast_item(
 
 def _format_tm_fc(value: str | datetime) -> str:
     if isinstance(value, datetime):
-        return value.strftime("%Y%m%d%H%M")
+        return as_kst(value).strftime("%Y%m%d%H%M")
     text = str(value).strip()
     if len(text) != 12 or not text.isdigit():
         raise ValueError("tm_fc must be YYYYMMDDHHMM")
     return text
+
+
+def _resolve_tm_fc(value: str | datetime | None, *, when: datetime | None) -> str:
+    if value is not None and when is not None:
+        raise ValueError("when cannot be combined with tm_fc")
+    if value is None:
+        return latest_mid_fcst_time(when)
+    return _format_tm_fc(value)
 
 
 def _str_or_none(value: object) -> str | None:
