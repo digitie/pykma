@@ -9,7 +9,6 @@ from kma import (
     ForecastItem,
     MidForecastItem,
     ResponseMetadata,
-    RestAreaWeather,
     WeatherCategory,
     WeatherSnapshot,
 )
@@ -62,7 +61,7 @@ def test_mid_forecast_item_preserves_raw_without_coordinate_mapping() -> None:
     assert item.raw["wf3Am"] == "맑음"
 
 
-def test_public_models_validate_grid_bounds_and_coordinates() -> None:
+def test_public_models_validate_grid_bounds() -> None:
     assert_raises(
         ValidationError,
         lambda: WeatherSnapshot(
@@ -76,35 +75,6 @@ def test_public_models_validate_grid_bounds_and_coordinates() -> None:
             precipitation=None,
             sky_label=None,
             precipitation_label=None,
-            raw={},
-        ),
-    )
-    assert_raises(
-        ValidationError,
-        lambda: RestAreaWeather(
-            observed_at=datetime(2026, 5, 6, 14, 0, tzinfo=KST),
-            sdate="20260506",
-            std_hour="14",
-            unit_code="001",
-            unit_name="테스트휴게소",
-            route_no="0010",
-            route_name="경부선",
-            direction_code=None,
-            longitude=200.0,
-            latitude=37.0,
-            address=None,
-            measurement_station=None,
-            weather=None,
-            temperature=None,
-            humidity=None,
-            wind_speed=None,
-            wind_direction_code=None,
-            rainfall=None,
-            rainfall_strength=None,
-            new_snow=None,
-            snow=None,
-            cloud=None,
-            dew_point=None,
             raw={},
         ),
     )

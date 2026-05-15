@@ -6,13 +6,13 @@ import csv
 import html
 import io
 import json
-import os
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote_plus, unquote_plus, urlsplit, urlunsplit
 
+from ._credentials import APIHUB_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import build_session
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
 from .metadata import (
@@ -166,18 +166,14 @@ class ApiHubClient:
         base_url: str = APIHUB_BASE_URL,
         session: Any | None = None,
     ) -> None:
-        if not auth_key:
-            raise ValueError("auth_key is required")
-        self.auth_key = auth_key
+        self.auth_key = normalize_api_key(auth_key, field_name="auth_key")
         self.timeout = timeout
         self.base_url = base_url.rstrip("/")
         self.session = session or build_session(retries)
 
     @classmethod
     def from_env(cls, name: str = "KMA_APIHUB_AUTH_KEY", **kwargs: Any) -> ApiHubClient:
-        auth_key = os.getenv(name) or os.getenv("KMA_APIHUB_KEY")
-        if not auth_key:
-            raise ValueError(f"{name} or KMA_APIHUB_KEY is not set")
+        auth_key = first_env_value((name, *APIHUB_ENV_NAMES))
         return cls(auth_key, **kwargs)
 
     def request_path(

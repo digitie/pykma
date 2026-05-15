@@ -7,8 +7,13 @@ from kraddr.base import PlaceCoordinate
 
 from kma import (
     KMA_DATA_GOKR_DATASETS,
+    ApiCatalogEntry,
     WeatherCategory,
+    api_catalog,
+    api_key_for_gateway,
+    env_names_for_gateway,
     has_next_page,
+    load_local_env,
     make_cache_key,
     next_page_no,
     sanitize_request_params,
@@ -84,6 +89,15 @@ def test_datagokr_generic_request_builds_service_operation_url() -> None:
     assert session.calls[0]["params"]["numOfRows"] == 10
 
 
+def test_datagokr_service_key_strips_copied_whitespace() -> None:
+    session = FakeSession(_payload([{"wfSv": "맑음"}]))
+    client = DataGoKrClient(" decoded \n key\t", session=session)
+
+    client.request("MidFcstInfoService", "getMidFcst")
+
+    assert session.calls[0]["params"]["serviceKey"] == "decodedkey"
+
+
 def test_datagokr_request_with_metadata_sanitizes_service_key() -> None:
     session = FakeSession(_payload([{"wfSv": "맑음"}]))
     client = DataGoKrClient("decoded-key", session=session)
@@ -148,6 +162,60 @@ def test_datagokr_dataset_catalog_is_kma_only() -> None:
     assert not any(
         fragment in dataset.title for dataset in datasets for fragment in non_kma_fragments
     )
+
+
+def test_api_catalog_flattens_datasets_with_human_readable_labels() -> None:
+    client = DataGoKrClient("decoded-key", session=FakeSession(_payload([])))
+
+    rows = api_catalog()
+    first = rows[0]
+    apihub_row = api_catalog(gateway="apihub")[0]
+
+    assert len(rows) == 208
+    assert isinstance(first, ApiCatalogEntry)
+    assert first.dataset_name == "기상청_단기예보 조회서비스"
+    assert first.operation == "getUltraSrtNcst"
+    assert first.label == "기상청_단기예보 조회서비스 / getUltraSrtNcst"
+    assert first.credential_param == "serviceKey"
+    assert first.service_key_url == first.portal_url
+    assert apihub_row.credential_param == "authKey"
+    assert "apihub.kma.go.kr" in apihub_row.service_key_url
+    assert client.api_catalog(dataset_id="15084084")[0].dataset_name == first.dataset_name
+
+
+def test_env_loader_supports_source_specific_keys_and_local_dotenv(
+    tmp_path: Any,
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    env_names = (
+        "KMA_SERVICE_KEY",
+        "DATA_GOKR_SERVICE_KEY",
+        "KMA_APIHUB_AUTH_KEY",
+        "KMA_APIHUB_KEY",
+    )
+    for name in env_names:
+        monkeypatch.delenv(name, raising=False)
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            [
+                'DATA_GOKR_SERVICE_KEY=" data gokr key "',
+                "KMA_SERVICE_KEY= legacy data gokr key",
+                "KMA_APIHUB_AUTH_KEY= api hub key",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / ".env.local").write_text(
+        "KMA_APIHUB_AUTH_KEY= local api hub key\n",
+        encoding="utf-8",
+    )
+
+    assert env_names_for_gateway("datagokr") == ("DATA_GOKR_SERVICE_KEY", "KMA_SERVICE_KEY")
+    assert "DATA_GOKR_SERVICE_KEY" in load_local_env()
+    assert api_key_for_gateway("datagokr") == "datagokrkey"
+    assert api_key_for_gateway("apihub") == "localapihubkey"
+    assert DataGoKrClient.from_env(session=FakeSession(_payload([]))).service_key == "datagokrkey"
 
 
 def test_datagokr_dataset_catalog_request_by_id() -> None:

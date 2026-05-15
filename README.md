@@ -1,6 +1,6 @@
 # python-kma-api
 
-Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관련 공공 날씨 API를 Python에서 편하게 쓰기 위한 공용 클라이언트 라이브러리입니다.
+Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 APIHub를 Python에서 편하게 쓰기 위한 공용 클라이언트 라이브러리입니다.
 
 `python-kma-api`는 `kma`라는 import package를 제공합니다. 특정 앱의 adapter나 DB 스키마를 전제로 하지 않고, `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸며, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, provenance metadata, 예외 처리를 함께 제공합니다.
 
@@ -13,12 +13,12 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
 - **data.go.kr 범용 호출, 기상청 카탈로그, 주요 helper 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `AsosDalyInfoService`, `WthrWrnInfoService` 같은 KMA REST 서비스를 호출하고, 공공데이터포털 `기상청` 검색 전체 페이지의 KMA 항목 86개와 gateway operation 160개를 카탈로그로 조회합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
-- **한국도로공사 휴게소별 날씨 지원**: `ExpresswayRestAreaWeatherClient`로 고속도로 휴게소별 날씨 정보를 조회합니다.
-- **표준 장소 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현하고, 앱 공통 장소 좌표/주소는 `kraddr.base.PlaceCoordinate`와 `kraddr.base.Address`로 연결합니다.
+- **API 카탈로그와 디버그 UI 보조**: `api_catalog()`로 데이터셋명, gateway, operation, 인증키 링크가 있는 선택 목록을 얻고 Streamlit 디버그 화면에서 확인할 수 있습니다.
+- **표준 장소 타입**: `LatLon`은 WGS84(`EPSG:4326`) 위도/경도, `GridPoint`는 KMA DFS `nx`/`ny`를 표현하고, 앱 공통 장소 좌표는 `kraddr.base.PlaceCoordinate`로 연결합니다.
 - **좌표 자동 변환**: 사용자는 `location=LatLon(...)`, `location=GridPoint(...)`, `location=PlaceCoordinate(...)`, `lat/lon`, `nx/ny` 중 하나를 넘기고, 라이브러리는 KMA LCC DFS 격자로 표준화합니다.
 - **명시적 좌표 변환 alias**: 앱 경계에서는 `wgs84_to_kma_grid(latitude, longitude)`, `kma_grid_to_wgs84(nx, ny)`를 사용할 수 있습니다.
 - **KST 발표시각 자동 계산**: API별 실제 조회 가능 지연시간을 반영해 `base_date`와 `base_time`을 고릅니다.
-- **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, data.go.kr raw row, 해수욕장 날씨 row, 휴게소 날씨 응답은 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
+- **Pydantic 응답 모델**: 실황, 예보, 중기예보 row, data.go.kr raw row, 해수욕장 날씨 row는 frozen Pydantic 모델로 반환하며 `model_dump()`, `model_dump_json()`, JSON Schema를 사용할 수 있습니다.
 - **예보 row 피벗 helper**: category별 row로 흩어진 단기예보를 `ForecastTimepoint` 시간축 객체로 평탄화할 수 있습니다.
 - **Provider metadata와 raw 보존**: typed 모델은 원문 `raw`와 sanitized `metadata`를 담을 수 있어 앱이 직접 raw/serving 저장 전략을 선택할 수 있습니다.
 - **enum과 코드 라벨 매핑**: `WeatherCategory`, `KmaEndpoint`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`를 제공하고, 사람이 읽을 수 있는 한국어 라벨도 함께 제공합니다.
@@ -35,11 +35,12 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 관
 
 | 분류 | 권장 API |
 |---|---|
-| typed client | `KmaClient`, `DataGoKrClient`, `ApiHubClient`, `ExpresswayRestAreaWeatherClient` |
-| data.go.kr 카탈로그 | `KMA_DATA_GOKR_DATASETS`, `DataGoKrDatasetSpec` |
+| typed client | `KmaClient`, `DataGoKrClient`, `ApiHubClient` |
+| API 카탈로그 | `KMA_DATA_GOKR_DATASETS`, `DataGoKrDatasetSpec`, `ApiCatalogEntry`, `api_catalog` |
+| 인증키 로딩 | `api_key_for_gateway`, `env_names_for_gateway`, `load_local_env` |
 | 위치 값 객체 | `LatLon`, `GridPoint`, `normalize_location` |
 | 좌표 변환 | `to_grid`, `to_latlon`, `wgs84_to_kma_grid`, `kma_grid_to_wgs84` |
-| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `ForecastTimepoint`, `MidForecastItem`, `DataGoKrItem`, `BeachForecastItem`, `BeachWaveHeight`, `BeachWaterTemperature`, `BeachTideItem`, `BeachSunTime`, `RestAreaWeather`, `ResponseMetadata` |
+| 응답 모델 | `WeatherSnapshot`, `ForecastItem`, `ForecastTimepoint`, `MidForecastItem`, `DataGoKrItem`, `BeachForecastItem`, `BeachWaveHeight`, `BeachWaterTemperature`, `BeachTideItem`, `BeachSunTime`, `ResponseMetadata` |
 | timeline/pagination/cache | `pivot_forecast_items`, `has_next_page`, `next_page_no`, `iter_pages`, `make_cache_key`, `base_available_at`, `cache_expire_at`, `latest_mid_fcst_base`, `latest_mid_fcst_time`, `sanitize_request_params` |
 | enum/라벨 | `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType`, `label_for`, `unit_for`, `parse_amount` |
 | 예외 | `KmaError`, `KmaAuthError`, `KmaRequestError`, `KmaServerError`, `KmaParseError` |
@@ -68,6 +69,16 @@ Windows PowerShell:
 ```powershell
 $env:KMA_SERVICE_KEY="발급받은_decoding_인증키"
 ```
+
+로컬 개발에서는 저장소 루트의 `.env` 또는 `.env.local`에 키를 둘 수 있습니다. `KmaClient.from_env()`, `DataGoKrClient.from_env()`, `ApiHubClient.from_env()`는 process env를 먼저 보고, 없으면 로컬 env 파일을 읽습니다. 같은 key가 여러 로컬 파일에 있으면 가까운 디렉터리 값이 우선하고, 같은 디렉터리에서는 `.env.local`이 `.env`보다 우선합니다.
+
+```text
+KMA_SERVICE_KEY=<data.go.kr decoded serviceKey>
+DATA_GOKR_SERVICE_KEY=<data.go.kr decoded serviceKey>
+KMA_APIHUB_AUTH_KEY=<APIHub authKey>
+```
+
+data.go.kr 계열은 `serviceKey`, APIHub 계열은 `authKey`를 사용합니다. 복사/붙여넣기 중 앞뒤 공백이나 줄바꿈이 섞여도 클라이언트 생성 시 제거합니다.
 
 ### 2단계: 설치
 
@@ -202,9 +213,12 @@ client = DataGoKrClient.from_env(service_key_param="ServiceKey")
 공공데이터포털 `기상청` 오픈 API 검색 전체 페이지에서 확인한 KMA 항목은 카탈로그로 확인할 수 있습니다. 제목이 `기상청`으로 시작하지 않는 검색 결과는 포함하지 않습니다. 카탈로그에는 KMA 항목 86개, 기존 data.go.kr `serviceKey` gateway operation 160개, APIHub LINK 항목 48개가 들어 있습니다.
 
 ```python
-from kma import KMA_DATA_GOKR_DATASETS
+from kma import KMA_DATA_GOKR_DATASETS, api_catalog
 
 print(len(KMA_DATA_GOKR_DATASETS))  # 86
+for entry in api_catalog(gateway="datagokr")[:3]:
+    print(entry.dataset_name, entry.operation, entry.service_key_url)
+
 spec = client.dataset("15059093")
 rows = client.dataset_items(
     "15059093",
@@ -218,6 +232,8 @@ rows = client.dataset_items(
 ```
 
 여러 operation을 가진 dataset은 `operation=`을 명시합니다. APIHub로 연결된 항목은 `gateway="apihub"`로 표시되며 `ApiHubClient` 또는 `ApiHubGeneratedClient`를 사용합니다.
+
+`api_catalog()`는 UI 선택 목록용 `label`, 사람이 읽는 `dataset_name`, 인증 파라미터명(`serviceKey` 또는 `authKey`), 키 발급/확인 링크(`service_key_url`)를 함께 제공합니다.
 
 중기예보는 `DataGoKrClient`의 명시적 helper를 사용할 수 있습니다. `reg_id`는 단기예보의 `nx`/`ny`와 다른 KMA 중기예보 권역 코드이며, `kma`는 임의 매핑을 추측하지 않습니다. `tm_fc`를 생략하면 06:00/18:00 발표와 10분 지연을 반영해 최신 조회 가능 `tmFc`를 고릅니다.
 
@@ -283,28 +299,6 @@ rows = asos.text_table().rows
 
 자세한 내용은 [docs/datagokr.md](docs/datagokr.md)와 [docs/apihub.md](docs/apihub.md)를 참고하세요.
 
-### 한국도로공사 휴게소별 날씨
-
-한국도로공사 `data.ex.co.kr`의 휴게소별 날씨 정보도 사용할 수 있습니다. 이 API는 기상청 gateway가 아니므로 별도 인증키를 `EXPRESSWAY_API_KEY`에 둡니다.
-
-```python
-from kma import ExpresswayRestAreaWeatherClient
-
-client = ExpresswayRestAreaWeatherClient.from_env()
-rows = client.latest_weather(lookback_hours=72)
-
-for row in rows[:3]:
-    print(row.unit_name, row.route_name, row.weather, row.temperature)
-```
-
-특정 날짜와 시간대는 다음처럼 조회합니다.
-
-```python
-rows = client.weather(sdate="20210507", std_hour=12)
-```
-
-자세한 내용은 [docs/expressway.md](docs/expressway.md)를 참고하세요.
-
 ---
 
 ## 응답 모델
@@ -332,7 +326,7 @@ serving_payload = {
 
 `ResponseMetadata` 주요 필드:
 
-- `provider`: `data.go.kr`, `apihub`, `expressway`
+- `provider`: `data.go.kr`, `apihub`
 - `service_name`: 예: `VilageFcstInfoService_2.0`, `MidFcstInfoService`
 - `endpoint`: 예: `getVilageFcst`, `MidFcstInfoService/getMidLandFcst`
 - `request_params`: 인증 파라미터가 제거된 요청 파라미터
@@ -420,33 +414,6 @@ items = client.mid_land_forecast(reg_id="11B00000", tm_fc="202605010600")
 ```
 
 `MidForecastItem`은 `MidFcstInfoService` row의 `operation`, `tm_fc`, `reg_id`, `stn_id`, `raw`, `metadata`를 담습니다. 중기예보의 `reg_id`는 단기예보 `nx`/`ny`와 다른 식별자이므로, 라이브러리는 좌표나 권역 매핑을 추측하지 않습니다.
-
-### `RestAreaWeather`
-
-```python
-from datetime import datetime
-from pydantic import BaseModel
-
-class RestAreaWeather(BaseModel):
-    observed_at: datetime
-    unit_code: str
-    unit_name: str
-    route_no: str
-    route_name: str
-    coordinate: PlaceCoordinate | None
-    longitude: float | None
-    latitude: float | None
-    address: Address | None
-    weather: str | None
-    temperature: float | None
-    humidity: float | None
-    wind_speed: float | None
-    rainfall: float | None
-    snow: float | None
-    raw: dict
-```
-
-한국도로공사 API의 `-99` 계열 결측값은 모델에서 `None`으로 정규화합니다. 좌표가 유효하면 `coordinate` 필드에 `kraddr.base.PlaceCoordinate`가 들어가고, 주소가 있으면 `address` 필드에 `kraddr.base.Address`가 들어갑니다.
 
 ### 위치 타입
 
@@ -654,6 +621,15 @@ ruff check .
 mypy src/kma
 ```
 
+Streamlit 디버그 화면은 선택 의존성으로 실행합니다.
+
+```bash
+pip install -e ".[debug-ui]"
+streamlit run tools/debug_streamlit.py
+```
+
+Raw Response 탭에는 선택한 API의 필수/선택 파라미터 입력 폼과 인증키를 제외한 request params preview가 표시됩니다. 폼에 없는 provider별 파라미터는 `Extra params JSON`으로 추가할 수 있습니다. 실행 후 Pydantic Model 탭에는 row 모델 변환 결과가, Processed Result 탭에는 표 형태 row preview가 표시됩니다. Debug Trace 탭에는 현재 카탈로그 항목, 선택한 데이터셋명, gateway, operation, 인증 파라미터, 키 발급/확인 링크가 표시됩니다.
+
 기본 테스트는 실제 API를 호출하지 않아야 합니다. 실제 KMA 호출 테스트를 추가할 경우 `KMA_SERVICE_KEY`가 있을 때만 실행되도록 별도 marker를 사용하세요.
 
 자세한 테스트 정책은 [docs/testing.md](docs/testing.md), 반복되는 API 함정은 [docs/repeated-mistakes.md](docs/repeated-mistakes.md), 오류별 해결책은 [docs/troubleshooting.md](docs/troubleshooting.md)를 참고하세요.
@@ -667,9 +643,11 @@ mypy src/kma
 ```text
 src/kma/
 ├── __init__.py
+├── _credentials.py
 ├── _http.py
 ├── apihub.py
 ├── apihub_endpoints.py
+├── catalog.py
 ├── cli.py
 ├── client.py
 ├── codes.py
@@ -677,7 +655,6 @@ src/kma/
 ├── datagokr_catalog.py
 ├── enums.py
 ├── exceptions.py
-├── expressway.py
 ├── grid.py
 ├── locations.py
 ├── metadata.py
@@ -695,7 +672,6 @@ tests/
 ├── test_codes.py
 ├── test_datagokr.py
 ├── test_enums.py
-├── test_expressway.py
 ├── test_grid.py
 ├── test_live_services.py
 ├── test_locations.py
@@ -703,10 +679,13 @@ tests/
 ├── test_pydantic_models.py
 ├── test_time_utils.py
 └── test_timeline.py
+tools/
+└── debug_streamlit.py
 ```
 
 문서:
 
+- [.env.example](.env.example): 로컬 인증키 env 파일 예시
 - [README.md](README.md): 사용자용 가이드
 - [kma-api.md](kma-api.md): API 세부 명세와 구현 주의사항
 - [SKILL.md](SKILL.md): 에이전트/구현자용 불변조건
@@ -717,7 +696,6 @@ tests/
 - [docs/apihub.md](docs/apihub.md): APIHub 범용 클라이언트와 탐색
 - [docs/datagokr.md](docs/datagokr.md): data.go.kr 범용 클라이언트
 - [docs/datagokr-apihub-overlap.md](docs/datagokr-apihub-overlap.md): data.go.kr/APIHub 중복 표
-- [docs/expressway.md](docs/expressway.md): 한국도로공사 휴게소별 날씨 API
 - [docs/testing.md](docs/testing.md): 테스트 작성과 live test 기준
 - [docs/troubleshooting.md](docs/troubleshooting.md): 흔한 오류 증상과 해결책
 - [CONTRIBUTING.md](CONTRIBUTING.md): 기여 절차

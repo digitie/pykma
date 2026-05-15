@@ -114,6 +114,16 @@ def test_now_pivots_observed_items() -> None:
     assert session.last_params["dataType"] == "JSON"
 
 
+def test_client_service_key_strips_copied_whitespace() -> None:
+    session = FakeSession(_payload({"version": "202604301400"}))
+    client = KmaClient(" decoded \n key\t", session=session)
+
+    client.version("ODAM", when=datetime(2026, 4, 30, 14, 0, tzinfo=KST))
+
+    assert session.last_params is not None
+    assert session.last_params["serviceKey"] == "decodedkey"
+
+
 def test_forecast_uses_latlon_conversion_and_preserves_pcp_labels() -> None:
     session = FakeSession(
         _payload(

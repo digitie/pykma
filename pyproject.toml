@@ -38,6 +38,9 @@ dev = [
   "mypy>=1.10",
   "types-requests>=2.31",
 ]
+debug-ui = [
+  "streamlit>=1.36",
+]
 
 [project.scripts]
 kma = "kma.cli:main"

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,6 +17,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised only in minimal envs
     HTTPError = ()  # type: ignore[assignment,misc]
     RequestException = ()  # type: ignore[assignment,misc]
 
+from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import build_session
 from .codes import label_for, normalize_value, parse_amount
 from .enums import KmaEndpoint, WeatherCategory, coerce_category, enum_value
@@ -62,19 +62,15 @@ class KmaClient:
         base_url: str | None = None,
         session: Any | None = None,
     ) -> None:
-        if not service_key:
-            raise ValueError("service_key is required")
-        self.service_key = service_key
+        self.service_key = normalize_api_key(service_key, field_name="service_key")
         self.timeout = timeout
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.session = session or build_session(retries)
 
     @classmethod
     def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> KmaClient:
-        try:
-            service_key = os.environ[name]
-        except KeyError as exc:
-            raise ValueError(f"{name} is not set") from exc
+        names = DATA_GOKR_ENV_NAMES if name == "KMA_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+        service_key = first_env_value(names)
         return cls(service_key=service_key, **kwargs)
 
     def now(

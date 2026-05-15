@@ -20,7 +20,6 @@ python -m pytest
 
 - `tests/test_client.py`: 단기예보 typed client 요청 파라미터, fake session 응답 파싱, result code 매핑, 잘못된 응답 처리.
 - `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출, 기상청 전용 dataset 카탈로그 86개와 gateway operation 160개, pagination helper, sanitized cache key, 중기예보 typed row wrapper와 최신 `tmFc` 선택, 주요 서비스 helper, 해수욕장 날씨 helper.
-- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델의 `PlaceCoordinate`/`Address` 필드, 결측값 정규화, 에러 매핑.
 - `tests/test_pydantic_models.py`: public 응답 모델의 Pydantic 직렬화, frozen 동작, 좌표 검증.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.
@@ -96,8 +95,9 @@ kma apihub /api/typ01/url/wrn_reg.php --param tmfc=0
 KMA_APIHUB_AUTH_KEY=<APIHub authKey>
 KMA_SERVICE_KEY=<data.go.kr decoded service key>
 DATA_GOKR_SERVICE_KEY=<data.go.kr decoded service key>
-EXPRESSWAY_API_KEY=<한국도로공사 API key>
 ```
+
+클라이언트의 `from_env()`는 process env를 우선하고, 없으면 `.env`, `.env.local`을 읽습니다. 같은 key가 여러 로컬 파일에 있으면 가까운 디렉터리 값이 우선하고, 같은 디렉터리에서는 `.env.local`이 `.env`보다 우선합니다. data.go.kr 계열은 `DATA_GOKR_SERVICE_KEY` 또는 `KMA_SERVICE_KEY`, APIHub 계열은 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`를 사용합니다. 복사/붙여넣기 공백은 생성자에서 제거합니다.
 
 실제 서버 integration 테스트는 의도치 않은 네트워크 호출을 막기 위해 marker와 `KMA_RUN_LIVE=1`을 함께 요구합니다.
 

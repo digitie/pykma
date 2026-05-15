@@ -141,6 +141,8 @@ print(response.text)
 KMA_APIHUB_AUTH_KEY=<APIHub authKey>
 ```
 
+`ApiHubClient.from_env()`는 process env를 먼저 보고, 없으면 현재 작업 디렉터리와 부모 디렉터리의 `.env`, `.env.local`을 찾습니다. 같은 key가 여러 로컬 파일에 있으면 가까운 디렉터리 값이 우선하고, 같은 디렉터리에서는 `.env.local`이 `.env`보다 우선합니다. APIHub는 data.go.kr의 `serviceKey`가 아니라 `authKey`를 사용하며, 복사/붙여넣기 공백이나 줄바꿈은 클라이언트 생성 시 제거합니다.
+
 홈페이지 예제 값을 채워 호출하려면 `use_sample=True`를 사용합니다. 예제 날짜가 오래되었을 수 있으므로 운영 코드에서는 필요한 인자를 직접 넘기는 방식을 권장합니다.
 
 ```python

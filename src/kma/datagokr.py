@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -10,7 +9,9 @@ from typing import Any
 
 from kraddr.base import KmaGridPoint, PlaceCoordinate
 
+from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import build_session
+from .catalog import ApiCatalogEntry, api_catalog
 from .codes import label_for, normalize_value
 from .datagokr_catalog import (
     KMA_DATA_GOKR_DATASETS,
@@ -90,22 +91,18 @@ class DataGoKrClient:
         service_key_param: str = "serviceKey",
         session: Any | None = None,
     ) -> None:
-        if not service_key:
-            raise ValueError("service_key is required")
         if not service_key_param:
             raise ValueError("service_key_param is required")
-        self.service_key = service_key
-        self.service_key_param = service_key_param
+        self.service_key = normalize_api_key(service_key, field_name="service_key")
+        self.service_key_param = service_key_param.strip()
         self.timeout = timeout
         self.base_url = base_url.rstrip("/")
         self.session = session or build_session(retries)
 
     @classmethod
     def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
-        try:
-            service_key = os.environ[name]
-        except KeyError as exc:
-            raise ValueError(f"{name} is not set") from exc
+        names = DATA_GOKR_ENV_NAMES if name == "KMA_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+        service_key = first_env_value(names)
         return cls(service_key, **kwargs)
 
     def request(
@@ -272,6 +269,16 @@ class DataGoKrClient:
         """공공데이터포털의 기상청 data.go.kr OpenAPI dataset 목록을 반환합니다."""
 
         return KMA_DATA_GOKR_DATASETS
+
+    def api_catalog(
+        self,
+        *,
+        gateway: str | None = None,
+        dataset_id: str | int | None = None,
+    ) -> tuple[ApiCatalogEntry, ...]:
+        """UI/디버깅용으로 펼친 기상청 API 카탈로그를 반환합니다."""
+
+        return api_catalog(gateway=gateway, dataset_id=dataset_id)
 
     def dataset(self, dataset_id: str | int) -> DataGoKrDatasetSpec:
         """공공데이터포털 dataset id로 기상청 data.go.kr dataset 명세를 반환합니다."""

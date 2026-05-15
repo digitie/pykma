@@ -1,5 +1,6 @@
-"""기상청 공공 날씨 API와 관련 도로 날씨 API용 Python 도구."""
+"""기상청 공공 날씨 API용 Python 도구."""
 
+from ._credentials import api_key_for_gateway, env_names_for_gateway, load_local_env
 from .apihub import (
     ApiHubAttachment,
     ApiHubClient,
@@ -8,6 +9,7 @@ from .apihub import (
     ApiHubService,
 )
 from .apihub_endpoints import APIHUB_ATTACHMENTS, APIHUB_ENDPOINTS, ApiHubGeneratedClient
+from .catalog import ApiCatalogEntry, api_catalog
 from .client import KmaClient
 from .codes import label_for, parse_amount, unit_for
 from .datagokr import DataGoKrClient
@@ -26,7 +28,6 @@ from .exceptions import (
     KmaRequestError,
     KmaServerError,
 )
-from .expressway import ExpresswayRestAreaWeatherClient
 from .grid import kma_grid_to_wgs84, to_grid, to_latlon, wgs84_to_kma_grid
 from .locations import GridPoint, LatLon, normalize_location
 from .metadata import ResponseMetadata, make_cache_key, sanitize_request_params
@@ -40,7 +41,6 @@ from .models import (
     ForecastItem,
     ForecastTimepoint,
     MidForecastItem,
-    RestAreaWeather,
     WeatherSnapshot,
 )
 from .pagination import has_next_page, iter_pages, next_page_no
@@ -61,6 +61,7 @@ __all__ = [
     "ApiHubGeneratedClient",
     "ApiHubResponse",
     "ApiHubService",
+    "ApiCatalogEntry",
     "BeachForecastItem",
     "BeachSunTime",
     "BeachTideItem",
@@ -69,7 +70,6 @@ __all__ = [
     "DataGoKrClient",
     "DataGoKrDatasetSpec",
     "DataGoKrItem",
-    "ExpresswayRestAreaWeatherClient",
     "ForecastItem",
     "ForecastTimepoint",
     "ForecastPrecipitationType",
@@ -85,12 +85,13 @@ __all__ = [
     "LatLon",
     "MidForecastItem",
     "ObservedPrecipitationType",
-    "RestAreaWeather",
     "ResponseMetadata",
     "SkyCode",
     "WeatherCategory",
     "WeatherSnapshot",
+    "api_key_for_gateway",
     "has_next_page",
+    "api_catalog",
     "iter_pages",
     "kma_grid_to_wgs84",
     "label_for",
@@ -98,9 +99,11 @@ __all__ = [
     "cache_expire_at",
     "latest_mid_fcst_base",
     "latest_mid_fcst_time",
+    "load_local_env",
     "make_cache_key",
     "next_page_no",
     "normalize_location",
+    "env_names_for_gateway",
     "parse_amount",
     "pivot_forecast_items",
     "sanitize_request_params",

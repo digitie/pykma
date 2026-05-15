@@ -162,6 +162,15 @@ def test_apihub_request_path_appends_auth_key() -> None:
     assert session.calls[0]["params"] == {"authKey": "hub-key", "tm": "202211300900"}
 
 
+def test_apihub_auth_key_strips_copied_whitespace() -> None:
+    session = FakeSession("ok")
+    client = ApiHubClient(" hub \n key\t", session=session)
+
+    client.request_path("/api/typ01/url/kma_sfctm2.php")
+
+    assert session.calls[0]["params"] == {"authKey": "hubkey"}
+
+
 def test_apihub_open_api_builds_typ02_path_and_defaults() -> None:
     session = FakeSession('{"response": "ok"}')
     client = ApiHubClient("hub-key", session=session)
@@ -262,10 +271,10 @@ def test_redact_url_credentials_preserves_bare_query_parts() -> None:
     )
 
 
-def test_redact_url_credentials_handles_expressway_key_name() -> None:
+def test_redact_url_credentials_handles_generic_key_name() -> None:
     assert (
-        redact_url_credentials("http://data.ex.co.kr/openapi/restinfo/restWeatherList?key=secret&type=json")
-        == "http://data.ex.co.kr/openapi/restinfo/restWeatherList?key=***&type=json"
+        redact_url_credentials("https://example.com/openapi/weather?key=secret&type=json")
+        == "https://example.com/openapi/weather?key=***&type=json"
     )
 
 
