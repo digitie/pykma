@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -33,6 +34,7 @@ from kma import (  # noqa: E402
     api_catalog,
     api_key_for_gateway,
     env_names_for_gateway,
+    load_local_env,
 )
 from kma.time_utils import (  # noqa: E402
     KST,
@@ -88,19 +90,47 @@ def main() -> None:
     rows = list(api_catalog(gateway=source))
     selected_label = st.sidebar.selectbox("API", [row.label for row in rows])
     selected = rows[[row.label for row in rows].index(selected_label)]
+    st.sidebar.caption("API full name")
+    st.sidebar.write(_api_full_name(selected))
+    st.sidebar.caption(_api_description(selected))
+
     env_names = env_names_for_gateway(selected.gateway)
     default_key = _default_key(selected.gateway)
+    env_sources = _env_key_sources(selected.gateway)
 
-    api_key = st.sidebar.text_input(
-        f"{selected.credential_param}",
-        value="",
-        type="password",
-        placeholder="로컬 키 사용" if default_key else "",
-        help=f"기본값은 process env, .env, .env.local의 {', '.join(env_names)}에서 읽습니다.",
+    environment = "manual"
+    if env_sources:
+        st.sidebar.subheader("Environment")
+        environment = st.sidebar.selectbox("Environment", ["env", "manual"])
+        if environment == "env":
+            source_info = env_sources[0]
+            st.sidebar.caption(
+                f"{source_info['name']} 값을 사용합니다. Source: {source_info['source']}"
+            )
+
+    st.sidebar.subheader("Auth")
+    if environment == "manual":
+        api_key = st.sidebar.text_input(
+            f"{selected.credential_param}",
+            value="",
+            type="password",
+            placeholder="직접 입력",
+            help=f"사용 가능한 env 이름: {', '.join(env_names)}",
+        )
+        effective_api_key = api_key
+    else:
+        effective_api_key = default_key
+    _service_key_links(selected)
+
+    timeout = st.sidebar.number_input(
+        "Timeout",
+        min_value=1.0,
+        max_value=60.0,
+        value=10.0,
+        step=1.0,
+        help="API 요청 timeout seconds입니다.",
     )
-    if default_key and not api_key:
-        st.sidebar.caption("로컬 인증키가 로드되었습니다.")
-    effective_api_key = api_key or default_key
+    fixture_base_dir = _fixture_base_dir_sidebar()
 
     tabs = st.tabs(
         [
@@ -114,7 +144,7 @@ def main() -> None:
     )
 
     with tabs[0]:
-        _raw_response_tab(selected, effective_api_key)
+        _raw_response_tab(selected, effective_api_key, timeout=float(timeout))
     with tabs[1]:
         _pydantic_model_tab(selected)
     with tabs[2]:
@@ -124,10 +154,10 @@ def main() -> None:
     with tabs[4]:
         _debug_trace_tab(rows, selected, env_names)
     with tabs[5]:
-        st.info("Fixture 저장 기능은 replay runner와 함께 별도 단계에서 연결합니다.")
+        _fixture_tab(fixture_base_dir)
 
 
-def _raw_response_tab(selected: Any, api_key: str) -> None:
+def _raw_response_tab(selected: Any, api_key: str, *, timeout: float) -> None:
     st.subheader(selected.dataset_name)
     st.caption(f"{selected.gateway} / {selected.service or '-'} / {selected.operation or '-'}")
     if selected.gateway != "datagokr" or not selected.service or not selected.operation:
@@ -157,7 +187,7 @@ def _raw_response_tab(selected: Any, api_key: str) -> None:
 
     try:
         params.update(extra_params)
-        client = DataGoKrClient(api_key)
+        client = DataGoKrClient(api_key, timeout=timeout)
         body = client.request(
             selected.service,
             selected.operation,
@@ -477,6 +507,124 @@ _PARAMETER_SPECS: dict[tuple[str, str], Any] = {
 }
 
 
+def _api_full_name(selected: Any) -> str:
+    if selected.service and selected.operation:
+        return f"{selected.dataset_name} / {selected.service} / {selected.operation}"
+    return f"{selected.dataset_name} / {selected.gateway}"
+
+
+def _api_description(selected: Any) -> str:
+    key = (selected.service, selected.operation)
+    if key in _API_DESCRIPTIONS:
+        return _API_DESCRIPTIONS[key]
+    if selected.gateway == "apihub":
+        return "data.go.kr 카탈로그에서 APIHub로 연결되는 기상청 API입니다."
+    if selected.operation:
+        return f"{selected.dataset_name}의 {selected.operation} operation입니다."
+    return f"{selected.dataset_name} API입니다."
+
+
+_API_DESCRIPTIONS: dict[tuple[str | None, str | None], str] = {
+    ("VilageFcstInfoService_2.0", "getUltraSrtNcst"): (
+        "초단기실황 관측값을 KMA DFS 격자 기준으로 조회합니다."
+    ),
+    ("VilageFcstInfoService_2.0", "getUltraSrtFcst"): (
+        "초단기예보를 발표시각과 격자 좌표 기준으로 조회합니다."
+    ),
+    ("VilageFcstInfoService_2.0", "getVilageFcst"): (
+        "단기예보를 발표시각과 격자 좌표 기준으로 조회합니다."
+    ),
+    ("VilageFcstInfoService_2.0", "getFcstVersion"): (
+        "예보 데이터의 버전 metadata를 조회합니다."
+    ),
+    ("MidFcstInfoService", "getMidFcst"): "전국 중기예보 통보문을 조회합니다.",
+    ("MidFcstInfoService", "getMidLandFcst"): (
+        "중기 육상예보를 권역 코드와 발표시각 기준으로 조회합니다."
+    ),
+    ("MidFcstInfoService", "getMidTa"): (
+        "중기 기온예보를 권역 코드와 발표시각 기준으로 조회합니다."
+    ),
+    ("MidFcstInfoService", "getMidSeaFcst"): (
+        "중기 해상예보를 권역 코드와 발표시각 기준으로 조회합니다."
+    ),
+    ("AsosDalyInfoService", "getWthrDataList"): (
+        "ASOS 지상 관측 일자료를 기간과 지점 기준으로 조회합니다."
+    ),
+    ("AsosHourlyInfoService", "getWthrDataList"): (
+        "ASOS 지상 관측 시간자료를 기간과 지점 기준으로 조회합니다."
+    ),
+    ("WthrWrnInfoService", "getWthrWrnList"): "기상특보 목록을 지점과 발표일 범위로 조회합니다.",
+    ("BeachInfoservice", "getUltraSrtFcstBeach"): (
+        "해수욕장 초단기예보를 해변 코드와 발표시각 기준으로 조회합니다."
+    ),
+    ("BeachInfoservice", "getVilageFcstBeach"): (
+        "해수욕장 단기예보를 해변 코드와 발표시각 기준으로 조회합니다."
+    ),
+    ("BeachInfoservice", "getWhBuoyBeach"): "해수욕장 주변 파고 관측값을 조회합니다.",
+    ("BeachInfoservice", "getTideInfoBeach"): "해수욕장 조석 정보를 조회합니다.",
+    ("BeachInfoservice", "getSunInfoBeach"): "해수욕장 일출/일몰 정보를 조회합니다.",
+    ("BeachInfoservice", "getTwBuoyBeach"): "해수욕장 주변 수온 관측값을 조회합니다.",
+}
+
+
+def _service_key_links(selected: Any) -> None:
+    st.sidebar.caption("Service key links")
+    st.sidebar.link_button(
+        f"{selected.credential_param} 발급/확인",
+        selected.service_key_url,
+    )
+    if selected.portal_url != selected.service_key_url:
+        st.sidebar.link_button("data.go.kr 카탈로그", selected.portal_url)
+
+
+def _env_key_sources(gateway: str) -> list[dict[str, str]]:
+    names = env_names_for_gateway(gateway)
+    sources: list[dict[str, str]] = []
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and value.strip():
+            sources.append({"name": name, "source": "process env"})
+            return sources
+
+    local_env = load_local_env()
+    for name in names:
+        value = local_env.get(name)
+        if value is not None and value.strip():
+            sources.append({"name": name, "source": ".env 또는 .env.local"})
+            return sources
+    return sources
+
+
+def _fixture_base_dir_sidebar() -> str:
+    st.sidebar.subheader("Fixtures")
+    candidates = _fixture_dir_candidates()
+    options = [str(path) for path in candidates]
+    custom_label = "Custom..."
+    selected = st.sidebar.selectbox("Fixture base dir", [*options, custom_label])
+    if selected == custom_label:
+        selected = st.sidebar.text_input(
+            "Custom fixture base dir",
+            value=str((ROOT / "tests" / "fixtures").resolve()),
+        )
+    st.sidebar.caption(selected)
+    return selected
+
+
+def _fixture_dir_candidates() -> list[Path]:
+    preferred = [
+        ROOT / "tests" / "fixtures",
+        ROOT / "tests",
+        ROOT / "tools",
+        ROOT,
+    ]
+    candidates: list[Path] = []
+    for path in preferred:
+        resolved = path.resolve()
+        if resolved not in candidates:
+            candidates.append(resolved)
+    return candidates
+
+
 def _pydantic_model_tab(selected: Any) -> None:
     run = _current_run(selected)
     if run is None:
@@ -517,6 +665,12 @@ def _validation_errors_tab(selected: Any) -> None:
         return
     for error in run["validation_errors"]:
         st.error(error)
+
+
+def _fixture_tab(fixture_base_dir: str) -> None:
+    st.info("Fixture 저장 기능은 replay runner와 함께 별도 단계에서 연결합니다.")
+    st.caption("Fixture base dir")
+    st.code(fixture_base_dir, language=None)
 
 
 def _parse_models(selected: Any, body: Any) -> tuple[str | None, list[dict[str, Any]], list[str]]:
