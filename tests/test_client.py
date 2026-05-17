@@ -201,7 +201,7 @@ def test_client_accepts_standard_location_objects_and_returns_category_enums() -
     client = KmaClient("decoded-key", session=session)
 
     items = client.forecast(
-        location=PlaceCoordinate(lon=126.9780, lat=37.5665),
+        location=PlaceCoordinate(lat=37.5665, lon=126.9780),
         when=datetime(2026, 4, 30, 14, 15, tzinfo=KST),
     )
 

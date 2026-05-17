@@ -133,7 +133,7 @@ from kraddr.base import PlaceCoordinate
 
 snap = kma.now(location=LatLon(37.5665, 126.9780))
 items = kma.forecast(location=GridPoint(60, 127))
-short = kma.forecast_short(location=PlaceCoordinate(lon=126.9780, lat=37.5665))
+short = kma.forecast_short(location=PlaceCoordinate(lat=37.5665, lon=126.9780))
 ```
 
 dict 기반 입력도 지원합니다. API 서버나 설정 파일에서 받은 값을 그대로 연결할 때 유용합니다.
@@ -179,7 +179,7 @@ latlon = kma_grid_to_wgs84(nx=60, ny=127)
 
 - `location=LatLon(...)`: WGS84 위도/경도 값 객체
 - `location=GridPoint(...)`: KMA DFS 격자 값 객체
-- `location=PlaceCoordinate(...)`: `kraddr.base` 공통 장소 좌표 값 객체. 축 순서는 `(lon, lat)`입니다.
+- `location=PlaceCoordinate(...)`: `kraddr.base` 공통 장소 좌표 값 객체. 공개 DTO 축 순서는 `(lat, lon)`입니다.
 - `location={"lat": ..., "lon": ...}` 또는 `{"latitude": ..., "longitude": ...}`: mapping 기반 WGS84 입력
 - `location={"nx": ..., "ny": ...}`: mapping 기반 KMA DFS 입력
 - `lat`, `lon`: WGS84 위도/경도
@@ -425,14 +425,14 @@ seoul = LatLon(37.5665, 126.9780)
 grid = seoul.to_grid()          # GridPoint(nx=60, ny=127)
 center = grid.to_latlon()       # 격자 중심에 가까운 WGS84 좌표
 
-normalize_location(PlaceCoordinate(lon=126.9780, lat=37.5665))  # GridPoint(60, 127)
+normalize_location(PlaceCoordinate(lat=37.5665, lon=126.9780))  # GridPoint(60, 127)
 normalize_location({"lat": 37.5665, "lon": 126.9780})  # GridPoint(60, 127)
 normalize_location({"nx": 60, "ny": 127})              # GridPoint(60, 127)
 ```
 
 - `LatLon.crs`는 `"EPSG:4326"`입니다.
 - `GridPoint.grid_system`은 `"KMA_DFS"`입니다.
-- `PlaceCoordinate`는 `kraddr.base`의 공통 장소 좌표 DTO이며 `(lon, lat)` 순서를 사용합니다.
+- `PlaceCoordinate`는 `kraddr.base`의 공통 장소 좌표 DTO이며 공개 DTO에서는 `(lat, lon)` 순서를 사용합니다.
 - `nx`/`ny`는 위도/경도가 아니며, KMA DFS 격자 좌표입니다.
 - WGS84 좌표는 항상 `lat/lon` 순서로 다루며, 앱 API나 저장 경계에서는 `latitude/longitude` 이름을 사용해도 같은 의미입니다.
 
