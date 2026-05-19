@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Callable
+
+import httpx
 
 from kma.apihub import (
     ApiHubClient,
@@ -12,11 +15,6 @@ from kma.apihub import (
     redact_url_credentials,
 )
 from kma.exceptions import KmaAuthError
-
-try:
-    from requests import HTTPError
-except ModuleNotFoundError:  # pragma: no cover
-    HTTPError = None  # type: ignore[assignment]
 
 
 class FakeResponse:
@@ -46,11 +44,13 @@ class FakeErrorResponse(FakeResponse):
         super().__init__(text, status_code=status_code, content_type="application/json")
 
     def raise_for_status(self) -> None:
-        if HTTPError is None:  # pragma: no cover
-            raise RuntimeError("requests is required")
-        exc = HTTPError("HTTP error")
-        exc.response = self
-        raise exc
+        request = httpx.Request("GET", self.url)
+        response = httpx.Response(
+            self.status_code,
+            request=request,
+            json={"result": {"status": self.status_code, "message": "활용신청이 필요합니다"}},
+        )
+        raise httpx.HTTPStatusError("HTTP error", request=request, response=response)
 
     def json(self) -> dict[str, Any]:
         return {"result": {"status": self.status_code, "message": "활용신청이 필요합니다."}}
@@ -62,6 +62,22 @@ class FakeSession:
         self.calls: list[dict[str, Any]] = []
 
     def get(self, url: str, *, params: dict[str, Any] | None, timeout: float) -> FakeResponse:
+        self.calls.append({"url": url, "params": params, "timeout": timeout})
+        return FakeResponse(self.text, url=url)
+
+
+class AsyncFakeSession:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.calls: list[dict[str, Any]] = []
+
+    async def get(
+        self,
+        url: str,
+        *,
+        params: dict[str, Any] | None,
+        timeout: float,
+    ) -> FakeResponse:
         self.calls.append({"url": url, "params": params, "timeout": timeout})
         return FakeResponse(self.text, url=url)
 
@@ -160,6 +176,23 @@ def test_apihub_request_path_appends_auth_key() -> None:
     assert response.metadata.request_params == {"tm": "202211300900"}
     assert session.calls[0]["url"] == "https://apihub.kma.go.kr/api/typ01/url/kma_sfctm2.php"
     assert session.calls[0]["params"] == {"authKey": "hub-key", "tm": "202211300900"}
+
+
+def test_apihub_async_request_path_appends_auth_key() -> None:
+    async def run() -> None:
+        session = AsyncFakeSession("ok")
+        client = ApiHubClient("hub-key", async_session=session)
+
+        response = await client.arequest_path(
+            "/api/typ01/url/kma_sfctm2.php",
+            {"tm": "202211300900"},
+        )
+
+        assert response.text == "ok"
+        assert session.calls[0]["url"] == "https://apihub.kma.go.kr/api/typ01/url/kma_sfctm2.php"
+        assert session.calls[0]["params"] == {"authKey": "hub-key", "tm": "202211300900"}
+
+    asyncio.run(run())
 
 
 def test_apihub_auth_key_strips_copied_whitespace() -> None:

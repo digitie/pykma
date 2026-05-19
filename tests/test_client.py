@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar
 
@@ -46,6 +47,20 @@ class FakeSession:
     def get(self, url: str, *, params: dict[str, Any], timeout: float) -> FakeResponse:
         self.calls.append({"url": url, "params": params, "timeout": timeout})
         return FakeResponse(self.payload)
+
+
+class AsyncFakeSession:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+        self.calls: list[dict[str, Any]] = []
+        self.closed = False
+
+    async def get(self, url: str, *, params: dict[str, Any], timeout: float) -> FakeResponse:
+        self.calls.append({"url": url, "params": params, "timeout": timeout})
+        return FakeResponse(self.payload)
+
+    async def aclose(self) -> None:
+        self.closed = True
 
 
 def assert_raises(exc_type: type[T], func: Callable[[], object]) -> T:
@@ -112,6 +127,65 @@ def test_now_pivots_observed_items() -> None:
     assert session.last_params["base_date"] == "20260430"
     assert session.last_params["base_time"] == "1400"
     assert session.last_params["dataType"] == "JSON"
+
+
+def test_forecast_service_matches_krheritage_style_facade() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "baseDate": "20260430",
+                "baseTime": "1400",
+                "fcstDate": "20260430",
+                "fcstTime": "1500",
+                "nx": "60",
+                "ny": "127",
+                "category": "TMP",
+                "fcstValue": "18.4",
+            }
+        )
+    )
+    client = KmaClient("decoded-key", session=session)
+
+    items = client.forecast.vilage(
+        nx=60,
+        ny=127,
+        when=datetime(2026, 4, 30, 14, 15, tzinfo=KST),
+    )
+
+    assert items[0].value == 18.4
+    assert (
+        client.forecast(nx=60, ny=127, when=datetime(2026, 4, 30, 14, 15, tzinfo=KST))[0].value
+        == 18.4
+    )
+    assert session.last_params is not None
+    assert session.last_params["base_time"] == "1400"
+
+
+def test_aio_client_exposes_async_forecast_service() -> None:
+    async def run() -> None:
+        session = AsyncFakeSession(
+            _payload(
+                [
+                    {"category": "T1H", "obsrValue": "18.4"},
+                    {"category": "REH", "obsrValue": "52"},
+                    {"category": "PTY", "obsrValue": "0"},
+                ]
+            )
+        )
+
+        async with KmaClient.aio("decoded-key", async_session=session) as client:
+            snapshot = await client.forecast.now(
+                nx=60,
+                ny=127,
+                when=datetime(2026, 4, 30, 14, 45, tzinfo=KST),
+            )
+
+        assert snapshot.temperature == 18.4
+        assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
+        assert session.closed is False
+        assert client.closed is True
+
+    asyncio.run(run())
 
 
 def test_client_service_key_strips_copied_whitespace() -> None:

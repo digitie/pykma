@@ -10,7 +10,7 @@ from .apihub import (
 )
 from .apihub_endpoints import APIHUB_ATTACHMENTS, APIHUB_ENDPOINTS, ApiHubGeneratedClient
 from .catalog import ApiCatalogEntry, api_catalog
-from .client import KmaClient
+from .client import AsyncForecastService, AsyncKmaClient, ForecastService, KmaClient
 from .codes import label_for, parse_amount, unit_for
 from .datagokr import DataGoKrClient
 from .datagokr_catalog import KMA_DATA_GOKR_DATASETS, DataGoKrDatasetSpec
@@ -62,6 +62,8 @@ __all__ = [
     "ApiHubResponse",
     "ApiHubService",
     "ApiCatalogEntry",
+    "AsyncForecastService",
+    "AsyncKmaClient",
     "BeachForecastItem",
     "BeachSunTime",
     "BeachTideItem",
@@ -71,6 +73,7 @@ __all__ = [
     "DataGoKrDatasetSpec",
     "DataGoKrItem",
     "ForecastItem",
+    "ForecastService",
     "ForecastTimepoint",
     "ForecastPrecipitationType",
     "GridPoint",

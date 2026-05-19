@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from requests import HTTPError
+import httpx
 
 from tools import update_apihub_endpoints as generator
 
@@ -14,7 +14,9 @@ class FakeResponse:
 
     def raise_for_status(self) -> None:
         if self.fail:
-            raise HTTPError("500 Server Error")
+            request = httpx.Request("GET", "https://apihub.kma.go.kr/generateAPIUrl.do")
+            response = httpx.Response(500, request=request, text=self.text)
+            raise httpx.HTTPStatusError("500 Server Error", request=request, response=response)
 
 
 class FakeSession:

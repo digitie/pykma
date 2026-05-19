@@ -11,6 +11,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 API
 ## 핵심 특징
 
 - **공식 단기예보 3종 우선 지원**: `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`를 `KmaClient`에서 호출합니다.
+- **httpx 기반 sync/async 클라이언트**: 동기 호출은 `KmaClient`, 비동기 호출은 `async with KmaClient.aio(...)` 형태를 사용하며, 예보 API는 `client.forecast.now()`처럼 service facade 아래에 모았습니다.
 - **data.go.kr 범용 호출, 기상청 카탈로그, 주요 helper 지원**: `DataGoKrClient`로 `MidFcstInfoService`, `AsosDalyInfoService`, `WthrWrnInfoService` 같은 KMA REST 서비스를 호출하고, 공공데이터포털 `기상청` 검색 전체 페이지의 KMA 항목 86개와 gateway operation 160개를 카탈로그로 조회합니다.
 - **APIHub 범용 호출과 함수형 래퍼 지원**: `ApiHubClient`로 임의 path를 호출하고, `ApiHubGeneratedClient`로 공식 목록의 470개 endpoint를 함수 이름으로 호출합니다.
 - **API 카탈로그와 디버그 UI 보조**: `api_catalog()`로 데이터셋명, gateway, operation, 인증키 링크가 있는 선택 목록을 얻고 Streamlit 디버그 화면에서 확인할 수 있습니다.
@@ -35,7 +36,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 API
 
 | 분류 | 권장 API |
 |---|---|
-| typed client | `KmaClient`, `DataGoKrClient`, `ApiHubClient` |
+| typed client | `KmaClient`, `AsyncKmaClient`, `DataGoKrClient`, `ApiHubClient` |
 | API 카탈로그 | `KMA_DATA_GOKR_DATASETS`, `DataGoKrDatasetSpec`, `ApiCatalogEntry`, `api_catalog` |
 | 인증키 로딩 | `api_key_for_gateway`, `env_names_for_gateway`, `load_local_env` |
 | 위치 값 객체 | `LatLon`, `GridPoint`, `normalize_location` |
@@ -58,7 +59,7 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 API
 1. [공공데이터포털](https://www.data.go.kr)에 가입하고 로그인합니다.
 2. `기상청_단기예보 ((구)_동네예보) 조회서비스` 또는 `VilageFcstInfoService_2.0`을 찾아 활용신청합니다.
 3. 마이페이지에서 승인된 인증키를 확인합니다.
-4. `kma`는 `requests.get(..., params=...)`를 사용하므로 **Decoding 인증키**를 환경변수에 넣는 것을 권장합니다.
+4. `kma`는 `httpx`의 `params=` 인코딩을 사용하므로 **Decoding 인증키**를 환경변수에 넣는 것을 권장합니다.
 
 ```bash
 export KMA_SERVICE_KEY="발급받은_decoding_인증키"
@@ -99,14 +100,23 @@ pip install -e ".[dev]"
 ```python
 from kma import KmaClient
 
-kma = KmaClient.from_env()
+with KmaClient.from_env() as kma:
+    snap = kma.forecast.now(lat=37.5665, lon=126.9780)  # 서울시청
+    print(snap.temperature, snap.precipitation_label)
 
-snap = kma.now(lat=37.5665, lon=126.9780)  # 서울시청
-print(snap.temperature, snap.precipitation_label)
+    items = kma.forecast.vilage(lat=37.5665, lon=126.9780)
+    for item in items[:5]:
+        print(item.forecast_at, item.category, item.value, item.label)
+```
 
-items = kma.forecast(lat=37.5665, lon=126.9780)
-for item in items[:5]:
-    print(item.forecast_at, item.category, item.value, item.label)
+비동기 코드는 `python-krheritage-api`와 같은 facade 패턴을 따릅니다.
+
+```python
+from kma import KmaClient
+
+async with KmaClient.aio_from_env() as kma:
+    snap = await kma.forecast.now(nx=60, ny=127)
+    items = await kma.forecast.short(nx=60, ny=127)
 ```
 
 KMA 예보 응답은 시간대가 아니라 category row 단위로 나뉘어 있으므로, 화면/저장 경계에서는 시간축으로 피벗하면 다루기 쉽습니다.
@@ -122,7 +132,7 @@ print(first.forecast_at, first.value(WeatherCategory.TEMPERATURE), first.label("
 격자 좌표를 이미 알고 있다면 `nx`/`ny`를 직접 사용할 수 있습니다.
 
 ```python
-items = kma.forecast(nx=60, ny=127)
+items = kma.forecast.vilage(nx=60, ny=127)
 ```
 
 외부 프로그램에서는 위치를 명시적인 값 객체로 넘기는 방식을 권장합니다.
@@ -131,16 +141,16 @@ items = kma.forecast(nx=60, ny=127)
 from kma import GridPoint, LatLon
 from kraddr.base import PlaceCoordinate
 
-snap = kma.now(location=LatLon(37.5665, 126.9780))
-items = kma.forecast(location=GridPoint(60, 127))
-short = kma.forecast_short(location=PlaceCoordinate(lat=37.5665, lon=126.9780))
+snap = kma.forecast.now(location=LatLon(37.5665, 126.9780))
+items = kma.forecast.vilage(location=GridPoint(60, 127))
+short = kma.forecast.short(location=PlaceCoordinate(lat=37.5665, lon=126.9780))
 ```
 
 dict 기반 입력도 지원합니다. API 서버나 설정 파일에서 받은 값을 그대로 연결할 때 유용합니다.
 
 ```python
-kma.now(location={"latitude": 37.5665, "longitude": 126.9780})
-kma.now(location={"nx": 60, "ny": 127})
+kma.forecast.now(location={"latitude": 37.5665, "longitude": 126.9780})
+kma.forecast.now(location={"nx": 60, "ny": 127})
 ```
 
 좌표 변환만 사용할 수도 있습니다. 기존 tuple 기반 API는 하위 호환용으로 유지합니다.
@@ -170,10 +180,10 @@ latlon = kma_grid_to_wgs84(nx=60, ny=127)
 
 | 메서드 | KMA endpoint | 반환 | 설명 |
 |---|---|---|---|
-| `KmaClient.now(...)` | `getUltraSrtNcst` | `WeatherSnapshot` | 초단기실황. 현재 관측값 중심 |
-| `KmaClient.forecast_short(...)` | `getUltraSrtFcst` | `list[ForecastItem]` | 초단기예보. 대략 향후 6시간 |
-| `KmaClient.forecast(...)` | `getVilageFcst` | `list[ForecastItem]` | 단기예보. 대략 향후 3일 |
-| `KmaClient.version(ftype, when)` | `getFcstVersion` | `Mapping` | 예보 버전 정보 |
+| `client.forecast.now(...)` | `getUltraSrtNcst` | `WeatherSnapshot` | 초단기실황. 현재 관측값 중심 |
+| `client.forecast.short(...)` | `getUltraSrtFcst` | `list[ForecastItem]` | 초단기예보. 대략 향후 6시간 |
+| `client.forecast.vilage(...)` | `getVilageFcst` | `list[ForecastItem]` | 단기예보. 대략 향후 3일 |
+| `client.forecast.version(ftype, when)` | `getFcstVersion` | `Mapping` | 예보 버전 정보 |
 
 모든 위치 인자는 둘 중 하나만 사용합니다.
 

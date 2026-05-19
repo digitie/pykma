@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Any, Callable
 
@@ -46,6 +47,16 @@ class FakeSession:
         return FakeResponse(self.payload)
 
 
+class AsyncFakeSession:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+        self.calls: list[dict[str, Any]] = []
+
+    async def get(self, url: str, *, params: dict[str, Any], timeout: float) -> FakeResponse:
+        self.calls.append({"url": url, "params": params, "timeout": timeout})
+        return FakeResponse(self.payload)
+
+
 def assert_raises(exc_type: type[BaseException], func: Callable[[], object]) -> None:
     try:
         func()
@@ -87,6 +98,26 @@ def test_datagokr_generic_request_builds_service_operation_url() -> None:
     assert session.calls[0]["params"]["dataType"] == "JSON"
     assert session.calls[0]["params"]["pageNo"] == 1
     assert session.calls[0]["params"]["numOfRows"] == 10
+
+
+def test_datagokr_async_request_builds_service_operation_url() -> None:
+    async def run() -> None:
+        session = AsyncFakeSession(_payload([{"wfSv": "맑음"}]))
+        client = DataGoKrClient("decoded-key", async_session=session)
+
+        body = await client.arequest(
+            "MidFcstInfoService",
+            "getMidFcst",
+            {"stnId": "108", "tmFc": "202605010600"},
+        )
+
+        assert body["items"]["item"][0]["wfSv"] == "맑음"
+        assert session.calls[0]["url"] == (
+            "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
+        )
+        assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
+
+    asyncio.run(run())
 
 
 def test_datagokr_service_key_strips_copied_whitespace() -> None:

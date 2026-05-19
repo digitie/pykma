@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, unquote_plus, urlsplit
 
-import requests
+import httpx
 
 BASE_URL = "https://apihub.kma.go.kr"
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,9 +75,9 @@ class Attachment:
 
 
 def main() -> None:
-    session = requests.Session()
-    endpoints = scrape_endpoints(session)
-    attachments = scrape_attachments(session)
+    with httpx.Client(follow_redirects=True) as session:
+        endpoints = scrape_endpoints(session)
+        attachments = scrape_attachments(session)
     assign_names(endpoints)
     OUTPUT.write_text(render_module(endpoints, attachments), encoding="utf-8")
     DOC_OUTPUT.write_text(render_docs(endpoints, attachments), encoding="utf-8")
@@ -86,7 +86,7 @@ def main() -> None:
     print(f"wrote endpoint catalog to {DOC_OUTPUT}")
 
 
-def scrape_endpoints(session: requests.Session) -> list[Endpoint]:
+def scrape_endpoints(session: httpx.Client) -> list[Endpoint]:
     merged: OrderedDict[tuple[str, tuple[tuple[str, str], ...]], Endpoint] = OrderedDict()
     services: list[tuple[int, int, str]] = []
 
@@ -110,7 +110,7 @@ def scrape_endpoints(session: requests.Session) -> list[Endpoint]:
                     "/generateAPIUrl.do",
                     {"seqApi": category_id, "seqApiSub": service_id},
                 )
-            except requests.RequestException as exc:
+            except httpx.HTTPError as exc:
                 print(
                     "warning: skipped generateAPIUrl.do "
                     f"seqApi={category_id} seqApiSub={service_id}: {exc}"
@@ -136,7 +136,7 @@ def scrape_endpoints(session: requests.Session) -> list[Endpoint]:
     return list(merged.values())
 
 
-def scrape_attachments(session: requests.Session) -> list[Attachment]:
+def scrape_attachments(session: httpx.Client) -> list[Attachment]:
     attachments: list[Attachment] = []
     seen: set[tuple[int, int, str, str]] = set()
     for category_id in CATEGORY_IDS:
@@ -163,7 +163,7 @@ def scrape_attachments(session: requests.Session) -> list[Attachment]:
     return attachments
 
 
-def get_text(session: requests.Session, path: str, params: dict[str, Any]) -> str:
+def get_text(session: httpx.Client, path: str, params: dict[str, Any]) -> str:
     response = session.get(f"{BASE_URL}{path}", params=params, timeout=30)
     response.raise_for_status()
     return response.text
@@ -242,7 +242,7 @@ def parse_generator_page(
 
 
 def parse_text_attachment_examples(
-    session: requests.Session,
+    session: httpx.Client,
     category_id: int,
     service_id: int,
     service_name: str,
@@ -263,7 +263,7 @@ def parse_text_attachment_examples(
             try:
                 response = session.get(f"{BASE_URL}{href}", timeout=30)
                 response.raise_for_status()
-            except requests.RequestException:
+            except httpx.HTTPError:
                 continue
             for raw_url in extract_api_urls(response.text):
                 endpoints.append(

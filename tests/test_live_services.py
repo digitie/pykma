@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import Mapping
 from pathlib import Path
@@ -11,6 +12,7 @@ from kma import (
     ApiHubGeneratedClient,
     ApiHubResponse,
     DataGoKrClient,
+    KmaClient,
 )
 from kma.time_utils import latest_ultra_srt_ncst_base
 
@@ -146,3 +148,22 @@ def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
     assert any(item.get("category") == "T1H" for item in items)
     assert all(str(item.get("nx")) == "60" for item in items)
     assert all(str(item.get("ny")) == "127" for item in items)
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set",
+)
+def test_live_async_kma_forecast_facade_shape() -> None:
+    async def run() -> None:
+        async with KmaClient.aio(_data_gokr_key() or "", timeout=30, retries=1) as client:
+            snapshot = await client.forecast.now(nx=60, ny=127)
+
+        assert snapshot.metadata is not None
+        assert snapshot.metadata.endpoint == "getUltraSrtNcst"
+        assert snapshot.grid.nx == 60
+        assert snapshot.grid.ny == 127
+        assert snapshot.raw["items"]
+
+    asyncio.run(run())
