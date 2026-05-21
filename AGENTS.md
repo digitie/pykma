@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## 문서 언어 정책
+
+이 저장소의 모든 Markdown/RST 문서는 한글로 작성합니다. 공식 API 필드명, 코드 식별자, 명령어, URL, provider 원문처럼 그대로 보존해야 하는 값만 영어를 유지합니다. 새 문서나 기존 문서를 수정할 때도 이 규칙을 우선합니다.
+
 ## 역할
 
 이 문서는 `python-kma-api` 저장소에서 작업하는 에이전트를 위한 운영 가이드입니다. import package는 `kma`이며, 세부 구현 규칙은 `SKILL.md`, API 세부 내용은 `kma-api.md`와 `docs/` 아래 문서를 함께 확인합니다.
