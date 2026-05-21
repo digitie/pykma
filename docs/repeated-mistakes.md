@@ -193,7 +193,7 @@
 
 ## `.env.local`에 키를 추가할 때 줄바꿈을 망가뜨리지 않기
 
-**실수:** 새 인증키를 기존 줄 끝에 붙여 `DATA_GOKR_SERVICE_KEY=...KMA_APIHUB_AUTH_KEY=...`처럼 만듦.
+**실수:** 새 인증키를 기존 줄 끝에 붙여 `DATA_GO_KR_SERVICE_KEY=...KMA_APIHUB_AUTH_KEY=...`처럼 만듦.
 
 **증상:** 원래 잘 되던 data.go.kr 실서버 테스트가 인증 실패를 냅니다.
 

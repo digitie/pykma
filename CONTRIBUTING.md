@@ -53,7 +53,7 @@ mypy src/kma
 실제 API 호출 테스트는 반드시 opt-in이어야 합니다.
 
 ```bash
-KMA_SERVICE_KEY=<decoded key> python -m pytest -m integration
+DATA_GO_KR_SERVICE_KEY=<decoded key> python -m pytest -m integration
 ```
 
 실제 인증키, 인증키가 포함된 URL, 비밀값이 들어 있는 응답 fixture는 커밋하지 않습니다.

@@ -62,20 +62,20 @@ Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 API
 4. `kma`는 `httpx`의 `params=` 인코딩을 사용하므로 **Decoding 인증키**를 환경변수에 넣는 것을 권장합니다.
 
 ```bash
-export KMA_SERVICE_KEY="발급받은_decoding_인증키"
+export DATA_GO_KR_SERVICE_KEY="발급받은_decoding_인증키"
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:KMA_SERVICE_KEY="발급받은_decoding_인증키"
+$env:DATA_GO_KR_SERVICE_KEY="발급받은_decoding_인증키"
 ```
 
 로컬 개발에서는 저장소 루트의 `.env` 또는 `.env.local`에 키를 둘 수 있습니다. `KmaClient.from_env()`, `DataGoKrClient.from_env()`, `ApiHubClient.from_env()`는 process env를 먼저 보고, 없으면 로컬 env 파일을 읽습니다. 같은 key가 여러 로컬 파일에 있으면 가까운 디렉터리 값이 우선하고, 같은 디렉터리에서는 `.env.local`이 `.env`보다 우선합니다.
 
 ```text
-KMA_SERVICE_KEY=<data.go.kr decoded serviceKey>
-DATA_GOKR_SERVICE_KEY=<data.go.kr decoded serviceKey>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded serviceKey>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded serviceKey>
 KMA_APIHUB_AUTH_KEY=<APIHub authKey>
 ```
 
@@ -640,7 +640,7 @@ streamlit run tools/debug_streamlit.py
 
 Raw Response 탭에는 선택한 API의 필수/선택 파라미터 입력 폼과 인증키를 제외한 request params preview가 표시됩니다. 좌측 메뉴에서는 API 풀네임/설명, 서비스키 링크, 환경변수 키 선택, 요청 timeout, fixture 기본 디렉터리를 조정할 수 있고, 폼에 없는 provider별 파라미터는 `Extra params JSON`으로 추가할 수 있습니다. 실행 후 Pydantic Model 탭에는 row 모델 변환 결과가, Processed Result 탭에는 표 형태 row preview가 표시됩니다. Debug Trace 탭에는 현재 카탈로그 항목, 선택한 데이터셋명, gateway, operation, 인증 파라미터, 키 발급/확인 링크가 표시됩니다.
 
-기본 테스트는 실제 API를 호출하지 않아야 합니다. 실제 KMA 호출 테스트를 추가할 경우 `KMA_SERVICE_KEY`가 있을 때만 실행되도록 별도 marker를 사용하세요.
+기본 테스트는 실제 API를 호출하지 않아야 합니다. 실제 KMA 호출 테스트를 추가할 경우 `DATA_GO_KR_SERVICE_KEY`가 있을 때만 실행되도록 별도 marker를 사용하세요.
 
 자세한 테스트 정책은 [docs/testing.md](docs/testing.md), 반복되는 API 함정은 [docs/repeated-mistakes.md](docs/repeated-mistakes.md), 오류별 해결책은 [docs/troubleshooting.md](docs/troubleshooting.md)를 참고하세요.
 

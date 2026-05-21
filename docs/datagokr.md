@@ -105,7 +105,7 @@ waves = client.dataset_items(
 
 기본값:
 
-- `serviceKey=<DATA_GOKR_SERVICE_KEY>` 또는 `<KMA_SERVICE_KEY>`
+- `serviceKey=<DATA_GO_KR_SERVICE_KEY>` 또는 `<DATA_GO_KR_SERVICE_KEY>`
 - `pageNo=1`
 - `numOfRows=10`
 - `dataType=JSON`
@@ -257,8 +257,8 @@ water = client.beach_water_temperature(beach_num=1, search_time="202205011600")
 실제 서버 테스트에서만 쓰는 인증키는 `.env.local`에 둘 수 있습니다. 이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다.
 
 ```text
-KMA_SERVICE_KEY=<data.go.kr decoded service key>
-DATA_GOKR_SERVICE_KEY=<data.go.kr decoded service key>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
 ```
 
 ## data.go.kr 검색에서 확인한 예시

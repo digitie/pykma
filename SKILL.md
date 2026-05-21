@@ -16,7 +16,7 @@ description: 기상청 공공 날씨 API용 Python 클라이언트를 구현, �
 5. data.go.kr user-facing 메서드는 기본적으로 `dataType=JSON`을 요청합니다.
 6. APIHub 기본 URL은 `https://apihub.kma.go.kr`입니다.
 7. APIHub 인증 파라미터는 `authKey`입니다.
-8. data.go.kr 키는 `DATA_GOKR_SERVICE_KEY` 또는 `KMA_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`에서 읽습니다.
+8. data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`에서 읽습니다.
 9. 붙여넣은 인증키 공백은 클라이언트 경계에서 제거하고, `.env`/`.env.local` 로컬 키 로딩을 지원합니다.
 10. KMA 예보 시간은 KST(UTC+9)입니다. naive `datetime`은 KST로 해석합니다.
 11. public API는 `location=LatLon(...)`, `location=GridPoint(...)`, WGS84 `lat`/`lon`, KMA 격자 `nx`/`ny` 중 하나를 받습니다. `nx`/`ny`를 위도/경도로 취급하지 않습니다.
@@ -94,7 +94,7 @@ tests/
 
 ```python
 KmaClient(service_key, *, timeout=10, retries=3, base_url=None, session=None)
-KmaClient.from_env(name="KMA_SERVICE_KEY")
+KmaClient.from_env(name="DATA_GO_KR_SERVICE_KEY")
 ```
 
 위치 인자는 다음 형식 중 하나만 받습니다.
@@ -345,7 +345,7 @@ KmaError
 실제 API 테스트:
 
 - `integration` marker 사용
-- `KMA_SERVICE_KEY` 또는 `KMA_APIHUB_AUTH_KEY`가 없으면 skip
+- `DATA_GO_KR_SERVICE_KEY` 또는 `KMA_APIHUB_AUTH_KEY`가 없으면 skip
 - 정확한 날씨값이 아니라 응답 구조와 타입만 검증
 
 ## 흔한 함정

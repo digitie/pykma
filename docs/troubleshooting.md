@@ -12,10 +12,10 @@
 
 해결:
 
-- `KMA_SERVICE_KEY`에는 Decoding 키를 넣습니다.
+- `DATA_GO_KR_SERVICE_KEY`에는 Decoding 키를 넣습니다.
 - data.go.kr 활용신청 승인 상태를 확인합니다.
 - `KmaClient.now(nx=60, ny=127)`로 최소 요청을 시도합니다.
-- `.env`나 `.env.local`을 쓰는 경우 data.go.kr 키는 `DATA_GOKR_SERVICE_KEY` 또는 `KMA_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`에 둡니다.
+- `.env`나 `.env.local`을 쓰는 경우 data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`에 둡니다.
 - 포털에서 복사한 인증키에 줄바꿈이나 공백이 섞여도 클라이언트가 제거하지만, `.env`는 한 줄에 하나의 key만 둡니다.
 
 ## 빈 예보 항목 또는 `NODATA_ERROR`

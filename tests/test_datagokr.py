@@ -220,8 +220,7 @@ def test_env_loader_supports_source_specific_keys_and_local_dotenv(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     env_names = (
-        "KMA_SERVICE_KEY",
-        "DATA_GOKR_SERVICE_KEY",
+        "DATA_GO_KR_SERVICE_KEY",
         "KMA_APIHUB_AUTH_KEY",
         "KMA_APIHUB_KEY",
     )
@@ -230,8 +229,7 @@ def test_env_loader_supports_source_specific_keys_and_local_dotenv(
     (tmp_path / ".env").write_text(
         "\n".join(
             [
-                'DATA_GOKR_SERVICE_KEY=" data gokr key "',
-                "KMA_SERVICE_KEY= legacy data gokr key",
+                'DATA_GO_KR_SERVICE_KEY=" data gokr key "',
                 "KMA_APIHUB_AUTH_KEY= api hub key",
             ]
         ),
@@ -242,8 +240,8 @@ def test_env_loader_supports_source_specific_keys_and_local_dotenv(
         encoding="utf-8",
     )
 
-    assert env_names_for_gateway("datagokr") == ("DATA_GOKR_SERVICE_KEY", "KMA_SERVICE_KEY")
-    assert "DATA_GOKR_SERVICE_KEY" in load_local_env()
+    assert env_names_for_gateway("datagokr") == ("DATA_GO_KR_SERVICE_KEY",)
+    assert "DATA_GO_KR_SERVICE_KEY" in load_local_env()
     assert api_key_for_gateway("datagokr") == "datagokrkey"
     assert api_key_for_gateway("apihub") == "localapihubkey"
     assert DataGoKrClient.from_env(session=FakeSession(_payload([]))).service_key == "datagokrkey"

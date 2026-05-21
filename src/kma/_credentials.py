@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-DATA_GOKR_ENV_NAMES = ("DATA_GOKR_SERVICE_KEY", "KMA_SERVICE_KEY")
+DATA_GOKR_ENV_NAMES = ("DATA_GO_KR_SERVICE_KEY",)
 APIHUB_ENV_NAMES = ("KMA_APIHUB_AUTH_KEY", "KMA_APIHUB_KEY")
 DEFAULT_ENV_FILES = (".env", ".env.local")
 

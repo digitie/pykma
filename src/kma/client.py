@@ -68,8 +68,8 @@ class KmaClient:
         self.closed = False
 
     @classmethod
-    def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> KmaClient:
-        names = DATA_GOKR_ENV_NAMES if name == "KMA_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+    def from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> KmaClient:
+        names = DATA_GOKR_ENV_NAMES if name == "DATA_GO_KR_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
         service_key = first_env_value(names)
         return cls(service_key=service_key, **kwargs)
 
@@ -80,10 +80,10 @@ class KmaClient:
         return AsyncKmaClient(service_key=service_key, **kwargs)
 
     @classmethod
-    def aio_from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> AsyncKmaClient:
+    def aio_from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> AsyncKmaClient:
         """Create an async-capable client from environment credentials."""
 
-        names = DATA_GOKR_ENV_NAMES if name == "KMA_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+        names = DATA_GOKR_ENV_NAMES if name == "DATA_GO_KR_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
         service_key = first_env_value(names)
         return AsyncKmaClient(service_key=service_key, **kwargs)
 
@@ -868,8 +868,8 @@ class AsyncKmaClient:
         self.closed = False
 
     @classmethod
-    def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> AsyncKmaClient:
-        names = DATA_GOKR_ENV_NAMES if name == "KMA_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+    def from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> AsyncKmaClient:
+        names = DATA_GOKR_ENV_NAMES if name == "DATA_GO_KR_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
         service_key = first_env_value(names)
         return cls(service_key=service_key, **kwargs)
 

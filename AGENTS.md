@@ -82,7 +82,7 @@
 - `PCP`, `SNO` 범주 문자열을 무조건 float로 변환하지 않습니다.
 - KMA result code 실패를 빈 리스트 성공처럼 반환하지 않습니다.
 - data.go.kr와 APIHub의 인증 파라미터를 섞지 않습니다.
-- data.go.kr 키는 `DATA_GOKR_SERVICE_KEY` 또는 `KMA_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`로 분리합니다.
+- data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`로 분리합니다.
 - 사용자가 붙여넣은 인증키 공백은 클라이언트 경계에서 제거하고, `.env`/`.env.local` 로컬 키 로딩을 지원합니다.
 - APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
 - 외부 구현을 참고해 반영할 때는 불필요한 adapter/wrapper 계층을 만들지 말고, 출처와 라이선스가 허용하는 범위에서 테스트 가능한 내부 구현으로 흡수합니다.
@@ -220,7 +220,7 @@ mypy src/kma
 실제 API 테스트를 추가할 경우 opt-in으로 둡니다.
 
 ```bash
-KMA_SERVICE_KEY=<decoded service key> python -m pytest -m integration
+DATA_GO_KR_SERVICE_KEY=<decoded service key> python -m pytest -m integration
 ```
 
 ## 현재 메모

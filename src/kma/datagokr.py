@@ -99,8 +99,8 @@ class DataGoKrClient:
         self._owns_async_session = async_session is None
 
     @classmethod
-    def from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
-        names = DATA_GOKR_ENV_NAMES if name == "KMA_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+    def from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
+        names = DATA_GOKR_ENV_NAMES if name == "DATA_GO_KR_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
         service_key = first_env_value(names)
         return cls(service_key, **kwargs)
 
@@ -111,7 +111,7 @@ class DataGoKrClient:
         return cls(service_key, **kwargs)
 
     @classmethod
-    def aio_from_env(cls, name: str = "KMA_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
+    def aio_from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
         """Create an async-capable client from environment credentials."""
 
         return cls.from_env(name=name, **kwargs)

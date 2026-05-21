@@ -16,7 +16,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kma")
     parser.add_argument(
         "--service-key",
-        help="KMA decoded service key. Defaults to KMA_SERVICE_KEY.",
+        help="KMA decoded service key. Defaults to DATA_GO_KR_SERVICE_KEY.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

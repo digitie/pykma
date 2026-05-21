@@ -41,7 +41,7 @@ def _apihub_key() -> str | None:
 
 
 def _data_gokr_key() -> str | None:
-    return os.getenv("DATA_GOKR_SERVICE_KEY") or os.getenv("KMA_SERVICE_KEY")
+    return os.getenv("DATA_GO_KR_SERVICE_KEY") or os.getenv("DATA_GO_KR_SERVICE_KEY")
 
 
 def _items_from_body(body: Mapping[str, object]) -> list[Mapping[str, object]]:
@@ -125,7 +125,7 @@ def test_live_apihub_warning_impact_and_zone_endpoints_shape() -> None:
 @pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(
     not _data_gokr_key(),
-    reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set",
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
 )
 def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
     client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
@@ -153,7 +153,7 @@ def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
 @pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(
     not _data_gokr_key(),
-    reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set",
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
 )
 def test_live_async_kma_forecast_facade_shape() -> None:
     async def run() -> None:
