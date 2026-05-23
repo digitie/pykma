@@ -100,7 +100,11 @@ class DataGoKrClient:
 
     @classmethod
     def from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
-        names = DATA_GOKR_ENV_NAMES if name == "DATA_GO_KR_SERVICE_KEY" else (name, *DATA_GOKR_ENV_NAMES)
+        names = (
+            DATA_GOKR_ENV_NAMES
+            if name == "DATA_GO_KR_SERVICE_KEY"
+            else (name, *DATA_GOKR_ENV_NAMES)
+        )
         service_key = first_env_value(names)
         return cls(service_key, **kwargs)
 
