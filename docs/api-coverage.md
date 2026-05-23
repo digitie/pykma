@@ -4,7 +4,7 @@
 
 ## 요약
 
-현재 직접 타입화된 모델로 구현한 KMA endpoint는 **4개**이고, data.go.kr `기상청` 검색 전체 페이지에서 확인한 KMA 항목 **86개**를 카탈로그로 제공합니다. 이 중 기존 data.go.kr `serviceKey` gateway 항목은 **38개**, 포털 상세기능에서 확인한 gateway operation은 **160개**, APIHub LINK 항목은 **48개**입니다. 주요 서비스 helper는 **20개 이상**의 operation을 감싸며, 별도로 해수욕장 날씨 조회서비스 helper는 **6개** operation을 감쌉니다. APIHub 공식 목록을 함수형으로 감싼 endpoint는 **470개**입니다. 관련 도로 날씨 API로 한국도로공사 휴게소별 날씨 endpoint **1개**도 타입화했습니다.
+현재 직접 타입화된 모델로 구현한 KMA endpoint는 **4개**이고, data.go.kr `기상청` 검색 전체 페이지에서 확인한 KMA 항목 **86개**를 카탈로그로 제공합니다. 이 중 기존 data.go.kr `serviceKey` gateway 항목은 **38개**, 포털 상세기능에서 확인한 gateway operation은 **160개**, APIHub LINK 항목은 **48개**입니다. 주요 서비스 helper는 **20개 이상**의 operation을 감싸며, 별도로 해수욕장 날씨 조회서비스 helper는 **6개** operation을 감쌉니다. APIHub 공식 목록을 함수형으로 감싼 endpoint는 **470개**입니다.
 
 | 구분 | 개수 | 설명 |
 |---|---:|---|
@@ -20,7 +20,6 @@
 | APIHub 첨부 metadata | 77개 | 포맷정보, 예제, 코드표 등 첨부 링크 |
 | APIHub 탐색 기능 | 2개 메서드 | 서비스 목록과 endpoint sample 추출 |
 | 위치/코드/시간축 타입 계층 | 1개 계층 | `LatLon`, `GridPoint`, `WeatherCategory`, `KmaEndpoint`, `ForecastTimepoint`, `pivot_forecast_items()` 등 public helper |
-| 한국도로공사 휴게소별 날씨 | 1개 | `ExpresswayRestAreaWeatherClient`가 `RestAreaWeather`로 반환 |
 
 ## 타입화 endpoint 4개
 
@@ -58,6 +57,8 @@ client.request("MidFcstInfoService", "getMidFcst", {"stnId": "108", "tmFc": "202
 카탈로그 구성은 기존 data.go.kr `serviceKey` gateway 38개, 해당 gateway operation 160개, APIHub LINK 48개입니다. 이 중 APIHub `typ02/openApi`와 정확히 같은 `{service}/{operation}`은 21개 dataset, 109개 operation입니다. 자세한 표는 [data.go.kr/APIHub 중복 확인](datagokr-apihub-overlap.md)에 있습니다.
 
 `DataGoKrClient.dataset(dataset_id)`는 카탈로그 metadata를 반환하고, `dataset_items(dataset_id, ...)`는 기존 `serviceKey` gateway 항목을 `{service}/{operation}` 형태로 호출합니다. APIHub LINK 항목은 `gateway="apihub"`로 표시하며 `ApiHubClient` 또는 `ApiHubGeneratedClient`로 호출해야 합니다.
+
+UI나 디버그 도구에서는 `api_catalog()`를 사용합니다. 이 함수는 data.go.kr 항목을 operation 단위로 펼치고 APIHub LINK 항목을 dataset 단위로 포함해, `dataset_name`, `label`, `gateway`, `service`, `operation`, `credential_param`, `service_key_url`이 있는 row를 반환합니다.
 
 ## data.go.kr 주요 서비스 helper
 
@@ -170,23 +171,6 @@ data.go.kr의 KMA REST API는 `http://apis.data.go.kr/1360000/{service}/{operati
 - 각 서비스별 필수 파라미터 조합 검증
 - APIHub LINK 항목을 `serviceKey` gateway로 자동 변환
 
-## 한국도로공사 휴게소별 날씨
-
-`ExpresswayRestAreaWeatherClient`는 한국도로공사 LINK API인 휴게소별 날씨 정보를 호출합니다.
-
-```text
-http://data.ex.co.kr/openapi/restinfo/restWeatherList
-```
-
-이 API는 기상청 APIHub나 data.go.kr `1360000` gateway가 아니며, 인증 파라미터는 `key`입니다.
-
-| 메서드 | endpoint | 반환 |
-|---|---|---|
-| `weather(sdate, std_hour)` | `restWeatherList` | `list[RestAreaWeather]` |
-| `latest_weather()` | `restWeatherList` | `list[RestAreaWeather]` |
-
-`latest_weather()`는 최근 시간대가 비어 있을 수 있는 API 특성을 고려해 lookback window 안에서 가장 최근의 비어 있지 않은 응답을 찾는 편의 메서드입니다.
-
 ## 답변 기준
 
 “지금 구현해놓은 API가 몇 개냐”는 질문에는 다음처럼 답합니다.
@@ -194,7 +178,6 @@ http://data.ex.co.kr/openapi/restinfo/restWeatherList
 - **직접 타입화 구현 endpoint는 4개입니다.**
 - **data.go.kr `기상청` 검색 카탈로그 항목은 86개입니다.**
 - **APIHub 함수형 래퍼는 470개입니다.**
-- **한국도로공사 휴게소별 날씨 타입화 endpoint는 1개입니다.**
 - **범용 클라이언트까지 포함하면 data.go.kr 임의 service/operation과 APIHub `/api/...` path를 호출할 수 있습니다.**
 - **APIHub 470개는 endpoint별 함수 이름을 제공하지만, 모든 응답을 endpoint별 Pydantic 모델로 강제 변환하지는 않습니다.**
 - **위치/코드 타입 계층은 endpoint 개수를 늘리는 항목은 아니며, 외부 프로그램에서 좌표계와 category 문자열을 안정적으로 다루기 위한 public API입니다.**

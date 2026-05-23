@@ -26,7 +26,6 @@
 - KMA endpoint/category/code 문자열 오타를 줄이는 `KmaEndpoint`, `WeatherCategory`, `SkyCode`, `ObservedPrecipitationType`, `ForecastPrecipitationType` enum.
 - `ForecastItem`과 `WeatherSnapshot`의 `grid`, `latlon`, `category_enum`, `unit` helper 속성.
 - data.go.kr 문서의 `serviceKey`/`ServiceKey` 표기 차이를 처리할 수 있는 `service_key_param` 설정.
-- 한국도로공사 휴게소별 날씨 API를 호출하는 `ExpresswayRestAreaWeatherClient`와 `RestAreaWeather` 모델.
 - public 응답 모델을 frozen Pydantic v2 모델로 전환하고 `model_dump()`, `model_dump_json()`, JSON Schema를 지원.
 - 권장 public API 목록과 `__all__` 정렬.
 - 명시적 좌표 변환 alias `wgs84_to_kma_grid()`, `kma_grid_to_wgs84()`.
@@ -39,4 +38,10 @@
 - 공공데이터포털 `기상청` 오픈 API 검색 전체 페이지에서 제목이 `기상청`으로 시작하는 86개 항목만 담은 `KMA_DATA_GOKR_DATASETS` 카탈로그와, 기존 `serviceKey` gateway 38개/operation 160개를 dataset id로 호출하는 helper.
 - 공공데이터포털 `BeachInfoservice` 6개 operation을 감싸는 `DataGoKrClient.beach_*` helper와 해수욕장 row 모델.
 - `KmaError` 계층의 `failure_kind`, `retryable`, provider/endpoint/status/result metadata.
+- 복사/붙여넣기 공백을 제거하는 인증키 정규화와 `.env`/`.env.local` 로컬 키 로딩.
+- 데이터셋명, gateway, operation, 인증키 링크를 제공하는 `api_catalog()`와 선택 실행용 Streamlit 디버그 화면.
 - README, API 레퍼런스, 에이전트 가이드, 트러블슈팅, 테스트 가이드, 반복 실수 방지 문서.
+
+### 제거
+
+- 비기상청 도로 날씨 클라이언트와 관련 테스트/문서를 제거. 해당 기능은 `python-krex-api`에서 관리.

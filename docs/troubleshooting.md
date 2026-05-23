@@ -12,9 +12,11 @@
 
 해결:
 
-- `KMA_SERVICE_KEY`에는 Decoding 키를 넣습니다.
+- `DATA_GO_KR_SERVICE_KEY`에는 Decoding 키를 넣습니다.
 - data.go.kr 활용신청 승인 상태를 확인합니다.
 - `KmaClient.now(nx=60, ny=127)`로 최소 요청을 시도합니다.
+- `.env`나 `.env.local`을 쓰는 경우 data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`에 둡니다.
+- 포털에서 복사한 인증키에 줄바꿈이나 공백이 섞여도 클라이언트가 제거하지만, `.env`는 한 줄에 하나의 key만 둡니다.
 
 ## 빈 예보 항목 또는 `NODATA_ERROR`
 
@@ -255,28 +257,3 @@ $env:KMA_RUN_LIVE="1"
 python -m pytest -m integration
 Remove-Item Env:\KMA_RUN_LIVE
 ```
-
-## 휴게소별 날씨가 빈 목록을 반환함
-
-가능한 원인:
-
-- 한국도로공사 API의 최신 시간대 자료가 아직 비어 있습니다.
-- `sdate` 또는 `stdHour`가 제공 범위를 벗어났습니다.
-- 인증키는 유효하지만 해당 시각에 자료가 없습니다.
-
-해결:
-
-- `latest_weather(lookback_hours=72)`를 사용해 최근 비어 있지 않은 시간대를 찾습니다.
-- 특정 시각을 조회할 때는 `sdate="YYYYMMDD"`, `std_hour=0~23` 형식을 지킵니다.
-- 실서버 테스트는 `EXPRESSWAY_API_KEY`를 `.env.local`에 두고 `KMA_RUN_LIVE=1`로만 실행합니다.
-
-## 휴게소별 날씨에 `-99` 같은 값이 보임
-
-가능한 원인:
-
-- 한국도로공사 API의 결측값 sentinel입니다.
-
-해결:
-
-- `RestAreaWeather`의 typed 필드는 `-99` 계열 값을 `None`으로 정규화합니다.
-- 원문이 필요할 때만 `RestAreaWeather.raw`를 확인합니다.

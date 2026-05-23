@@ -64,16 +64,19 @@ body, metadata = client.request_with_metadata(
 
 ## 기상청 API 카탈로그
 
-2026-05-07 기준 공공데이터포털 `기상청` 오픈 API 검색의 모든 페이지를 확인해, 제목이 `기상청`으로 시작하는 항목만 `KMA_DATA_GOKR_DATASETS`에 담았습니다. 경기도, 농촌진흥청, 행정안전부, 법제처, 한국도로공사 등 기상청이 아닌 항목은 제외합니다.
+2026-05-07 기준 공공데이터포털 `기상청` 오픈 API 검색의 모든 페이지를 확인해, 제목이 `기상청`으로 시작하는 항목만 `KMA_DATA_GOKR_DATASETS`에 담았습니다. 검색어에는 걸리지만 기상청이 아닌 기관의 항목은 제외합니다.
 
 카탈로그 86개 중 기존 data.go.kr `serviceKey` gateway 항목은 38개이며, 포털 상세기능에서 확인한 operation 160개를 함께 보존합니다. APIHub로 연결되는 48개 항목은 `gateway="apihub"`로 구분합니다. APIHub와 정확히 같은 `{service}/{operation}` 조합은 [data.go.kr/APIHub 중복 확인](datagokr-apihub-overlap.md)에 표로 정리했습니다.
 
 ```python
-from kma import KMA_DATA_GOKR_DATASETS, DataGoKrClient
+from kma import KMA_DATA_GOKR_DATASETS, DataGoKrClient, api_catalog
 
 client = DataGoKrClient.from_env()
 
 print(len(KMA_DATA_GOKR_DATASETS))  # 86
+for entry in api_catalog(gateway="datagokr")[:3]:
+    print(entry.dataset_name, entry.operation, entry.service_key_url)
+
 asos_spec = client.dataset("15059093")
 rows = client.dataset_items(
     "15059093",
@@ -85,6 +88,8 @@ rows = client.dataset_items(
     },
 )
 ```
+
+`api_catalog()`는 dataset을 operation 단위 row로 펼쳐 `dataset_name`, `label`, `gateway`, `service`, `operation`, `credential_param`, `service_key_url`을 제공합니다. Streamlit 같은 디버그 UI에서는 `label`을 선택 항목으로 쓰고, 사용자가 선택한 row의 `service_key_url`을 서비스키 발급/확인 링크로 보여주면 됩니다.
 
 `dataset_items()`는 서비스와 operation이 하나로 결정되는 data.go.kr gateway 항목을 바로 호출합니다. 여러 operation을 가진 항목은 `operation=`을 명시합니다.
 
@@ -100,10 +105,12 @@ waves = client.dataset_items(
 
 기본값:
 
-- `serviceKey=<KMA_SERVICE_KEY>`
+- `serviceKey=<DATA_GO_KR_SERVICE_KEY>` 또는 `<DATA_GO_KR_SERVICE_KEY>`
 - `pageNo=1`
 - `numOfRows=10`
 - `dataType=JSON`
+
+`from_env()`는 process env를 먼저 보고, 없으면 현재 작업 디렉터리와 부모 디렉터리의 `.env`, `.env.local`을 찾습니다. 같은 key가 여러 로컬 파일에 있으면 가까운 디렉터리 값이 우선하고, 같은 디렉터리에서는 `.env.local`이 `.env`보다 우선합니다. 인증키 값에 복사/붙여넣기 공백이나 줄바꿈이 섞이면 클라이언트 생성 시 제거합니다.
 
 공공데이터포털 문서는 서비스에 따라 인증키 항목을 `serviceKey` 또는 `ServiceKey`로 표기합니다. 기본값은 기존 data.go.kr gateway에서 동작 확인한 `serviceKey`이며, 특정 서비스가 대문자 이름을 요구하면 생성자에서 바꿀 수 있습니다.
 
@@ -250,8 +257,8 @@ water = client.beach_water_temperature(beach_num=1, search_time="202205011600")
 실제 서버 테스트에서만 쓰는 인증키는 `.env.local`에 둘 수 있습니다. 이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다.
 
 ```text
-KMA_SERVICE_KEY=<data.go.kr decoded service key>
-DATA_GOKR_SERVICE_KEY=<data.go.kr decoded service key>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
 ```
 
 ## data.go.kr 검색에서 확인한 예시

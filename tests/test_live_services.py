@@ -1,18 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from kraddr.base import Address
 
 from kma import (
     ApiHubClient,
     ApiHubGeneratedClient,
     ApiHubResponse,
     DataGoKrClient,
-    ExpresswayRestAreaWeatherClient,
+    KmaClient,
 )
 from kma.time_utils import latest_ultra_srt_ncst_base
 
@@ -41,11 +41,7 @@ def _apihub_key() -> str | None:
 
 
 def _data_gokr_key() -> str | None:
-    return os.getenv("DATA_GOKR_SERVICE_KEY") or os.getenv("KMA_SERVICE_KEY")
-
-
-def _expressway_key() -> str | None:
-    return os.getenv("EXPRESSWAY_API_KEY") or os.getenv("KOREA_EXPRESSWAY_API_KEY")
+    return os.getenv("DATA_GO_KR_SERVICE_KEY") or os.getenv("DATA_GO_KR_SERVICE_KEY")
 
 
 def _items_from_body(body: Mapping[str, object]) -> list[Mapping[str, object]]:
@@ -129,7 +125,7 @@ def test_live_apihub_warning_impact_and_zone_endpoints_shape() -> None:
 @pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
 @pytest.mark.skipif(
     not _data_gokr_key(),
-    reason="DATA_GOKR_SERVICE_KEY or KMA_SERVICE_KEY is not set",
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
 )
 def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
     client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
@@ -155,17 +151,19 @@ def test_live_data_gokr_ultra_srt_ncst_shape() -> None:
 
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
-@pytest.mark.skipif(not _expressway_key(), reason="EXPRESSWAY_API_KEY is not set")
-def test_live_expressway_rest_area_weather_shape() -> None:
-    client = ExpresswayRestAreaWeatherClient(_expressway_key() or "", timeout=30, retries=1)
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_async_kma_forecast_facade_shape() -> None:
+    async def run() -> None:
+        async with KmaClient.aio(_data_gokr_key() or "", timeout=30, retries=1) as client:
+            snapshot = await client.forecast.now(nx=60, ny=127)
 
-    rows = client.latest_weather(lookback_hours=72)
+        assert snapshot.metadata is not None
+        assert snapshot.metadata.endpoint == "getUltraSrtNcst"
+        assert snapshot.grid.nx == 60
+        assert snapshot.grid.ny == 127
+        assert snapshot.raw["items"]
 
-    assert rows
-    assert rows[0].unit_name
-    assert rows[0].route_name
-    assert rows[0].observed_at.tzinfo is not None
-    if rows[0].raw.get("addr"):
-        assert isinstance(rows[0].address, Address)
-        assert rows[0].address.display_address
-    assert rows[0].raw
+    asyncio.run(run())

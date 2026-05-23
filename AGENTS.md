@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## 문서 언어 정책
+
+이 저장소의 모든 Markdown/RST 문서는 한글로 작성합니다. 공식 API 필드명, 코드 식별자, 명령어, URL, provider 원문처럼 그대로 보존해야 하는 값만 영어를 유지합니다. 새 문서나 기존 문서를 수정할 때도 이 규칙을 우선합니다.
+
 ## 역할
 
 이 문서는 `python-kma-api` 저장소에서 작업하는 에이전트를 위한 운영 가이드입니다. import package는 `kma`이며, 세부 구현 규칙은 `SKILL.md`, API 세부 내용은 `kma-api.md`와 `docs/` 아래 문서를 함께 확인합니다.
@@ -26,8 +30,14 @@
 - Python 지원 기준은 3.10 이상입니다.
 - 런타임 의존성은 `requests`입니다.
 - 기본 테스트는 실제 KMA 네트워크 호출 없이 동작해야 합니다.
-- 편의용 wrapper를 불필요하게 늘리지 않습니다. 안정적인 public surface가 필요할 때만 wrapper를 추가하고, 단순 전달은 기존 범용 클라이언트로 처리합니다.
-- 다른 라이브러리에 검증된 구현이 있으면 라이선스와 출처를 확인한 뒤 wrapper로 감싸기보다 프로젝트 코드에 직접 반영하는 방향을 우선합니다. 이때 변경 폭이 최소수정 원칙보다 커지더라도 동작 일치와 유지보수성을 더 중요하게 봅니다.
+
+## Provider API 사용 원칙
+
+- 외부 API 관련 작업은 다른 구현보다 먼저 wrapper/adapter/gateway 지양 원칙을 확인하고 문서/코드에 반영한 뒤 진행합니다.
+- downstream이 직접 사용할 안정된 public client, typed model, enum, helper를 제공합니다.
+- 단순 전달용 wrapper, 장기 호환 alias, 임시 facade를 만들지 않습니다.
+- TripMate나 `python-krtour-map`에서 필요한 endpoint, pagination, cursor, exception, raw payload 계약이 부족하면 이 저장소의 public API를 먼저 안정화합니다.
+- 다른 라이브러리에 검증된 구현이 있으면 wrapper로 감싸지 말고 라이선스와 출처를 확인한 뒤 현재 구조에 직접 반영합니다. 이때 변경 폭이 최소수정 원칙보다 커지더라도 동작 일치와 유지보수성을 더 중요하게 봅니다.
 
 ## 문서 구성
 
@@ -36,7 +46,6 @@
 - `docs/apihub.md`: APIHub 인증키, 범용 호출, 탐색 기능, 응답 형식 규칙.
 - `docs/apihub-endpoints.md`: APIHub 함수형 endpoint 목록.
 - `docs/datagokr.md`: data.go.kr 범용 클라이언트와 서비스/operation 예시.
-- `docs/expressway.md`: 한국도로공사 휴게소별 날씨 API 사용법.
 - `docs/api-coverage.md`: 현재 구현 범위와 API 개수.
 - `docs/testing.md`: 테스트 설계, live test 제한, 회귀 테스트 절차.
 - `docs/troubleshooting.md`: 증상별 원인과 해결책.
@@ -51,10 +60,11 @@
 
 - `src/kma/client.py`: `KmaClient`, 타입화된 단기예보 endpoint, 응답 파싱.
 - `src/kma/datagokr.py`: data.go.kr 범용 서비스/operation 호출.
+- `src/kma/_credentials.py`: 인증키 정규화와 `.env`/`.env.local` 로딩.
+- `src/kma/catalog.py`: data.go.kr/APIHub UI용 통합 API 카탈로그 row.
 - `src/kma/datagokr_catalog.py`: 공공데이터포털 기상청 OpenAPI dataset catalog.
 - `src/kma/apihub.py`: APIHub 범용 호출, `typ02/openApi` helper, 탐색 parser, TXT/이미지 응답 helper.
 - `src/kma/apihub_endpoints.py`: 생성된 APIHub 함수형 endpoint 래퍼.
-- `src/kma/expressway.py`: 한국도로공사 휴게소별 날씨 API 클라이언트.
 - `src/kma/enums.py`: endpoint, category, SKY/PTY public enum.
 - `src/kma/locations.py`: `LatLon`, `GridPoint`, `normalize_location()` 위치 표준화.
 - `src/kma/_http.py`: session 생성과 retry 설정.
@@ -76,7 +86,8 @@
 - `PCP`, `SNO` 범주 문자열을 무조건 float로 변환하지 않습니다.
 - KMA result code 실패를 빈 리스트 성공처럼 반환하지 않습니다.
 - data.go.kr와 APIHub의 인증 파라미터를 섞지 않습니다.
-- 한국도로공사 휴게소 날씨 API는 `key` 파라미터와 `EXPRESSWAY_API_KEY` 환경변수를 사용합니다.
+- data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`로 분리합니다.
+- 사용자가 붙여넣은 인증키 공백은 클라이언트 경계에서 제거하고, `.env`/`.env.local` 로컬 키 로딩을 지원합니다.
 - APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
 - 외부 구현을 참고해 반영할 때는 불필요한 adapter/wrapper 계층을 만들지 말고, 출처와 라이선스가 허용하는 범위에서 테스트 가능한 내부 구현으로 흡수합니다.
 - 문서의 파일 위치 정보는 프로젝트 루트 기준 상대 경로로 작성하고, 로컬 절대 경로는 남기지 않습니다.
@@ -114,6 +125,7 @@
 - `serviceKey`, `pageNo`, `numOfRows`, `dataType` 기본값이 있습니다.
 - data.go.kr 문서가 `ServiceKey`를 요구하는 경우 `service_key_param`으로 인증 파라미터 이름을 바꿀 수 있습니다.
 - `items()`는 단일 dict 응답도 list로 감쌉니다.
+- `api_catalog()`는 사람이 읽을 수 있는 데이터셋명, gateway, operation, 인증 파라미터, 키 발급 링크를 제공합니다.
 
 ### APIHub 클라이언트
 
@@ -134,23 +146,6 @@
 - 이름 없는 query string은 `arg1`, `arg2` 순서를 보존합니다.
 - 생성된 endpoint 수와 문서의 endpoint 수가 일치해야 합니다.
 - 포맷정보/예제 첨부 링크는 `APIHUB_ATTACHMENTS` metadata와 문서가 일치해야 합니다.
-
-### 한국도로공사 휴게소 날씨
-
-담당 파일:
-
-- `src/kma/expressway.py`
-- `docs/expressway.md`
-- `tests/test_expressway.py`
-
-확인할 것:
-
-- endpoint는 `http://data.ex.co.kr/openapi/restinfo/restWeatherList`입니다.
-- 인증 파라미터는 `key`입니다.
-- 요청 파라미터는 `type=json`, `sdate=YYYYMMDD`, `stdHour=HH`입니다.
-- `code != SUCCESS`는 typed exception입니다.
-- `-99` 계열 결측값은 모델 필드에서 `None`으로 정규화하고 원문은 `raw`에 보존합니다.
-- 실서버 테스트는 `KMA_RUN_LIVE=1`과 `EXPRESSWAY_API_KEY`가 있을 때만 실행합니다.
 
 ### 시간 계산
 
@@ -229,7 +224,7 @@ mypy src/kma
 실제 API 테스트를 추가할 경우 opt-in으로 둡니다.
 
 ```bash
-KMA_SERVICE_KEY=<decoded service key> python -m pytest -m integration
+DATA_GO_KR_SERVICE_KEY=<decoded service key> python -m pytest -m integration
 ```
 
 ## 현재 메모

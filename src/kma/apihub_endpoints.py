@@ -7411,6 +7411,23 @@ class ApiHubGeneratedClient(ApiHubClient):
             return self.request_query_parts(spec.path, spec.query_parts, request_params)
         return self.request_path(spec.path, request_params)
 
+    async def acall_endpoint(
+        self,
+        name: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        use_sample: bool = False,
+    ) -> ApiHubResponse:
+        spec = self.endpoint(name)
+        request_params: dict[str, Any] = {}
+        if use_sample:
+            request_params.update(spec.sample_params)
+        if params:
+            request_params.update(params)
+        if any(kind == "bare" for kind, _name in spec.query_parts):
+            return await self.arequest_query_parts(spec.path, spec.query_parts, request_params)
+        return await self.arequest_path(spec.path, request_params)
+
     def text_endpoint(
         self,
         name: str,
@@ -7423,6 +7440,17 @@ class ApiHubGeneratedClient(ApiHubClient):
             delimiter=delimiter
         )
 
+    async def atext_endpoint(
+        self,
+        name: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        use_sample: bool = False,
+        delimiter: str | None = None,
+    ) -> ApiHubTextTable:
+        response = await self.acall_endpoint(name, params, use_sample=use_sample)
+        return response.text_table(delimiter=delimiter)
+
     def image_endpoint(
         self,
         name: str,
@@ -7431,6 +7459,16 @@ class ApiHubGeneratedClient(ApiHubClient):
         use_sample: bool = False,
     ) -> ApiHubImage:
         return self.call_endpoint(name, params, use_sample=use_sample).image()
+
+    async def aimage_endpoint(
+        self,
+        name: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        use_sample: bool = False,
+    ) -> ApiHubImage:
+        response = await self.acall_endpoint(name, params, use_sample=use_sample)
+        return response.image()
 
     def kma_sfctm2(
         self,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from kraddr.base import Address, PlaceCoordinate
+from kraddr.base import PlaceCoordinate
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .codes import unit_for
@@ -257,49 +257,6 @@ class BeachSunTime(kmaModel):
     sunset: str | None
     raw: dict[str, Any]
     metadata: ResponseMetadata | None = None
-
-
-class RestAreaWeather(kmaModel):
-    observed_at: datetime
-    sdate: str
-    std_hour: str
-    unit_code: str
-    unit_name: str
-    route_no: str
-    route_name: str
-    direction_code: str | None
-    coordinate: PlaceCoordinate | None = None
-    longitude: float | None
-    latitude: float | None
-    address: Address | None
-    measurement_station: str | None
-    weather: str | None
-    temperature: float | None
-    humidity: float | None
-    wind_speed: float | None
-    wind_direction_code: str | None
-    rainfall: float | None
-    rainfall_strength: float | None
-    new_snow: float | None
-    snow: float | None
-    cloud: float | None
-    dew_point: float | None
-    raw: dict[str, Any]
-    metadata: ResponseMetadata | None = None
-
-    @model_validator(mode="after")
-    def _validate_latlon(self) -> RestAreaWeather:
-        if self.latitude is not None and self.longitude is not None:
-            LatLon(self.latitude, self.longitude)
-        return self
-
-    @property
-    def latlon(self) -> LatLon | None:
-        """API row에 유효한 좌표가 있으면 WGS84 위치를 반환합니다."""
-
-        if self.latitude is None or self.longitude is None:
-            return None
-        return LatLon(self.latitude, self.longitude)
 
 
 class MidForecastItem(kmaModel):

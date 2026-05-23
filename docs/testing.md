@@ -12,7 +12,7 @@ python -m pytest
 
 - 네트워크 호출 없음
 - 결정적 결과
-- `KMA_SERVICE_KEY` 없이 실행 가능
+- `DATA_GO_KR_SERVICE_KEY` 없이 실행 가능
 - 요청 파라미터, 응답 파싱, 변환, 예외 동작 중심
 - `serviceKey`, `authKey`, `key` 원문이 모델 metadata, 예외, repr, fixture에 남지 않음
 
@@ -20,7 +20,6 @@ python -m pytest
 
 - `tests/test_client.py`: 단기예보 typed client 요청 파라미터, fake session 응답 파싱, result code 매핑, 잘못된 응답 처리.
 - `tests/test_datagokr.py`: data.go.kr 범용 service/operation 호출, 기상청 전용 dataset 카탈로그 86개와 gateway operation 160개, pagination helper, sanitized cache key, 중기예보 typed row wrapper와 최신 `tmFc` 선택, 주요 서비스 helper, 해수욕장 날씨 helper.
-- `tests/test_expressway.py`: 한국도로공사 휴게소별 날씨 요청 파라미터, 응답 모델의 `PlaceCoordinate`/`Address` 필드, 결측값 정규화, 에러 매핑.
 - `tests/test_pydantic_models.py`: public 응답 모델의 Pydantic 직렬화, frozen 동작, 좌표 검증.
 - `tests/test_apihub.py`: APIHub 범용 요청, `typ02/openApi` helper, 탐색 HTML parser, TXT table parser, 이미지 header parser.
 - `tests/test_apihub_endpoints.py`: 생성된 APIHub 470개 함수형 래퍼, sample parameter 적용, 이름 없는 query string 보존.
@@ -46,7 +45,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 @pytest.mark.skipif(os.getenv("KMA_RUN_LIVE") != "1", reason="set KMA_RUN_LIVE=1")
-@pytest.mark.skipif(not os.getenv("KMA_SERVICE_KEY"), reason="KMA_SERVICE_KEY is not set")
+@pytest.mark.skipif(not os.getenv("DATA_GO_KR_SERVICE_KEY"), reason="DATA_GO_KR_SERVICE_KEY is not set")
 def test_live_now_shape():
     ...
 ```
@@ -72,14 +71,14 @@ def test_live_now_shape():
 data.go.kr Decoding 키가 있을 때:
 
 ```bash
-KMA_SERVICE_KEY=<decoded key> kma now --nx 60 --ny 127
-KMA_SERVICE_KEY=<decoded key> kma forecast --lat 37.5665 --lon 126.9780
+DATA_GO_KR_SERVICE_KEY=<decoded key> kma now --nx 60 --ny 127
+DATA_GO_KR_SERVICE_KEY=<decoded key> kma forecast --lat 37.5665 --lon 126.9780
 ```
 
 PowerShell:
 
 ```powershell
-$env:KMA_SERVICE_KEY="<decoded key>"
+$env:DATA_GO_KR_SERVICE_KEY="<decoded key>"
 kma now --nx 60 --ny 127
 ```
 
@@ -94,10 +93,11 @@ kma apihub /api/typ01/url/wrn_reg.php --param tmfc=0
 
 ```text
 KMA_APIHUB_AUTH_KEY=<APIHub authKey>
-KMA_SERVICE_KEY=<data.go.kr decoded service key>
-DATA_GOKR_SERVICE_KEY=<data.go.kr decoded service key>
-EXPRESSWAY_API_KEY=<한국도로공사 API key>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
+DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
 ```
+
+클라이언트의 `from_env()`는 process env를 우선하고, 없으면 `.env`, `.env.local`을 읽습니다. 같은 key가 여러 로컬 파일에 있으면 가까운 디렉터리 값이 우선하고, 같은 디렉터리에서는 `.env.local`이 `.env`보다 우선합니다. data.go.kr 계열은 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 계열은 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`를 사용합니다. 복사/붙여넣기 공백은 생성자에서 제거합니다.
 
 실제 서버 integration 테스트는 의도치 않은 네트워크 호출을 막기 위해 marker와 `KMA_RUN_LIVE=1`을 함께 요구합니다.
 

@@ -27,7 +27,6 @@ python -m pytest
 - 외부 프로그램용 위치 입력은 `LatLon`, `GridPoint`, `location=`으로 표준화하고, 기존 `lat/lon`, `nx/ny` API는 호환성을 유지합니다.
 - 새 코드 식별자를 추가할 때는 가능한 경우 `src/kma/enums.py`의 public enum과 `src/kma/codes.py` helper를 함께 갱신합니다.
 - `requests`의 `params=`에는 data.go.kr Decoding 인증키를 전달합니다.
-- 한국도로공사 휴게소별 날씨 API는 `EXPRESSWAY_API_KEY`와 `key` 파라미터를 사용합니다.
 - 예보 항목의 `PCP`, `SNO` 범주 문자열은 보존합니다.
 - `PTY` 매핑은 endpoint별로 다르게 처리합니다.
 - KMA `resultCode`가 `00`이 아니면 typed exception으로 변환합니다.
@@ -54,7 +53,7 @@ mypy src/kma
 실제 API 호출 테스트는 반드시 opt-in이어야 합니다.
 
 ```bash
-KMA_SERVICE_KEY=<decoded key> python -m pytest -m integration
+DATA_GO_KR_SERVICE_KEY=<decoded key> python -m pytest -m integration
 ```
 
 실제 인증키, 인증키가 포함된 URL, 비밀값이 들어 있는 응답 fixture는 커밋하지 않습니다.
@@ -72,7 +71,6 @@ KMA_SERVICE_KEY=<decoded key> python -m pytest -m integration
 - `kma-api.md`: 좌표계, enum, category code 같은 API 세부 규칙.
 - `docs/api-coverage.md`: 구현 범위와 API 개수.
 - `docs/apihub-endpoints.md`: APIHub 함수형 endpoint 목록.
-- `docs/expressway.md`: 한국도로공사 휴게소별 날씨 API.
 - `CHANGELOG.md`: 릴리스 관점의 변경 사항.
 
 APIHub 공식 목록을 갱신할 때는 다음을 실행해 코드와 문서를 함께 생성합니다.
