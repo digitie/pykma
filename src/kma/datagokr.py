@@ -12,6 +12,9 @@ from kraddr.base import KmaGridPoint, PlaceCoordinate
 
 from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import async_get_with_retries, build_async_client, build_session, get_with_retries
+from ._parsing import float_or_none as _float_or_none
+from ._parsing import int_or_none as _int_or_none
+from ._parsing import str_or_none as _str_or_none
 from .catalog import ApiCatalogEntry, api_catalog
 from .codes import label_for, normalize_value
 from .datagokr_catalog import (
@@ -1655,23 +1658,6 @@ def _required_text(value: object, field: str) -> str:
     return text
 
 
-def _float_or_none(value: object) -> float | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    if not text:
-        return None
-    try:
-        return float(text)
-    except ValueError:
-        return None
-
-
-def _int_or_none(value: object) -> int | None:
-    number = _float_or_none(value)
-    if number is None:
-        return None
-    return int(number)
 
 
 def _items_from_body(body: Mapping[str, Any], *, endpoint: str) -> list[Mapping[str, Any]]:
@@ -1742,11 +1728,6 @@ def _resolve_tm_fc(value: str | datetime | None, *, when: datetime | None) -> st
     return _format_tm_fc(value)
 
 
-def _str_or_none(value: object) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
 
 
 def _unwrap_data_gokr_payload(

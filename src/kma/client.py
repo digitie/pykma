@@ -12,6 +12,8 @@ from kraddr.base import KmaGridPoint, PlaceCoordinate
 
 from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import async_get_with_retries, build_async_client, build_session, get_with_retries
+from ._parsing import float_or_none as _float_or_none
+from ._parsing import int_or_none as _int_or_none
 from .codes import label_for, normalize_value, parse_amount
 from .enums import KmaEndpoint, WeatherCategory, coerce_category, enum_value
 from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
@@ -1002,17 +1004,3 @@ def _raise_for_result_code(code: str, message: str, *, endpoint: str) -> None:
     )
 
 
-def _float_or_none(value: object) -> float | None:
-    if value is None:
-        return None
-    try:
-        return float(str(value).strip())
-    except ValueError:
-        return None
-
-
-def _int_or_none(value: object) -> int | None:
-    number = _float_or_none(value)
-    if number is None:
-        return None
-    return int(number)
