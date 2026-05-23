@@ -12,13 +12,21 @@
 
 1. 사용자 요청
 2. 이 `AGENTS.md`
-3. `kma-api.md`
-4. `SKILL.md`
-5. `README.md`
+3. `SKILL.md`
+4. `kma-api.md`, `docs/decisions.md`, `docs/api-coverage.md`
+5. `README.md` 및 나머지 `docs/`
 6. 기존 코드와 테스트
 7. 최소한의 되돌릴 수 있는 가정
 
 문서가 충돌하면 더 높은 우선순위의 문서를 따르고, 필요하면 낮은 우선순위 문서를 갱신합니다.
+
+작업 전에 반드시 다음을 읽는다:
+
+1. `README.md` — 프로젝트 개요와 빠른 시작
+2. `SKILL.md` — 프로젝트 불변조건과 DO NOT 규칙
+3. `docs/resume.md` — 현재 진척도와 "다음 한 작업"
+4. `docs/decisions.md` — 관련 ADR
+5. `docs/journal.md` — 최근 작업 일지 엔트리 3개
 
 ## 프로젝트 기준
 
@@ -205,20 +213,23 @@
 - 사용자 예제는 실제 public API와 일치해야 합니다.
 - API 개수와 구현 범위는 `docs/api-coverage.md`에 반영합니다.
 
+## 작업 후 체크리스트
+
+- [ ] `pytest -q` 통과
+- [ ] `ruff check .` / `mypy src/kma` 통과
+- [ ] `docs/journal.md`에 작업 항목 추가 (역시간순)
+- [ ] `docs/resume.md`의 진척도 갱신
+- [ ] 의사결정이 있었다면 `docs/decisions.md`에 ADR 추가
+- [ ] 사용자 가시 변경이면 `CHANGELOG.md` 갱신
+
 ## 검증
 
 기본 검증:
 
 ```bash
-python -m compileall src/kma tests
-python -m pytest
-```
-
-선택 검증:
-
-```bash
-ruff check .
-mypy src/kma
+python -m pytest -q
+python -m ruff check .
+python -m mypy src/kma
 ```
 
 실제 API 테스트를 추가할 경우 opt-in으로 둡니다.
@@ -226,12 +237,3 @@ mypy src/kma
 ```bash
 DATA_GO_KR_SERVICE_KEY=<decoded service key> python -m pytest -m integration
 ```
-
-## 현재 메모
-
-- `docs/apihub.md`는 APIHub 목록과 탐색 방식을 설명합니다.
-- `docs/apihub-endpoints.md`는 `tools/update_apihub_endpoints.py`로 갱신합니다.
-- `docs/datagokr.md`는 data.go.kr 범용 호출 방식을 설명합니다.
-- `docs/repeated-mistakes.md`는 KMA/APIHub 함정이 발견될 때마다 갱신합니다.
-- `docs/testing.md`는 test marker와 test 파일 구조가 바뀔 때 함께 갱신합니다.
-- `docs/troubleshooting.md`는 사용자에게 보이는 실패 모드가 추가될 때 갱신합니다.
