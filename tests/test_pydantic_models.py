@@ -49,7 +49,7 @@ def test_public_models_are_frozen_pydantic_models() -> None:
     assert_raises(ValidationError, lambda: setattr(item, "value", 20.0))
 
 
-def test_mid_forecast_item_preserves_raw_without_coordinate_mapping() -> None:
+def test_mid_forecast_item_preserves_raw_without_grid_mapping() -> None:
     item = MidForecastItem(
         operation="getMidLandFcst",
         tm_fc="202605010600",

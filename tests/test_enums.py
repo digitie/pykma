@@ -64,7 +64,6 @@ def test_forecast_item_exposes_standardized_type_and_location_helpers() -> None:
     assert item.unit == "C"
     assert item.grid == GridPoint(60, 127)
     assert isinstance(item.latlon, LatLon)
-    assert item.coordinate is None
     assert item.model_dump(mode="json")["category"] == "TMP"
     assert json.loads(item.model_dump_json())["category"] == "TMP"
     assert json.dumps(item.model_dump(mode="json"), default=str)

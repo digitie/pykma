@@ -6,8 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from kraddr.base import PlaceCoordinate
-
 from .grid import to_grid as _to_grid
 from .grid import to_latlon as _to_latlon
 from .grid import validate_grid as _validate_grid
@@ -95,7 +93,7 @@ class GridPoint:
         raise ValueError("location mapping must contain nx/ny")
 
 
-LocationInput = LatLon | GridPoint | PlaceCoordinate | Mapping[str, Any]
+LocationInput = LatLon | GridPoint | Mapping[str, Any]
 
 
 def normalize_location(
@@ -133,9 +131,6 @@ def normalize_location(
 def _normalize_location_object(location: LocationInput) -> GridPoint:
     if isinstance(location, GridPoint):
         return location
-    if isinstance(location, PlaceCoordinate):
-        grid = location.to_kma_grid()
-        return GridPoint(grid.nx, grid.ny)
     if isinstance(location, LatLon):
         return location.to_grid()
     if isinstance(location, Mapping):
@@ -149,4 +144,4 @@ def _normalize_location_object(location: LocationInput) -> GridPoint:
             return LatLon.from_mapping(location).to_grid()
         if has_grid:
             return GridPoint.from_mapping(location)
-    raise TypeError("location must be LatLon, GridPoint, PlaceCoordinate, or a mapping")
+    raise TypeError("location must be LatLon, GridPoint, or a mapping")
