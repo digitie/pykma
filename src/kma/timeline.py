@@ -32,7 +32,6 @@ def pivot_forecast_items(
                 "forecast_at": item.forecast_at,
                 "nx": item.nx,
                 "ny": item.ny,
-                "coordinate": item.coordinate,
                 "values": {},
                 "labels": {},
                 "units": {},

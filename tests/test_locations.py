@@ -1,7 +1,5 @@
 from typing import Callable
 
-from kraddr.base import PlaceCoordinate
-
 from kma import GridPoint, LatLon, normalize_location
 
 
@@ -40,7 +38,6 @@ def test_grid_point_standardizes_kma_dfs_and_converts_to_latlon() -> None:
 def test_normalize_location_accepts_objects_and_common_mappings() -> None:
     assert normalize_location(LatLon(37.5665, 126.9780)) == GridPoint(60, 127)
     assert normalize_location(GridPoint(60, 127)) == GridPoint(60, 127)
-    assert normalize_location(PlaceCoordinate(lat=37.5665, lon=126.9780)) == GridPoint(60, 127)
     assert normalize_location({"lat": 37.5665, "lon": 126.9780}) == GridPoint(60, 127)
     assert normalize_location({"latitude": 37.5665, "longitude": 126.9780}) == GridPoint(60, 127)
     assert normalize_location({"nx": "60", "ny": "127"}) == GridPoint(60, 127)

@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from kraddr.base import PlaceCoordinate
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .codes import unit_for
@@ -24,7 +23,7 @@ class WeatherSnapshot(kmaModel):
     observed_at: datetime
     nx: int
     ny: int
-    coordinate: PlaceCoordinate | None = None
+
     temperature: float | None
     humidity: int | None
     wind_speed: float | None
@@ -58,7 +57,7 @@ class ForecastItem(kmaModel):
     forecast_at: datetime
     nx: int
     ny: int
-    coordinate: PlaceCoordinate | None = None
+
     category: WeatherCategory | str
     value: str | float
     label: str | None
@@ -107,7 +106,7 @@ class ForecastTimepoint(kmaModel):
     forecast_at: datetime
     nx: int
     ny: int
-    coordinate: PlaceCoordinate | None = None
+
     values: dict[str, str | float] = Field(default_factory=dict)
     labels: dict[str, str] = Field(default_factory=dict)
     units: dict[str, str] = Field(default_factory=dict)
@@ -168,7 +167,7 @@ class BeachForecastItem(kmaModel):
     label: str | None
     nx: int | None = None
     ny: int | None = None
-    coordinate: PlaceCoordinate | None = None
+
     raw: dict[str, Any] = Field(default_factory=dict)
     metadata: ResponseMetadata | None = None
 
