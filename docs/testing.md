@@ -28,7 +28,7 @@ python -m pytest
 - `tests/test_codes.py`: `SKY`/`PTY` 라벨, `PCP`/`SNO` 보존, `parse_amount()`.
 - `tests/test_enums.py`: public enum wire value, enum-aware code helper, 모델의 enum/category helper.
 - `tests/test_grid.py`: 알려진 격자 변환점과 좌표 범위.
-- `tests/test_locations.py`: `LatLon`, `GridPoint`, `PlaceCoordinate`, mapping 기반 `location=` 표준화와 모호한 입력 거부.
+- `tests/test_locations.py`: `LatLon`, `GridPoint`, mapping 기반 `location=` 표준화와 모호한 입력 거부.
 - `tests/test_public_api.py`: package-level `__all__`과 권장 public API 정렬.
 - `tests/test_time_utils.py`: KST 변환, endpoint별 base time 선택, 발표주기 기반 cache 만료 시각.
 - `tests/test_timeline.py`: `ForecastItem` row를 `ForecastTimepoint` 시간축 객체로 피벗하는 helper.

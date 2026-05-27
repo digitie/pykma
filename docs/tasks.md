@@ -15,10 +15,10 @@
 - [ ] **T-005** 특보 전용 Pydantic 모델 추가 — `weather_warning()` 계열 반환에 전용 타입 모델 적용.
 - [ ] **T-006** retry에 jitter 추가 — `_http.py`의 exponential backoff에 `random.uniform()` 기반 jitter 적용. thundering herd 방지.
 - [ ] **T-007** 테스트 갭 보완 — CLI edge case, `pagination.py` 독립 테스트, `timeline.py` edge case, async generated endpoint 테스트, `_http.py` retry 단위 테스트.
-- [ ] **T-008** `python-kraddr-base` 의존성 해결 — PyPI 공개 또는 optional dependency 처리로 외부 기여자 진입 장벽 해소.
 - [ ] **T-009** `ApiCatalogEntry`에 중복/대체 경로 메타 추가 — `has_apihub_equivalent: bool` 등 필드로 UI에서 대체 경로 안내.
 
 ## 완료
 
+- [x] **T-008** `python-kraddr-base` 의존성 제거 — `LatLon`/`GridPoint`/mapping 기반 위치 입력만 유지하고 외부 DTO 의존을 제거. (2026-05-27)
 - [x] `_parsing.py` 공유 파싱 도우미 추출 — ADR-005 (2026-05-23, PR #3)
 - [x] 개발 프로세스 문서 도입 — `docs/resume.md`, `docs/journal.md`, `docs/decisions.md`, `docs/tasks.md`, `docs/agent-guide.md` (2026-05-23, PR #3)

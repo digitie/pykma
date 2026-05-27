@@ -44,4 +44,5 @@
 
 ### 제거
 
+- `python-kraddr-base` 런타임 의존성과 외부 장소 DTO 기반 위치 입력 지원을 제거. 좌표 입력은 `LatLon`, `GridPoint`, mapping, `lat/lon`, `nx`/`ny`로 제공.
 - 비기상청 도로 날씨 클라이언트와 관련 테스트/문서를 제거. 해당 기능은 `python-krex-api`에서 관리.

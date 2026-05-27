@@ -2,7 +2,7 @@
 
 새 에이전트 세션이 시작될 때 "지금 어디까지 했고, 다음은 뭐 하면 되나"를 한 화면에서 답한다.
 
-## 현재 진척도 (2026-05-23 갱신)
+## 현재 진척도 (2026-05-27 갱신)
 
 - ✅ `KmaClient` 타입화 단기예보 4개 endpoint (`getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`, `getFcstVersion`)
 - ✅ `DataGoKrClient` data.go.kr 범용 `{service}/{operation}` 호출 + 86개 dataset 카탈로그
@@ -11,7 +11,8 @@
 - ✅ `ApiHubClient` 범용 path 호출 + 탐색 기능 (서비스 목록, endpoint sample 추출)
 - ✅ `ApiHubGeneratedClient` 470개 함수형 endpoint wrapper
 - ✅ data.go.kr/APIHub 중복 109개 operation 문서화 (`docs/datagokr-apihub-overlap.md`)
-- ✅ 좌표 변환 (WGS84 ↔ KMA LCC DFS 격자), `LatLon`/`GridPoint`/`PlaceCoordinate`
+- ✅ 좌표 변환 (WGS84 ↔ KMA LCC DFS 격자), `LatLon`/`GridPoint`
+- ✅ 외부 장소 DTO 의존성 제거, `LatLon`/`GridPoint`/mapping 기반 위치 입력으로 정리
 - ✅ `ForecastTimepoint` 피벗 + `pivot_forecast_items()` 시계열 helper
 - ✅ 예외 계층 (`KmaError` → `Auth`/`Request`/`Server`/`Parse`)
 - ✅ 인증값 보안 (redaction, sanitize, `.env` 로딩)
@@ -42,7 +43,7 @@
 
 ## 알려진 함정
 
-- **`python-kraddr-base`가 PyPI에 없음**: 외부 기여자가 `pip install -e ".[dev]"` 시 실패. private index 안내 또는 optional dependency 처리 검토 필요.
+- **좌표 입력 범위**: 외부 장소 DTO를 직접 받지 않습니다. 앱 경계에서는 `LatLon`, `GridPoint`, 또는 `{"latitude": ..., "longitude": ...}` mapping으로 변환한 뒤 넘깁니다.
 - **data.go.kr 인증키 인코딩**: `params=`로 보낼 때는 Decoding 키를 써야 이중 인코딩 방지. Encoding 키를 쓰면 `SERVICE_KEY_IS_NOT_REGISTERED_ERROR`.
 - **KMA 시간 경계**: 자정 직후 `getVilageFcst`는 전날 2300 base를 사용해야 함. `latest_vilage_base()`가 처리.
 - **`PTY` 코드 차이**: 실황(`getUltraSrtNcst`)과 예보(`getVilageFcst`)에서 코드 의미가 다름.

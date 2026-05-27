@@ -8,7 +8,6 @@ from datetime import date, datetime
 from typing import Any
 
 import httpx
-from kraddr.base import KmaGridPoint, PlaceCoordinate
 
 from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import async_get_with_retries, build_async_client, build_session, get_with_retries
@@ -1532,9 +1531,6 @@ def _beach_forecast_item(
             label=label_for(category, value, endpoint=operation),
             nx=nx,
             ny=ny,
-            coordinate=PlaceCoordinate.from_kma_grid(KmaGridPoint(nx, ny))
-            if nx is not None and ny is not None
-            else None,
             raw=dict(row),
             metadata=metadata,
         )

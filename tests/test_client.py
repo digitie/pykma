@@ -4,8 +4,6 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar
 
-from kraddr.base import PlaceCoordinate
-
 from kma.client import KmaClient
 from kma.enums import WeatherCategory
 from kma.exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
@@ -275,7 +273,7 @@ def test_client_accepts_standard_location_objects_and_returns_category_enums() -
     client = KmaClient("decoded-key", session=session)
 
     items = client.forecast(
-        location=PlaceCoordinate(lat=37.5665, lon=126.9780),
+        location=LatLon(37.5665, 126.9780),
         when=datetime(2026, 4, 30, 14, 15, tzinfo=KST),
     )
 
@@ -287,7 +285,7 @@ def test_client_accepts_standard_location_objects_and_returns_category_enums() -
     assert items[0].category_enum is WeatherCategory.TEMPERATURE
     assert items[0].unit == "C"
     assert items[0].grid == GridPoint(60, 127)
-    assert isinstance(items[0].coordinate, PlaceCoordinate)
+    assert isinstance(items[0].latlon, LatLon)
 
 
 def test_client_accepts_grid_location_mapping() -> None:
@@ -308,7 +306,6 @@ def test_client_accepts_grid_location_mapping() -> None:
 
     assert snapshot.grid == GridPoint(60, 127)
     assert isinstance(snapshot.latlon, LatLon)
-    assert isinstance(snapshot.coordinate, PlaceCoordinate)
     assert snapshot.temperature == 18.4
 
 
