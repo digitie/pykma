@@ -25,7 +25,7 @@
         "serve",
         "--mcp"
       ],
-      "cwd": "F:\\dev\\kma-claude"
+      "cwd": "F:\\dev\\python-kma-api-claude"
     }
   }
 }

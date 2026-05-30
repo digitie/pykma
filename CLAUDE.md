@@ -19,7 +19,7 @@
 
 ## 에이전트 worktree + CodeGraph
 
-ChatGPT Codex는 `F:\dev\kma-codex`, Claude Code는 `F:\dev\kma-claude`, Google Antigravity 2.0은 `F:\dev\kma-antigravity`를 고정 worktree로 사용합니다. 새 작업은 해당 worktree에서 `git fetch` 후 `git switch -c agent/<topic> main`으로 브랜치를 생성하여 작업합니다. CodeGraph는 worktree마다 1회 `codegraph init -i`로 초기화하고 이후에는 `codegraph sync`를 통해 상태를 유지합니다. `.codegraph/`는 gitignore 대상입니다.
+ChatGPT Codex는 `F:\dev\python-kma-api-codex`, Claude Code는 `F:\dev\python-kma-api-claude`, Google Antigravity 2.0은 `F:\dev\python-kma-api-antigravity`를 고정 worktree로 사용합니다. 새 작업은 해당 worktree에서 `git fetch` 후 `git switch -c agent/<topic> main`으로 브랜치를 생성하여 작업합니다. CodeGraph는 worktree마다 1회 `codegraph init -i`로 초기화하고 이후에는 `codegraph sync`를 통해 상태를 유지합니다. `.codegraph/`는 gitignore 대상입니다.
 
 ## 로컬 개발 환경
 

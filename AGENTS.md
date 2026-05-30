@@ -44,9 +44,9 @@
 PC 개발은 Windows 호스트에서 직접 진행합니다. 본 저장소는 Python 패키지이므로 가상환경(`.venv`)을 구성하여 품질 관리를 수행합니다.
 
 - **에이전트별 고정 worktree**:
-  - ChatGPT Codex: `F:\dev\kma-codex`
-  - Claude Code: `F:\dev\kma-claude`
-  - Google Antigravity 2.0: `F:\dev\kma-antigravity`
+  - ChatGPT Codex: `F:\dev\python-kma-api-codex`
+  - Claude Code: `F:\dev\python-kma-api-claude`
+  - Google Antigravity 2.0: `F:\dev\python-kma-api-antigravity`
   - 작업마다 브랜치만 새로 만들고, CodeGraph는 worktree마다 1회 `codegraph init -i` 후 `codegraph sync`로 유지합니다.
 - **품질 게이트**: PR 머지 직전 작업자가 로컬에서 직접 린트와 테스트를 수행합니다.
 
