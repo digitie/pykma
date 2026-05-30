@@ -39,6 +39,30 @@
 - 런타임 의존성은 `requests`입니다.
 - 기본 테스트는 실제 KMA 네트워크 호출 없이 동작해야 합니다.
 
+## 개발 환경 및 에이전트 정책
+
+PC 개발은 Windows 호스트에서 직접 진행합니다. 본 저장소는 Python 패키지이므로 가상환경(`.venv`)을 구성하여 품질 관리를 수행합니다.
+
+- **에이전트별 고정 worktree**:
+  - ChatGPT Codex: `F:\dev\kma-codex`
+  - Claude Code: `F:\dev\kma-claude`
+  - Google Antigravity 2.0: `F:\dev\kma-antigravity`
+  - 작업마다 브랜치만 새로 만들고, CodeGraph는 worktree마다 1회 `codegraph init -i` 후 `codegraph sync`로 유지합니다.
+- **품질 게이트**: PR 머지 직전 작업자가 로컬에서 직접 린트와 테스트를 수행합니다.
+
+## 절대 하지 말 것 (DO NOT)
+
+1. **`main` 직접 푸시 금지** — 반드시 feature 브랜치 + PR 생성 후 로컬/리모트 승인을 받아 머지합니다.
+2. **실제 `serviceKey`나 `authKey` 평문 노출 금지** — 출력, 로그, 커밋, fixture에 절대로 남기지 않습니다. 사용자가 붙여넣은 인증키 공백은 클라이언트 경계에서 제거하고, `.env`/`.env.local` 로컬 키 로딩을 활용합니다.
+3. **기본 테스트에서 실제 API 호출 금지** — 네트워크 호출 없는 mock/fixture 기반으로 검증해야 합니다. 실제 호출 테스트를 추가할 경우 `DATA_GO_KR_SERVICE_KEY`가 있을 때만 실행되도록 `integration` marker를 사용합니다.
+4. **`nx`/`ny`를 위도/경도로 취급 금지** — WGS84 좌표는 항상 `lat/lon` 순서로 다루며, KMA 격자 좌표(`nx/ny`)와 엄격히 구분합니다. 외부 프로그램용 위치 입력은 `LatLon`/`GridPoint` 또는 `location=`으로 표준화합니다.
+5. **`PCP`, `SNO` 범주 문자열을 무조건 float로 변환 금지** — `"1.0mm 미만"`, `"30.0~50.0mm"`, `"강수없음"` 같은 범주 문자열은 무리하게 숫자로 바꾸지 않고 보존합니다. 대표값이 필요할 때만 `parse_amount()`를 제공합니다.
+6. **KMA result code 실패를 빈 리스트 성공처럼 반환 금지** — `resultCode != "00"`은 반드시 명시적인 typed exception으로 surface합니다.
+7. **data.go.kr와 APIHub의 인증 파라미터 혼용 금지** — data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY`로 엄격히 분리하여 사용합니다.
+8. **APIHub endpoint가 항상 JSON을 반환한다고 가정 금지** — 텍스트, 이미지, 바이너리 응답이 섞여 있으므로 `response_kind`나 `content` 타입을 명확히 처리합니다.
+9. **불필요한 wrapper/adapter 계층 추가 금지** — 단순 전달용 wrapper, 장기 호환 alias, 임시 facade를 지양하고, 다른 라이브러리에 검증된 구현이 있으면 라이선스와 출처를 확인한 뒤 프로젝트 내부 구현으로 직접 반영합니다.
+10. **문서에 로컬 절대 경로 기재 금지** — 문서의 파일 위치 정보는 항상 프로젝트 루트 기준 상대 경로(예: `src/kma/client.py`)로 작성합니다.
+
 ## Provider API 사용 원칙
 
 - 외부 API 관련 작업은 다른 구현보다 먼저 wrapper/adapter/gateway 지양 원칙을 확인하고 문서/코드에 반영한 뒤 진행합니다.
@@ -84,36 +108,15 @@
 - `src/kma/cli.py`: JSON CLI와 APIHub path 호출.
 - `tests/`: 네트워크 없는 단위 테스트.
 
-## 반드시 지킬 것
-
-- 실제 `serviceKey`나 `authKey`를 출력, 로그, 커밋, fixture에 남기지 않습니다.
-- 기본 테스트에서 실제 API를 호출하지 않습니다.
-- `nx`/`ny`를 위도/경도로 취급하지 않습니다.
-- 외부 프로그램용 위치 입력은 가능하면 `LatLon`/`GridPoint` 또는 `location=`으로 표준화합니다.
-- KMA 시간은 KST 기준입니다.
-- `PCP`, `SNO` 범주 문자열을 무조건 float로 변환하지 않습니다.
-- KMA result code 실패를 빈 리스트 성공처럼 반환하지 않습니다.
-- data.go.kr와 APIHub의 인증 파라미터를 섞지 않습니다.
-- data.go.kr 키는 `DATA_GO_KR_SERVICE_KEY` 또는 `DATA_GO_KR_SERVICE_KEY`, APIHub 키는 `KMA_APIHUB_AUTH_KEY` 또는 `KMA_APIHUB_KEY`로 분리합니다.
-- 사용자가 붙여넣은 인증키 공백은 클라이언트 경계에서 제거하고, `.env`/`.env.local` 로컬 키 로딩을 지원합니다.
-- APIHub endpoint가 항상 JSON을 반환한다고 가정하지 않습니다.
-- 외부 구현을 참고해 반영할 때는 불필요한 adapter/wrapper 계층을 만들지 말고, 출처와 라이선스가 허용하는 범위에서 테스트 가능한 내부 구현으로 흡수합니다.
-- 문서의 파일 위치 정보는 프로젝트 루트 기준 상대 경로로 작성하고, 로컬 절대 경로는 남기지 않습니다.
-- Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
-- 이 환경에서 `rg`가 실행 권한 문제로 실패하면 빈 결과로 보지 말고 PowerShell `Get-ChildItem`/`Select-String`으로 파일 목록과 검색을 우회합니다.
-- PowerShell로 한글 문서를 읽을 때는 UTF-8 출력을 명시하고 `Get-Content -Encoding UTF8`을 사용해 mojibake를 파일 깨짐으로 오판하지 않습니다.
-
 ## 작업 소유권
 
 ### 단기예보 클라이언트
 
 담당 파일:
-
 - `src/kma/client.py`
 - `src/kma/_http.py`
 
 확인할 것:
-
 - `serviceKey`를 요청 파라미터로 보냅니다.
 - `dataType=JSON`을 기본으로 둡니다.
 - `pageNo`, `numOfRows` 기본값이 있습니다.
@@ -123,12 +126,10 @@
 ### data.go.kr 범용 클라이언트
 
 담당 파일:
-
 - `src/kma/datagokr.py`
 - `docs/datagokr.md`
 
 확인할 것:
-
 - URL은 `{base_url}/{service}/{operation}` 형태입니다.
 - `serviceKey`, `pageNo`, `numOfRows`, `dataType` 기본값이 있습니다.
 - data.go.kr 문서가 `ServiceKey`를 요구하는 경우 `service_key_param`으로 인증 파라미터 이름을 바꿀 수 있습니다.
@@ -138,7 +139,6 @@
 ### APIHub 클라이언트
 
 담당 파일:
-
 - `src/kma/apihub.py`
 - `src/kma/apihub_endpoints.py`
 - `docs/apihub.md`
@@ -146,7 +146,6 @@
 - `tools/update_apihub_endpoints.py`
 
 확인할 것:
-
 - APIHub path는 `/api/`로 시작해야 합니다.
 - `authKey`를 자동으로 추가합니다.
 - 탐색 parser는 sample URL에서 `authKey`를 제거합니다.
@@ -158,11 +157,9 @@
 ### 시간 계산
 
 담당 파일:
-
 - `src/kma/time_utils.py`
 
 확인할 것:
-
 - 초단기실황: `HH00`, 발표 후 40분.
 - 초단기예보: `HH30`, 발표 후 15분.
 - 단기예보: `0200/0500/0800/1100/1400/1700/2000/2300`, 발표 후 10분.
@@ -171,12 +168,10 @@
 ### 좌표 변환
 
 담당 파일:
-
 - `src/kma/grid.py`
 - `src/kma/locations.py`
 
 확인할 것:
-
 - 공식 LCC DFS 상수는 근거 없이 바꾸지 않습니다.
 - 서울, 부산, 제주, 강남 검증점이 통과합니다.
 - 역변환은 허용 오차로 비교합니다.
@@ -186,12 +181,10 @@
 ### 코드 매핑
 
 담당 파일:
-
 - `src/kma/codes.py`
 - `src/kma/enums.py`
 
 확인할 것:
-
 - public enum 값은 KMA wire value와 같아야 합니다.
 - `SKY`는 `1`, `3`, `4`만 매핑합니다.
 - `PTY`는 endpoint-aware입니다.
@@ -201,11 +194,9 @@
 ### 문서
 
 담당 파일:
-
 - 모든 `.md` 문서
 
 확인할 것:
-
 - 프로젝트 문서는 한글로 작성합니다.
 - 파일 위치 정보는 `src/kma/client.py`, `docs/testing.md`처럼 프로젝트 루트 기준 상대 경로로 작성합니다.
 - Python 내부 문서와 docstring은 한글로 작성합니다.
@@ -225,7 +216,6 @@
 ## 검증
 
 기본 검증:
-
 ```bash
 python -m pytest -q
 python -m ruff check .
@@ -233,7 +223,6 @@ python -m mypy src/kma
 ```
 
 실제 API 테스트를 추가할 경우 opt-in으로 둡니다.
-
 ```bash
 DATA_GO_KR_SERVICE_KEY=<decoded service key> python -m pytest -m integration
 ```
