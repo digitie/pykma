@@ -2,6 +2,24 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (antigravity, 에이전트 고정 worktree prefix 변경 및 CodeGraph 초기화)
+
+**작업**: 에이전트 고정 worktree의 경로 prefix를 `kma-*`에서 프로젝트 명칭인 `python-kma-api-*`로 전면 개편하고, 로컬 디렉토리에 각 에이전트 전용 worktree 생성 및 `codegraph init -i`를 완료함.
+
+**구현 상세**:
+- 실제 Git worktree 생성: detached HEAD 상태로 `python-kma-api-codex`, `python-kma-api-claude`, `python-kma-api-antigravity` 워크트리를 `F:\dev` 아래 구축.
+- CodeGraph 초기화: 각 워크트리로 이동하여 `codegraph init -i`로 전체 색인을 수행 (디바이스별 약 1.7초 만에 38개 파일, 1,397개 노드 완벽 색인).
+- MCP 및 에이전트 설정 갱신: `.gemini/mcp.json`, `antigravity.json`, `claude.json`, `codex.json`, `.codex/config.toml` 경로를 `F:\dev\python-kma-api-*` 형태로 업데이트.
+- 문서 연동: `AGENTS.md` 및 `CLAUDE.md` 내 에이전트 worktree 설명 수정.
+- 형상 관리: `feat/python-kma-api-worktrees` 브랜치를 생성하여 PR #7 발급, `main` 브랜치에 로컬 머지 후 push 및 임시 브랜치 완벽 정리.
+
+**검증**:
+- `git worktree list`를 통해 3개 워크트리 실제 등록 확인.
+- 각 워크트리 내부 `.codegraph/` 색인 데이터 존재 확인.
+- 품질 게이트 (`pytest -q`, `ruff check`, `mypy`) 무사 통과.
+
+**다음 작업**: T-001 — HTTP 에러 핸들링 공통 추출.
+
 ## 2026-05-31 (antigravity, maplibre-vworld-js 스타일 및 MCP 설정 도입)
 
 **작업**: `maplibre-vworld-js` 프로젝트의 에이전트 개발 스타일, 고정 worktree 정책, AI용 가이드 문서, 그리고 MCP 설정을 가져와서 본 프로젝트에 적합하게 적용 및 PR 머지 완료.
