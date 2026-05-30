@@ -19,6 +19,7 @@
 - ✅ 101개 테스트 (97 mock + 4 live), ruff/mypy 통과
 - ✅ httpx async facade (`build_session`, `build_async_client`, sync/async retry)
 - ✅ `_parsing.py` 공유 파싱 도우미 추출 (PR #3)
+- ✅ `maplibre-vworld-js` 에이전트 스타일, 고정 worktree 규칙, AI용 가이드 문서, MCP 설정 도입 및 PR 머지 완료
 - ⬜ HTTP 에러 핸들링 공통 추출 (3개 클라이언트 × 2 sync/async = 6곳 중복)
 - ⬜ result code 핸들링 통합 (`_raise_for_result_code` 중복)
 - ⬜ async 패턴 일관화 (`DataGoKrClient.aio()`, `ApiHubClient.aio()`)
