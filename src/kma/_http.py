@@ -4,11 +4,86 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any
+from typing import Any, NoReturn
 
 import httpx
 
+from .exceptions import KmaAuthError, KmaRequestError, KmaServerError
+
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+def raise_for_kma_http_error(
+    exc: httpx.HTTPStatusError,
+    *,
+    provider: str,
+    endpoint: str,
+    label: str,
+    detail: str = "",
+) -> NoReturn:
+    """Map an httpx ``HTTPStatusError`` to the matching ``kma`` exception.
+
+    Shared by every client so the HTTP status → exception policy lives in one
+    place. ``label`` is the human-facing prefix in the message (e.g. ``"KMA"``,
+    ``"data.go.kr"``, ``"APIHub"``) while ``provider`` is the machine value
+    stored on the exception. ``detail`` appends an optional ``": <detail>"``
+    suffix extracted from the response body.
+    """
+
+    status = exc.response.status_code if exc.response is not None else None
+    suffix = f": {detail}" if detail else ""
+    if status and status >= 500:
+        raise KmaServerError(
+            f"{label} server returned HTTP {status}{suffix}",
+            provider=provider,
+            endpoint=endpoint,
+            status_code=status,
+            failure_kind="server",
+            retryable=True,
+        ) from None
+    if status in {401, 403}:
+        raise KmaAuthError(
+            f"{label} request failed with HTTP {status}{suffix}",
+            provider=provider,
+            endpoint=endpoint,
+            status_code=status,
+            failure_kind="auth",
+            retryable=False,
+        ) from None
+    if status == 429:
+        raise KmaRequestError(
+            f"{label} request failed with HTTP {status}{suffix}",
+            provider=provider,
+            endpoint=endpoint,
+            status_code=status,
+            failure_kind="rate_limit",
+            retryable=True,
+        ) from None
+    raise KmaRequestError(
+        f"{label} request failed with HTTP {status}{suffix}",
+        provider=provider,
+        endpoint=endpoint,
+        status_code=status,
+        failure_kind="request",
+        retryable=False,
+    ) from None
+
+
+def raise_for_kma_network_error(
+    *,
+    provider: str,
+    endpoint: str,
+    label: str,
+) -> NoReturn:
+    """Map an httpx ``RequestError`` (connection/timeout) to ``KmaRequestError``."""
+
+    raise KmaRequestError(
+        f"{label} request failed",
+        provider=provider,
+        endpoint=endpoint,
+        failure_kind="network",
+        retryable=True,
+    ) from None
 
 
 def build_client() -> httpx.Client:

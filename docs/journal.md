@@ -2,6 +2,24 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-001 HTTP 에러 핸들링 공통 추출)
+
+**작업**: `client.py`, `datagokr.py`, `apihub.py`의 sync/async 6개 호출부에 중복돼 있던 HTTP status → 예외 매핑 코드를 `_http.py`의 공통 함수로 추출.
+
+**구현 상세**:
+- `_http.py`에 `raise_for_kma_http_error(exc, *, provider, endpoint, label, detail="")`와 `raise_for_kma_network_error(*, provider, endpoint, label)` 추가. `NoReturn` 타입으로 선언.
+- status 매핑 정책(>=500 → `KmaServerError`/server/retryable, 401·403 → `KmaAuthError`/auth, 429 → `KmaRequestError`/rate_limit/retryable, 그 외 → `KmaRequestError`/request)을 한 곳으로 통합.
+- `label`(메시지 prefix: "KMA"/"data.go.kr"/"APIHub")과 `provider`(예외에 저장되는 머신 값)를 분리. APIHub의 본문 에러 메시지는 `detail=` 인자로 suffix 부착.
+- `from None`을 헬퍼 내부에서 유지해 기존 예외 chain suppression 동작 보존.
+- 6개 호출부를 헬퍼 호출로 교체하고, apihub.py의 미사용 예외 import 정리.
+
+**검증**:
+- `pytest -m "not integration"` 97 passed, `ruff check .` / `mypy src/kma` 통과.
+- 라이브 테스트 `KMA_RUN_LIVE=1 pytest tests/test_live_services.py` 4 passed (실서버 happy path 회귀 없음).
+- `git diff --stat`: 순 98줄 절감 (145 +/243 -).
+
+**다음 작업**: T-002 — result code 핸들링 통합.
+
 ## 2026-05-31 (codex, Windows worktree alias 복구 및 CodeGraph ignore 정리)
 
 **작업**: Windows 기준 고정 worktree 경로 alias를 실제 checkout과 다시 맞추고, `.codegraph/`가 Git 상태에 나타나지 않도록 ignore 규칙을 정리.

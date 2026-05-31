@@ -15,8 +15,15 @@ from urllib.parse import quote_plus, unquote_plus, urlsplit, urlunsplit
 import httpx
 
 from ._credentials import APIHUB_ENV_NAMES, first_env_value, normalize_api_key
-from ._http import async_get_with_retries, build_async_client, build_session, get_with_retries
-from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
+from ._http import (
+    async_get_with_retries,
+    build_async_client,
+    build_session,
+    get_with_retries,
+    raise_for_kma_http_error,
+    raise_for_kma_network_error,
+)
+from .exceptions import KmaParseError
 from .metadata import (
     ResponseMetadata,
     is_credential_param,
@@ -436,52 +443,19 @@ class ApiHubClient:
                 retries=self.retries,
             )
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            message = _response_error_message(exc.response)
-            suffix = f": {message}" if message else ""
-            if status and status >= 500:
-                raise KmaServerError(
-                    f"APIHub server returned HTTP {status}{suffix}",
-                    provider="apihub",
-                    endpoint=endpoint,
-                    status_code=status,
-                    failure_kind="server",
-                    retryable=True,
-                ) from None
-            if status in {401, 403}:
-                raise KmaAuthError(
-                    f"APIHub request failed with HTTP {status}{suffix}",
-                    provider="apihub",
-                    endpoint=endpoint,
-                    status_code=status,
-                    failure_kind="auth",
-                    retryable=False,
-                ) from None
-            if status == 429:
-                raise KmaRequestError(
-                    f"APIHub request failed with HTTP {status}{suffix}",
-                    provider="apihub",
-                    endpoint=endpoint,
-                    status_code=status,
-                    failure_kind="rate_limit",
-                    retryable=True,
-                ) from None
-            raise KmaRequestError(
-                f"APIHub request failed with HTTP {status}{suffix}",
+            raise_for_kma_http_error(
+                exc,
                 provider="apihub",
                 endpoint=endpoint,
-                status_code=status,
-                failure_kind="request",
-                retryable=False,
-            ) from None
+                label="APIHub",
+                detail=_response_error_message(exc.response),
+            )
         except httpx.RequestError:
-            raise KmaRequestError(
-                "APIHub request failed",
+            raise_for_kma_network_error(
                 provider="apihub",
                 endpoint=endpoint,
-                failure_kind="network",
-                retryable=True,
-            ) from None
+                label="APIHub",
+            )
 
         content_type = response.headers.get("Content-Type", "")
         return ApiHubResponse(
@@ -510,52 +484,19 @@ class ApiHubClient:
                 retries=self.retries,
             )
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            message = _response_error_message(exc.response)
-            suffix = f": {message}" if message else ""
-            if status and status >= 500:
-                raise KmaServerError(
-                    f"APIHub server returned HTTP {status}{suffix}",
-                    provider="apihub",
-                    endpoint=endpoint,
-                    status_code=status,
-                    failure_kind="server",
-                    retryable=True,
-                ) from None
-            if status in {401, 403}:
-                raise KmaAuthError(
-                    f"APIHub request failed with HTTP {status}{suffix}",
-                    provider="apihub",
-                    endpoint=endpoint,
-                    status_code=status,
-                    failure_kind="auth",
-                    retryable=False,
-                ) from None
-            if status == 429:
-                raise KmaRequestError(
-                    f"APIHub request failed with HTTP {status}{suffix}",
-                    provider="apihub",
-                    endpoint=endpoint,
-                    status_code=status,
-                    failure_kind="rate_limit",
-                    retryable=True,
-                ) from None
-            raise KmaRequestError(
-                f"APIHub request failed with HTTP {status}{suffix}",
+            raise_for_kma_http_error(
+                exc,
                 provider="apihub",
                 endpoint=endpoint,
-                status_code=status,
-                failure_kind="request",
-                retryable=False,
-            ) from None
+                label="APIHub",
+                detail=_response_error_message(exc.response),
+            )
         except httpx.RequestError:
-            raise KmaRequestError(
-                "APIHub request failed",
+            raise_for_kma_network_error(
                 provider="apihub",
                 endpoint=endpoint,
-                failure_kind="network",
-                retryable=True,
-            ) from None
+                label="APIHub",
+            )
 
         content_type = response.headers.get("Content-Type", "")
         return ApiHubResponse(
