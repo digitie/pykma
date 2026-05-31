@@ -29,10 +29,14 @@
 - ✅ 특보 전용 Pydantic 모델 — `WeatherWarningItem`, `weather_warning_list()` 적용 (T-005)
 - ✅ retry에 jitter 추가 — `_backoff_with_jitter()` equal jitter (T-006)
 - ✅ 테스트 갭 보완 — pagination/async generated/CLI/timeline edge case (T-007, `_http` retry는 T-006)
+- ✅ `ApiCatalogEntry` 대체 경로 메타 — `has_apihub_equivalent`/`apihub_equivalent_path` (T-009)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
-`docs/tasks.md#T-009`: `ApiCatalogEntry`에 중복/대체 경로 메타 추가 — `has_apihub_equivalent: bool` 등 필드로 UI에서 대체 경로를 안내한다.
+`docs/tasks.md`의 백로그가 모두 비었다(T-001~T-009 완료). 다음 후보:
+- ASOS 서비스키 활용신청 후 `docs/live-test-key-issues.md`의 ASOS 라이브 테스트 재검증.
+- 라이브 테스트 커버리지 추가 확대(중기예보/통보문 등) 및 서비스키 이슈 지속 기록.
+- HTTP 에러/parse 핸들링의 추가 통합 여지 검토.
 
 ## 작업 시작 전 확인할 것
 

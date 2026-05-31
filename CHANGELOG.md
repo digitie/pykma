@@ -14,6 +14,7 @@
 
 ### 추가
 
+- `ApiCatalogEntry`에 `has_apihub_equivalent: bool`과 `apihub_equivalent_path: str | None` 필드를 추가해, data.go.kr operation이 APIHub `typ02/openApi`에도 같은 경로로 존재하는지 UI에서 안내 가능. `asdict()`에도 반영.
 - 전용 async facade 클래스 `AsyncDataGoKrClient`, `AsyncApiHubClient`를 public export에 추가.
 - ASOS 일/시간 자료 전용 Pydantic 모델 `AsosDailyItem`, `AsosHourlyItem`를 public export에 추가.
 - 기상특보 목록 전용 Pydantic 모델 `WeatherWarningItem`를 public export에 추가.
