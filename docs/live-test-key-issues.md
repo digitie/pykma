@@ -20,12 +20,15 @@ Remove-Item Env:\KMA_RUN_LIVE
 |---|---|---|---|---|
 | data.go.kr | `AsosDalyInfoService/getWthrDataList` | HTTP 403 `KmaAuthError` | 현재 `DATA_GO_KR_SERVICE_KEY`가 ASOS 일자료 서비스에 활용신청 미승인 | data.go.kr에서 해당 서비스 활용신청 후 재검증 |
 | data.go.kr | `AsosHourlyInfoService/getWthrDataList` | HTTP 403 `KmaAuthError` | 현재 `DATA_GO_KR_SERVICE_KEY`가 ASOS 시간자료 서비스에 활용신청 미승인 | data.go.kr에서 해당 서비스 활용신청 후 재검증 |
+| data.go.kr | `VilageFcstMsgService/getLandFcst` (단기예보 통보문) | HTTP 403 `KmaAuthError` | 현재 `DATA_GO_KR_SERVICE_KEY`가 통보문 서비스에 활용신청 미승인 | data.go.kr에서 해당 서비스 활용신청 후 재검증 |
 
 ## 정상 동작 확인된 엔드포인트 (참고)
 
 | 게이트웨이 | 서비스 / 엔드포인트 | 비고 |
 |---|---|---|
 | data.go.kr | `VilageFcstInfoService_2.0/getUltraSrtNcst` | 초단기실황, 정상 |
+| data.go.kr | `VilageFcstInfoService_2.0/getVilageFcst` (단기예보) | `KmaClient.forecast_short()`로 정상 |
+| data.go.kr | `MidFcstInfoService/getMidLandFcst` (중기육상예보) | 구독됨, 정상 (`reg_id` 필요, `tmFc`는 06/18시 발표) |
 | APIHub | `fct_shrt_reg`, `fct_medm_reg`, `wrn_reg`, `ifs_fct_pstt` | text/table 응답, 정상 |
 | APIHub | `FcstZoneInfoService/getFcstZoneCd` | JSON 응답, 정상 |
 | data.go.kr | `WthrWrnInfoService/getWthrWrnList` | 구독됨. **조회 기간은 현재 기준 최대 6일** (초과 시 resultCode 99), 활성 특보가 없으면 resultCode 03 `NO_DATA` 반환 |

@@ -15,7 +15,9 @@ from kma import (
     AsosDailyItem,
     AsosHourlyItem,
     DataGoKrClient,
+    ForecastItem,
     KmaClient,
+    MidForecastItem,
     WeatherWarningItem,
 )
 from kma.exceptions import KmaAuthError, KmaRequestError
@@ -307,3 +309,66 @@ def test_live_async_apihub_facade_shape() -> None:
         assert payload["response"]["header"]["resultCode"] == "00"
 
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_data_gokr_mid_land_forecast_shape() -> None:
+    client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
+
+    try:
+        rows = client.mid_land_forecast(reg_id="11B00000", num_of_rows=10)
+    except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
+        pytest.skip(f"MidFcstInfoService not authorized for this service key: {exc}")
+    except KmaRequestError as exc:
+        if exc.result_code == "03":  # NO_DATA: 발표시각 데이터 아직 없음 (정상)
+            pytest.skip("MidFcstInfoService returned NO_DATA for the chosen tmFc")
+        raise
+
+    assert rows
+    assert all(isinstance(row, MidForecastItem) for row in rows)
+    assert rows[0].operation == "getMidLandFcst"
+    assert rows[0].metadata is not None
+    assert "serviceKey" not in rows[0].metadata.request_params
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_data_gokr_land_forecast_message_shape() -> None:
+    client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
+
+    try:
+        rows = client.land_forecast_message(reg_id="11B10101", num_of_rows=10)
+    except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
+        pytest.skip(f"VilageFcstMsgService not authorized for this service key: {exc}")
+    except KmaRequestError as exc:
+        if exc.result_code == "03":  # NO_DATA
+            pytest.skip("VilageFcstMsgService returned NO_DATA")
+        raise
+
+    assert rows
+    assert rows[0].operation == "getLandFcst"
+    assert rows[0].metadata is not None
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_kma_vilage_forecast_short_shape() -> None:
+    client = KmaClient(_data_gokr_key() or "", timeout=30, retries=1)
+
+    items = client.forecast_short(nx=60, ny=127)
+
+    assert items
+    assert all(isinstance(item, ForecastItem) for item in items)
+    assert all(item.nx == 60 and item.ny == 127 for item in items)
+    assert items[0].metadata is not None
+    assert items[0].forecast_at.tzinfo is not None  # KST aware
