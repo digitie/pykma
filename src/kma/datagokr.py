@@ -33,6 +33,8 @@ from .enums import coerce_category
 from .exceptions import KmaParseError
 from .metadata import ResponseMetadata, make_response_metadata
 from .models import (
+    AsosDailyItem,
+    AsosHourlyItem,
     BeachForecastItem,
     BeachSunTime,
     BeachTideItem,
@@ -654,7 +656,7 @@ class DataGoKrClient:
         date_cd: str = "DAY",
         page_no: int = 1,
         num_of_rows: int = 10,
-    ) -> list[DataGoKrItem]:
+    ) -> list[AsosDailyItem]:
         """`AsosDalyInfoService/getWthrDataList` 일자료를 호출합니다."""
 
         params: dict[str, Any] = {
@@ -665,13 +667,14 @@ class DataGoKrClient:
         }
         if stn_ids is not None:
             params["stnIds"] = str(stn_ids)
-        return self._raw_items(
+        fetched = self._items_with_metadata(
             ASOS_DAILY_SERVICE,
             "getWthrDataList",
             params,
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
+        return [_asos_daily_item(row, fetched.metadata) for row in fetched.items]
 
     def asos_hourly_weather(
         self,
@@ -685,7 +688,7 @@ class DataGoKrClient:
         date_cd: str = "HR",
         page_no: int = 1,
         num_of_rows: int = 10,
-    ) -> list[DataGoKrItem]:
+    ) -> list[AsosHourlyItem]:
         """`AsosHourlyInfoService/getWthrDataList` 시간자료를 호출합니다."""
 
         params: dict[str, Any] = {
@@ -698,13 +701,14 @@ class DataGoKrClient:
         }
         if stn_ids is not None:
             params["stnIds"] = str(stn_ids)
-        return self._raw_items(
+        fetched = self._items_with_metadata(
             ASOS_HOURLY_SERVICE,
             "getWthrDataList",
             params,
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
+        return [_asos_hourly_item(row, fetched.metadata) for row in fetched.items]
 
     def weather_warning(
         self,
@@ -1777,6 +1781,45 @@ def _mid_forecast_item(
         tm_fc=_str_or_none(row.get("tmFc")),
         reg_id=_str_or_none(row.get("regId")),
         stn_id=_str_or_none(row.get("stnId")),
+        raw=dict(row),
+        metadata=metadata,
+    )
+
+
+def _asos_daily_item(
+    row: Mapping[str, Any],
+    metadata: ResponseMetadata,
+) -> AsosDailyItem:
+    return AsosDailyItem(
+        stn_id=_str_or_none(row.get("stnId")),
+        stn_name=_str_or_none(row.get("stnNm")),
+        date=_str_or_none(row.get("tm")),
+        avg_temperature=_float_or_none(row.get("avgTa")),
+        min_temperature=_float_or_none(row.get("minTa")),
+        max_temperature=_float_or_none(row.get("maxTa")),
+        precipitation=_float_or_none(row.get("sumRn")),
+        avg_wind_speed=_float_or_none(row.get("avgWs")),
+        avg_humidity=_float_or_none(row.get("avgRhm")),
+        raw=dict(row),
+        metadata=metadata,
+    )
+
+
+def _asos_hourly_item(
+    row: Mapping[str, Any],
+    metadata: ResponseMetadata,
+) -> AsosHourlyItem:
+    return AsosHourlyItem(
+        stn_id=_str_or_none(row.get("stnId")),
+        stn_name=_str_or_none(row.get("stnNm")),
+        observed_at=_str_or_none(row.get("tm")),
+        temperature=_float_or_none(row.get("ta")),
+        precipitation=_float_or_none(row.get("rn")),
+        wind_speed=_float_or_none(row.get("ws")),
+        wind_direction=_float_or_none(row.get("wd")),
+        humidity=_float_or_none(row.get("hm")),
+        pressure=_float_or_none(row.get("pa")),
+        sea_level_pressure=_float_or_none(row.get("ps")),
         raw=dict(row),
         metadata=metadata,
     )

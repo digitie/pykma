@@ -268,3 +268,44 @@ class MidForecastItem(kmaModel):
     stn_id: str | None = None
     raw: dict[str, Any]
     metadata: ResponseMetadata | None = None
+
+
+class AsosDailyItem(kmaModel):
+    """기상청 `AsosDalyInfoService/getWthrDataList` 일자료 row.
+
+    자주 쓰는 측정값만 타입화하고, 나머지 원본 필드는 `raw`에 보존합니다.
+    빈 문자열로 오는 값은 `None`으로 정규화됩니다.
+    """
+
+    stn_id: str | None = None
+    stn_name: str | None = None
+    date: str | None = None
+    avg_temperature: float | None = None
+    min_temperature: float | None = None
+    max_temperature: float | None = None
+    precipitation: float | None = None
+    avg_wind_speed: float | None = None
+    avg_humidity: float | None = None
+    raw: dict[str, Any]
+    metadata: ResponseMetadata | None = None
+
+
+class AsosHourlyItem(kmaModel):
+    """기상청 `AsosHourlyInfoService/getWthrDataList` 시간자료 row.
+
+    자주 쓰는 측정값만 타입화하고, 나머지 원본 필드는 `raw`에 보존합니다.
+    빈 문자열로 오는 값은 `None`으로 정규화됩니다.
+    """
+
+    stn_id: str | None = None
+    stn_name: str | None = None
+    observed_at: str | None = None
+    temperature: float | None = None
+    precipitation: float | None = None
+    wind_speed: float | None = None
+    wind_direction: float | None = None
+    humidity: float | None = None
+    pressure: float | None = None
+    sea_level_pressure: float | None = None
+    raw: dict[str, Any]
+    metadata: ResponseMetadata | None = None

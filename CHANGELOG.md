@@ -8,10 +8,12 @@
 
 - Windows 기준 고정 worktree 경로 운용에서 `.codegraph/` 로컬 산출물이 Git 상태에 나타나지 않도록 루트 `.gitignore`를 정리.
 - `DataGoKrClient.aio()`/`aio_from_env()`와 `ApiHubClient.aio()`/`aio_from_env()`가 `KmaClient.aio()`처럼 전용 async facade(`AsyncDataGoKrClient`, `AsyncApiHubClient`)를 반환하도록 변경. facade는 동기 메서드와 같은 이름의 코루틴을 노출하며 `async with`를 지원. (기존 `a`-prefixed 메서드는 동기 클라이언트에 그대로 유지)
+- `DataGoKrClient.asos_daily_weather()`/`asos_hourly_weather()`가 범용 `DataGoKrItem` 대신 전용 타입 모델 `AsosDailyItem`/`AsosHourlyItem` 리스트를 반환하도록 변경. 자주 쓰는 측정값을 타입화하고 빈 문자열은 `None`으로 정규화하며 원본은 `raw`에 보존.
 
 ### 추가
 
 - 전용 async facade 클래스 `AsyncDataGoKrClient`, `AsyncApiHubClient`를 public export에 추가.
+- ASOS 일/시간 자료 전용 Pydantic 모델 `AsosDailyItem`, `AsosHourlyItem`를 public export에 추가.
 
 - `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`, `getFcstVersion`을 다루는 초기 `KmaClient`.
 - KMA LCC DFS 격자 변환 함수 `to_grid()`, `to_latlon()`.
