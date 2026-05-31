@@ -162,3 +162,78 @@ def test_cli_apihub_rejects_bad_param_shape() -> None:
         SystemExit,
         lambda: cli.main(["apihub", "/api/typ01/url/kma_sfctm2.php", "--param", "bad"]),
     )
+
+
+def test_cli_apihub_rejects_empty_param_key() -> None:
+    assert_raises(
+        SystemExit,
+        lambda: cli.main(["apihub", "/api/typ01/url/kma_sfctm2.php", "--param", "=value"]),
+    )
+
+
+def test_cli_apihub_param_value_keeps_extra_equals() -> None:
+    original = cli.ApiHubClient
+    cli.ApiHubClient = FakeApiHubClient  # type: ignore[assignment]
+    stream = io.StringIO()
+    try:
+        with redirect_stdout(stream):
+            result = cli.main(
+                ["apihub", "/api/typ01/url/x.php", "--param", "q=a=b&c"]
+            )
+    finally:
+        cli.ApiHubClient = original
+
+    assert result == 0
+    assert FakeApiHubClient.last_call == ("/api/typ01/url/x.php", {"q": "a=b&c"})
+
+
+def test_cli_apihub_uses_explicit_auth_key() -> None:
+    original = cli.ApiHubClient
+    cli.ApiHubClient = FakeApiHubClient  # type: ignore[assignment]
+    FakeApiHubClient.last_from_env_called = False
+    stream = io.StringIO()
+    try:
+        with redirect_stdout(stream):
+            result = cli.main(
+                ["apihub", "/api/typ01/url/x.php", "--auth-key", "explicit-hub"]
+            )
+    finally:
+        cli.ApiHubClient = original
+
+    assert result == 0
+    assert FakeApiHubClient.last_from_env_called is False
+    assert FakeApiHubClient.last_init_key == "explicit-hub"
+
+
+def test_cli_now_with_latlon_uses_lat_lon_kwargs() -> None:
+    original = cli.KmaClient
+    cli.KmaClient = FakeClient  # type: ignore[assignment]
+    stream = io.StringIO()
+    try:
+        with redirect_stdout(stream):
+            result = cli.main(["now", "--lat", "37.5665", "--lon", "126.9780"])
+    finally:
+        cli.KmaClient = original
+
+    assert result == 0
+    assert FakeClient.last_call == ("now", {"lat": 37.5665, "lon": 126.978})
+
+
+def test_cli_forecast_vilage_path() -> None:
+    original = cli.KmaClient
+    cli.KmaClient = FakeClient  # type: ignore[assignment]
+    stream = io.StringIO()
+    try:
+        with redirect_stdout(stream):
+            result = cli.main(["forecast", "--nx", "60", "--ny", "127"])
+    finally:
+        cli.KmaClient = original
+
+    assert result == 0
+    assert FakeClient.last_call == ("forecast", {"nx": 60, "ny": 127})
+    payload = json.loads(stream.getvalue())
+    assert payload[0]["category"] == "TMP"
+
+
+def test_cli_requires_a_subcommand() -> None:
+    assert_raises(SystemExit, lambda: cli.main([]))

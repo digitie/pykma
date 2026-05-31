@@ -2,6 +2,20 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-007 테스트 갭 보완)
+
+**작업**: 직접 커버되지 않던 모듈/경로에 단위 테스트 추가.
+
+**구현 상세**:
+- `tests/test_pagination.py` 신설(10개): `has_next_page`/`next_page_no` 경계, 문자열 metadata 허용, `iter_pages`의 `max_pages`·`max_items` 안전장치, 인자 검증, `start_page` 반영.
+- `tests/test_apihub_endpoints.py`에 async generated 경로 테스트 4개: `acall_endpoint`(authKey 부착, sample params, bare query 순서 보존), `atext_endpoint` 파싱.
+- `tests/test_cli.py`에 edge case 6개: 빈 `--param` key 거부, `--param` 값의 `=` 보존, 명시적 `--auth-key`, `now`/`forecast`의 latlon·nx/ny 경로, subcommand 누락.
+- `tests/test_timeline.py`에 edge case 4개: 빈 입력, 동일 시간/격자/category 덮어쓰기 + raw 순서 보존, 격자 분리, 미지 category 무단위.
+
+**검증**: mock 129 passed(+24), `ruff`/`mypy` 통과, 라이브 7 passed / 2 skipped 회귀 없음(소스 변경 없음).
+
+**다음 작업**: T-009 — `ApiCatalogEntry` 중복/대체 경로 메타 추가.
+
 ## 2026-05-31 (claude, T-006 retry jitter)
 
 **작업**: `_http.py`의 exponential backoff에 jitter를 적용해 thundering herd를 완화.
