@@ -2,6 +2,24 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-006 retry jitter)
+
+**작업**: `_http.py`의 exponential backoff에 jitter를 적용해 thundering herd를 완화.
+
+**구현 상세**:
+- `_backoff_with_jitter(backoff_factor, attempt)` 추가. equal jitter로 `[base/2, base]` 구간에서 균등 분포(`base = backoff_factor * 2**attempt`). 기존 고정 backoff 대비 평균 대기는 비슷하게 유지하면서 동시 실패 클라이언트의 lockstep 재시도를 분산.
+- sync `get_with_retries`와 async `async_get_with_retries`의 sleep을 헬퍼 호출로 교체.
+- mypy `no-any-return` 회피 위해 명시적 `float(...)` 캐스트.
+
+**테스트**:
+- `tests/test_http.py` 신설: jitter 경계(`[base/2, base]`) 검증, `random.uniform` monkeypatch 결정성, retry-then-succeed(sync/async), 404 비재시도, 재시도 소진 등 6개.
+
+**검증**:
+- mock 105 passed(신규 6), `ruff`/`mypy` 통과.
+- 라이브 7 passed / 2 skipped — 회귀 없음.
+
+**다음 작업**: T-007 — 테스트 갭 보완(CLI/pagination/timeline/async generated).
+
 ## 2026-05-31 (claude, T-005 특보 전용 Pydantic 모델)
 
 **작업**: `weather_warning_list()`(getWthrWrnList)가 범용 `DataGoKrItem` 대신 전용 타입 모델 `WeatherWarningItem`를 반환하도록 변경.

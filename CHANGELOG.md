@@ -10,6 +10,7 @@
 - `DataGoKrClient.aio()`/`aio_from_env()`와 `ApiHubClient.aio()`/`aio_from_env()`가 `KmaClient.aio()`처럼 전용 async facade(`AsyncDataGoKrClient`, `AsyncApiHubClient`)를 반환하도록 변경. facade는 동기 메서드와 같은 이름의 코루틴을 노출하며 `async with`를 지원. (기존 `a`-prefixed 메서드는 동기 클라이언트에 그대로 유지)
 - `DataGoKrClient.asos_daily_weather()`/`asos_hourly_weather()`가 범용 `DataGoKrItem` 대신 전용 타입 모델 `AsosDailyItem`/`AsosHourlyItem` 리스트를 반환하도록 변경. 자주 쓰는 측정값을 타입화하고 빈 문자열은 `None`으로 정규화하며 원본은 `raw`에 보존.
 - `DataGoKrClient.weather_warning_list()`가 범용 `DataGoKrItem` 대신 전용 타입 모델 `WeatherWarningItem` 리스트를 반환하도록 변경.
+- 재시도 backoff에 equal jitter를 적용해 동시 실패한 클라이언트들이 같은 시점에 몰려 재시도하는 thundering herd를 완화 (sleep 구간 `[base/2, base]`).
 
 ### 추가
 
