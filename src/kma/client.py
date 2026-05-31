@@ -10,7 +10,14 @@ from typing import Any
 import httpx
 
 from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
-from ._http import async_get_with_retries, build_async_client, build_session, get_with_retries
+from ._http import (
+    async_get_with_retries,
+    build_async_client,
+    build_session,
+    get_with_retries,
+    raise_for_kma_http_error,
+    raise_for_kma_network_error,
+)
 from ._parsing import float_or_none as _float_or_none
 from ._parsing import int_or_none as _int_or_none
 from .codes import label_for, normalize_value, parse_amount
@@ -538,50 +545,18 @@ class KmaClient:
                 retries=self.retries,
             )
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            if status and status >= 500:
-                raise KmaServerError(
-                    f"KMA server returned HTTP {status}",
-                    provider="data.go.kr",
-                    endpoint=endpoint_name,
-                    status_code=status,
-                    failure_kind="server",
-                    retryable=True,
-                ) from None
-            if status in {401, 403}:
-                raise KmaAuthError(
-                    f"KMA request failed with HTTP {status}",
-                    provider="data.go.kr",
-                    endpoint=endpoint_name,
-                    status_code=status,
-                    failure_kind="auth",
-                    retryable=False,
-                ) from None
-            if status == 429:
-                raise KmaRequestError(
-                    "KMA request failed with HTTP 429",
-                    provider="data.go.kr",
-                    endpoint=endpoint_name,
-                    status_code=status,
-                    failure_kind="rate_limit",
-                    retryable=True,
-                ) from None
-            raise KmaRequestError(
-                f"KMA request failed with HTTP {status}",
+            raise_for_kma_http_error(
+                exc,
                 provider="data.go.kr",
                 endpoint=endpoint_name,
-                status_code=status,
-                failure_kind="request",
-                retryable=False,
-            ) from None
+                label="KMA",
+            )
         except httpx.RequestError:
-            raise KmaRequestError(
-                "KMA request failed",
+            raise_for_kma_network_error(
                 provider="data.go.kr",
                 endpoint=endpoint_name,
-                failure_kind="network",
-                retryable=True,
-            ) from None
+                label="KMA",
+            )
 
         return _parse_kma_body(response, endpoint_name, metadata)
 
@@ -620,50 +595,18 @@ class KmaClient:
                 retries=self.retries,
             )
         except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            if status and status >= 500:
-                raise KmaServerError(
-                    f"KMA server returned HTTP {status}",
-                    provider="data.go.kr",
-                    endpoint=endpoint_name,
-                    status_code=status,
-                    failure_kind="server",
-                    retryable=True,
-                ) from None
-            if status in {401, 403}:
-                raise KmaAuthError(
-                    f"KMA request failed with HTTP {status}",
-                    provider="data.go.kr",
-                    endpoint=endpoint_name,
-                    status_code=status,
-                    failure_kind="auth",
-                    retryable=False,
-                ) from None
-            if status == 429:
-                raise KmaRequestError(
-                    "KMA request failed with HTTP 429",
-                    provider="data.go.kr",
-                    endpoint=endpoint_name,
-                    status_code=status,
-                    failure_kind="rate_limit",
-                    retryable=True,
-                ) from None
-            raise KmaRequestError(
-                f"KMA request failed with HTTP {status}",
+            raise_for_kma_http_error(
+                exc,
                 provider="data.go.kr",
                 endpoint=endpoint_name,
-                status_code=status,
-                failure_kind="request",
-                retryable=False,
-            ) from None
+                label="KMA",
+            )
         except httpx.RequestError:
-            raise KmaRequestError(
-                "KMA request failed",
+            raise_for_kma_network_error(
                 provider="data.go.kr",
                 endpoint=endpoint_name,
-                failure_kind="network",
-                retryable=True,
-            ) from None
+                label="KMA",
+            )
 
         return _parse_kma_body(response, endpoint_name, metadata)
 
