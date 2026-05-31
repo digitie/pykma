@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import time
 from typing import Any, NoReturn
 
@@ -12,6 +13,20 @@ from .exceptions import KmaAuthError, KmaRequestError, KmaServerError
 from .metadata import redact_credentials_in_text
 
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+def _backoff_with_jitter(backoff_factor: float, attempt: int) -> float:
+    """Exponential backoff with equal jitter to avoid a thundering herd.
+
+    Returns a sleep duration in ``[base / 2, base]`` where
+    ``base = backoff_factor * 2 ** attempt``. Spreading retries randomly across
+    that band keeps many clients that failed at the same instant from retrying
+    in lockstep, while preserving the overall exponential growth.
+    """
+
+    base = backoff_factor * (2**attempt)
+    half = base / 2
+    return float(half + random.uniform(0, half))
 
 
 def raise_for_kma_result_code(
@@ -186,7 +201,7 @@ def get_with_retries(
             if attempt >= attempts - 1:
                 raise
             last_exc = exc
-        time.sleep(backoff_factor * (2**attempt))
+        time.sleep(_backoff_with_jitter(backoff_factor, attempt))
     if last_exc is not None:  # pragma: no cover - defensive fallback
         raise last_exc
     raise RuntimeError("HTTP request failed before it could be attempted")
@@ -218,7 +233,7 @@ async def async_get_with_retries(
             if attempt >= attempts - 1:
                 raise
             last_exc = exc
-        await asyncio.sleep(backoff_factor * (2**attempt))
+        await asyncio.sleep(_backoff_with_jitter(backoff_factor, attempt))
     if last_exc is not None:  # pragma: no cover - defensive fallback
         raise last_exc
     raise RuntimeError("HTTP request failed before it could be attempted")

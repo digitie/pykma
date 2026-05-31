@@ -27,15 +27,12 @@
 - ✅ async 패턴 일관화 — `AsyncDataGoKrClient`/`AsyncApiHubClient` facade, `aio()` 반환 변경 (T-003)
 - ✅ ASOS helper 전용 Pydantic 모델 — `AsosDailyItem`/`AsosHourlyItem` (T-004)
 - ✅ 특보 전용 Pydantic 모델 — `WeatherWarningItem`, `weather_warning_list()` 적용 (T-005)
-- ⬜ 테스트 갭 보완 (CLI, pagination, retry, async generated endpoints)
+- ✅ retry에 jitter 추가 — `_backoff_with_jitter()` equal jitter (T-006)
+- ⬜ 테스트 갭 보완 — CLI edge case, pagination 독립 테스트, timeline edge case, async generated endpoint (T-007, `_http` retry는 T-006에서 완료)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
-`docs/tasks.md#T-006`: retry에 jitter 추가 — `_http.py`의 exponential backoff에 `random.uniform()` 기반 jitter를 적용해 thundering herd를 방지한다.
-
-- `client.py`, `datagokr.py`, `apihub.py`의 동일한 HTTP status → 예외 매핑 코드 6곳을 `raise_for_kma_http_error(exc, provider, endpoint)` 하나로 통합한다.
-- 각 클라이언트의 sync/async 메서드에서 공통 함수를 호출하도록 변경한다.
-- 기존 테스트가 모두 통과하는지 확인한다.
+`docs/tasks.md#T-007`: 테스트 갭 보완 — CLI edge case, `pagination.py` 독립 테스트, `timeline.py` edge case, async generated endpoint 테스트를 추가한다. (`_http.py` retry 단위 테스트는 T-006에서 `tests/test_http.py`로 완료.)
 
 ## 작업 시작 전 확인할 것
 
