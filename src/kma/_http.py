@@ -9,8 +9,63 @@ from typing import Any, NoReturn
 import httpx
 
 from .exceptions import KmaAuthError, KmaRequestError, KmaServerError
+from .metadata import redact_credentials_in_text
 
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+def raise_for_kma_result_code(
+    code: str,
+    message: str,
+    *,
+    provider: str,
+    endpoint: str,
+    label: str,
+) -> None:
+    """Map a non-``00`` data.go.kr/KMA ``resultCode`` to a ``kma`` exception.
+
+    Shared by every client so the result-code → exception policy lives in one
+    place. ``label`` is the human-facing prefix in the message (e.g. ``"KMA"``,
+    ``"data.go.kr"``) while ``provider`` is the machine value stored on the
+    exception. ``message`` is redacted before it reaches the exception text.
+    """
+
+    text = f"{label} API returned {code}: {redact_credentials_in_text(message)}"
+    if code in {"20", "30", "31"}:
+        raise KmaAuthError(
+            text,
+            provider=provider,
+            endpoint=endpoint,
+            result_code=code,
+            failure_kind="auth",
+            retryable=False,
+        )
+    if code in {"04", "99"}:
+        raise KmaServerError(
+            text,
+            provider=provider,
+            endpoint=endpoint,
+            result_code=code,
+            failure_kind="server",
+            retryable=True,
+        )
+    if code == "22":
+        raise KmaRequestError(
+            text,
+            provider=provider,
+            endpoint=endpoint,
+            result_code=code,
+            failure_kind="quota",
+            retryable=True,
+        )
+    raise KmaRequestError(
+        text,
+        provider=provider,
+        endpoint=endpoint,
+        result_code=code,
+        failure_kind="request",
+        retryable=False,
+    )
 
 
 def raise_for_kma_http_error(

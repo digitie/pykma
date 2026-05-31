@@ -23,14 +23,14 @@
 - ✅ `maplibre-vworld-js` 에이전트 스타일, 고정 worktree 규칙, AI용 가이드 문서, MCP 설정 도입 및 PR 머지 완료
 - ✅ 에이전트 고정 워크트리(`python-kma-api-*`) 실제 생성 및 CodeGraph 색인(`codegraph init -i`) 완료
 - ✅ HTTP 에러 핸들링 공통 추출 — `raise_for_kma_http_error()` / `raise_for_kma_network_error()` (T-001, 6곳 통합)
-- ⬜ result code 핸들링 통합 (`_raise_for_result_code` 중복)
+- ✅ result code 핸들링 통합 — `raise_for_kma_result_code()` (T-002)
 - ⬜ async 패턴 일관화 (`DataGoKrClient.aio()`, `ApiHubClient.aio()`)
 - ⬜ ASOS/특보 등 자주 쓰는 helper에 전용 Pydantic 모델 추가
 - ⬜ 테스트 갭 보완 (CLI, pagination, retry, async generated endpoints)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
-`docs/tasks.md#T-002`: result code 핸들링 통합 — `client.py`의 `_raise_for_result_code()`와 `datagokr.py`의 `_raise_for_data_gokr_result_code()`를 공통 함수로 통합한다.
+`docs/tasks.md#T-003`: async 패턴 일관화 — `DataGoKrClient.aio()`와 `ApiHubClient.aio()`가 `KmaClient.aio()`처럼 별도 async facade를 반환하도록 변경한다.
 
 - `client.py`, `datagokr.py`, `apihub.py`의 동일한 HTTP status → 예외 매핑 코드 6곳을 `raise_for_kma_http_error(exc, provider, endpoint)` 하나로 통합한다.
 - 각 클라이언트의 sync/async 메서드에서 공통 함수를 호출하도록 변경한다.
