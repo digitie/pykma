@@ -7,8 +7,11 @@
 ### 변경
 
 - Windows 기준 고정 worktree 경로 운용에서 `.codegraph/` 로컬 산출물이 Git 상태에 나타나지 않도록 루트 `.gitignore`를 정리.
+- `DataGoKrClient.aio()`/`aio_from_env()`와 `ApiHubClient.aio()`/`aio_from_env()`가 `KmaClient.aio()`처럼 전용 async facade(`AsyncDataGoKrClient`, `AsyncApiHubClient`)를 반환하도록 변경. facade는 동기 메서드와 같은 이름의 코루틴을 노출하며 `async with`를 지원. (기존 `a`-prefixed 메서드는 동기 클라이언트에 그대로 유지)
 
 ### 추가
+
+- 전용 async facade 클래스 `AsyncDataGoKrClient`, `AsyncApiHubClient`를 public export에 추가.
 
 - `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`, `getFcstVersion`을 다루는 초기 `KmaClient`.
 - KMA LCC DFS 격자 변환 함수 `to_grid()`, `to_latlon()`.

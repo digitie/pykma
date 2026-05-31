@@ -7,6 +7,7 @@ import httpx
 
 from kma.apihub import (
     ApiHubClient,
+    AsyncApiHubClient,
     detect_image_info,
     extract_apihub_endpoints,
     parse_apihub_sample_url,
@@ -191,6 +192,27 @@ def test_apihub_async_request_path_appends_auth_key() -> None:
         assert response.text == "ok"
         assert session.calls[0]["url"] == "https://apihub.kma.go.kr/api/typ01/url/kma_sfctm2.php"
         assert session.calls[0]["params"] == {"authKey": "hub-key", "tm": "202211300900"}
+
+    asyncio.run(run())
+
+
+def test_apihub_aio_returns_async_facade() -> None:
+    async def run() -> None:
+        session = AsyncFakeSession("ok")
+        client = ApiHubClient.aio("hub-key", async_session=session)
+
+        assert isinstance(client, AsyncApiHubClient)
+        assert client.auth_key == "hub-key"
+
+        async with client:
+            response = await client.request_path(
+                "/api/typ01/url/kma_sfctm2.php",
+                {"tm": "202211300900"},
+            )
+
+        assert response.text == "ok"
+        assert session.calls[0]["params"] == {"authKey": "hub-key", "tm": "202211300900"}
+        assert client.closed is True
 
     asyncio.run(run())
 

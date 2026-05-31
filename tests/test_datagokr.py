@@ -17,7 +17,7 @@ from kma import (
     next_page_no,
     sanitize_request_params,
 )
-from kma.datagokr import DataGoKrClient
+from kma.datagokr import AsyncDataGoKrClient, DataGoKrClient
 from kma.exceptions import KmaAuthError, KmaParseError
 from kma.metadata import redact_credentials_in_text
 from kma.time_utils import KST
@@ -114,6 +114,30 @@ def test_datagokr_async_request_builds_service_operation_url() -> None:
             "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
         )
         assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
+
+    asyncio.run(run())
+
+
+def test_datagokr_aio_returns_async_facade() -> None:
+    async def run() -> None:
+        session = AsyncFakeSession(_payload([{"wfSv": "맑음"}]))
+        client = DataGoKrClient.aio("decoded-key", async_session=session)
+
+        assert isinstance(client, AsyncDataGoKrClient)
+        assert client.service_key == "decoded-key"
+
+        async with client:
+            body = await client.request(
+                "MidFcstInfoService",
+                "getMidFcst",
+                {"stnId": "108"},
+            )
+            items = await client.items("MidFcstInfoService", "getMidFcst")
+
+        assert body["items"]["item"][0]["wfSv"] == "맑음"
+        assert items[0]["wfSv"] == "맑음"
+        assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
+        assert client.closed is True
 
     asyncio.run(run())
 

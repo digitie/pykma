@@ -183,16 +183,16 @@ class ApiHubClient:
         return cls(auth_key, **kwargs)
 
     @classmethod
-    def aio(cls, auth_key: str, **kwargs: Any) -> ApiHubClient:
-        """Create a client intended for async use."""
+    def aio(cls, auth_key: str, **kwargs: Any) -> AsyncApiHubClient:
+        """Create an async facade for the APIHub gateway."""
 
-        return cls(auth_key, **kwargs)
+        return AsyncApiHubClient(auth_key, **kwargs)
 
     @classmethod
-    def aio_from_env(cls, name: str = "KMA_APIHUB_AUTH_KEY", **kwargs: Any) -> ApiHubClient:
-        """Create an async-capable client from environment credentials."""
+    def aio_from_env(cls, name: str = "KMA_APIHUB_AUTH_KEY", **kwargs: Any) -> AsyncApiHubClient:
+        """Create an async facade from environment credentials."""
 
-        return cls.from_env(name=name, **kwargs)
+        return AsyncApiHubClient.from_env(name=name, **kwargs)
 
     def close(self) -> None:
         close = getattr(self.session, "close", None)
@@ -512,6 +512,88 @@ class ApiHubClient:
         if self._async_session is None:
             self._async_session = build_async_client()
         return self._async_session
+
+
+class AsyncApiHubClient:
+    """Asynchronous facade for the APIHub gateway.
+
+    Mirrors :class:`AsyncKmaClient`: ``ApiHubClient.aio()`` returns one of
+    these, exposing the same method names as the synchronous client but as
+    coroutines (delegating to the ``a``-prefixed methods underneath).
+    """
+
+    def __init__(self, auth_key: str, **kwargs: Any) -> None:
+        self._client = ApiHubClient(auth_key, **kwargs)
+        self.auth_key = self._client.auth_key
+        self.config = {
+            "base_url": self._client.base_url,
+            "timeout": self._client.timeout,
+            "retries": self._client.retries,
+        }
+        self.closed = False
+
+    @classmethod
+    def from_env(cls, name: str = "KMA_APIHUB_AUTH_KEY", **kwargs: Any) -> AsyncApiHubClient:
+        auth_key = first_env_value((name, *APIHUB_ENV_NAMES))
+        return cls(auth_key, **kwargs)
+
+    async def __aenter__(self) -> AsyncApiHubClient:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+        self._client.close()
+        self.closed = True
+
+    async def request_path(
+        self,
+        path: str,
+        params: Mapping[str, Any] | None = None,
+    ) -> ApiHubResponse:
+        return await self._client.arequest_path(path, params)
+
+    async def request_query_parts(
+        self,
+        path: str,
+        query_parts: Iterable[tuple[str, str]],
+        params: Mapping[str, Any] | None = None,
+    ) -> ApiHubResponse:
+        return await self._client.arequest_query_parts(path, query_parts, params)
+
+    async def open_api(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> ApiHubResponse:
+        return await self._client.aopen_api(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    async def discover_services(
+        self,
+        category_ids: tuple[int, ...] = APIHUB_CATEGORY_IDS,
+    ) -> list[ApiHubService]:
+        return await self._client.adiscover_services(category_ids)
+
+    async def discover_endpoints(
+        self,
+        category_id: int,
+        service_id: int,
+    ) -> list[ApiHubEndpoint]:
+        return await self._client.adiscover_endpoints(category_id, service_id)
 
 
 def parse_apihub_services(html_text: str, category_id: int) -> list[ApiHubService]:
