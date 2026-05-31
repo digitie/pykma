@@ -3,11 +3,35 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from .datagokr_catalog import KMA_DATA_GOKR_DATASETS
 
 APIHUB_AUTH_KEY_URL = "https://apihub.kma.go.kr"
+
+
+@lru_cache(maxsize=1)
+def _apihub_openapi_paths() -> frozenset[str]:
+    """APIHub `typ02/openApi` wrapper의 path 집합을 반환합니다 (1회 캐시).
+
+    data.go.kr `{service}/{operation}`이 APIHub에도 같은 `typ02/openApi` path로
+    존재하는지 판정하는 데 씁니다. 무거운 generated 모듈을 import-time이 아니라
+    호출 시점에 lazy load 해 import 순서 의존을 피합니다.
+    """
+
+    from .apihub_endpoints import APIHUB_ENDPOINTS
+
+    return frozenset(endpoint.path for endpoint in APIHUB_ENDPOINTS)
+
+
+def _apihub_equivalent_path(gateway: str, service: str | None, operation: str | None) -> str | None:
+    """data.go.kr operation에 대응하는 APIHub `typ02/openApi` path를 반환합니다."""
+
+    if gateway != "datagokr" or not service or not operation:
+        return None
+    candidate = f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}"
+    return candidate if candidate in _apihub_openapi_paths() else None
 
 
 @dataclass(frozen=True)
@@ -24,6 +48,8 @@ class ApiCatalogEntry:
     credential_param: str
     page: int
     label: str
+    has_apihub_equivalent: bool = False
+    apihub_equivalent_path: str | None = None
 
     def asdict(self) -> dict[str, Any]:
         """Streamlit, JSON, 표 렌더링에서 쓰기 쉬운 dict로 변환합니다."""
@@ -39,6 +65,8 @@ class ApiCatalogEntry:
             "credential_param": self.credential_param,
             "page": self.page,
             "label": self.label,
+            "has_apihub_equivalent": self.has_apihub_equivalent,
+            "apihub_equivalent_path": self.apihub_equivalent_path,
         }
 
 
@@ -78,6 +106,7 @@ def _catalog_entry(dataset: Any, *, operation: str | None) -> ApiCatalogEntry:
     label = dataset.title if operation is None else f"{dataset.title} / {operation}"
     credential_param = "serviceKey" if dataset.gateway == "datagokr" else "authKey"
     service_key_url = dataset.portal_url if dataset.gateway == "datagokr" else APIHUB_AUTH_KEY_URL
+    apihub_path = _apihub_equivalent_path(dataset.gateway, dataset.service, operation)
     return ApiCatalogEntry(
         dataset_id=dataset.dataset_id,
         dataset_name=dataset.title,
@@ -89,4 +118,6 @@ def _catalog_entry(dataset: Any, *, operation: str | None) -> ApiCatalogEntry:
         credential_param=credential_param,
         page=dataset.page,
         label=label,
+        has_apihub_equivalent=apihub_path is not None,
+        apihub_equivalent_path=apihub_path,
     )

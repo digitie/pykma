@@ -239,6 +239,33 @@ def test_api_catalog_flattens_datasets_with_human_readable_labels() -> None:
     assert client.api_catalog(dataset_id="15084084")[0].dataset_name == first.dataset_name
 
 
+def test_api_catalog_marks_apihub_equivalents() -> None:
+    rows = api_catalog()
+
+    # 단기예보 4개 operation 은 APIHub typ02/openApi 에도 동일 path 가 있다.
+    short_fcst = [row for row in rows if row.dataset_id == "15084084"]
+    assert short_fcst
+    ncst = next(row for row in short_fcst if row.operation == "getUltraSrtNcst")
+    assert ncst.has_apihub_equivalent is True
+    assert ncst.apihub_equivalent_path == (
+        "/api/typ02/openApi/VilageFcstInfoService_2.0/getUltraSrtNcst"
+    )
+
+    # asdict 에도 새 필드가 노출된다.
+    payload = ncst.asdict()
+    assert payload["has_apihub_equivalent"] is True
+    assert payload["apihub_equivalent_path"].endswith("getUltraSrtNcst")
+
+    # ASOS 일자료(getWthrDataList)는 typ02/openApi 동일 path 가 없어 대체 경로가 없다.
+    asos = next(row for row in rows if row.dataset_id == "15059093")
+    assert asos.has_apihub_equivalent is False
+    assert asos.apihub_equivalent_path is None
+
+    # APIHub LINK dataset 은 data.go.kr REST operation 이 아니므로 False.
+    apihub_row = api_catalog(gateway="apihub")[0]
+    assert apihub_row.has_apihub_equivalent is False
+
+
 def test_env_loader_supports_source_specific_keys_and_local_dotenv(
     tmp_path: Any,
     monkeypatch: Any,

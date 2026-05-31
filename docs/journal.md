@@ -2,6 +2,21 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-009 ApiCatalogEntry 대체 경로 메타)
+
+**작업**: `ApiCatalogEntry`에 data.go.kr↔APIHub 대체 경로 안내 필드를 추가.
+
+**구현 상세**:
+- `has_apihub_equivalent: bool`, `apihub_equivalent_path: str | None` 필드 추가(`asdict()` 반영).
+- 판정: data.go.kr operation의 `/api/typ02/openApi/{service}/{operation}`가 `APIHUB_ENDPOINTS` path 집합에 있으면 equivalent. `_apihub_openapi_paths()`를 `lru_cache`로 1회 계산하고, generated 모듈을 함수 내부에서 lazy import 해 import 순서 의존을 회피.
+- 결과 검증: equivalent 109 operation / 21 dataset — `docs/datagokr-apihub-overlap.md`의 "정확 중복 operation 109 / dataset 21"과 정확히 일치.
+
+**검증**: mock 130 passed(+1), `ruff`/`mypy` 통과. (카탈로그는 네트워크 무관이라 라이브 영향 없음.)
+
+**상태**: `docs/tasks.md` 백로그(T-001~T-009) 전부 완료.
+
+**다음 작업**: ASOS 활용신청 후 라이브 재검증, 라이브 커버리지 확대.
+
 ## 2026-05-31 (claude, T-007 테스트 갭 보완)
 
 **작업**: 직접 커버되지 않던 모듈/경로에 단위 테스트 추가.
