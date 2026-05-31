@@ -17,7 +17,7 @@
 - ✅ `ForecastTimepoint` 피벗 + `pivot_forecast_items()` 시계열 helper
 - ✅ 예외 계층 (`KmaError` → `Auth`/`Request`/`Server`/`Parse`)
 - ✅ 인증값 보안 (redaction, sanitize, `.env` 로딩)
-- ✅ 101개 테스트 (97 mock + 4 live), ruff/mypy 통과
+- ✅ 138개 테스트 (129 mock + 9 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
 - ✅ httpx async facade (`build_session`, `build_async_client`, sync/async retry)
 - ✅ `_parsing.py` 공유 파싱 도우미 추출 (PR #3)
 - ✅ `maplibre-vworld-js` 에이전트 스타일, 고정 worktree 규칙, AI용 가이드 문서, MCP 설정 도입 및 PR 머지 완료
@@ -28,11 +28,11 @@
 - ✅ ASOS helper 전용 Pydantic 모델 — `AsosDailyItem`/`AsosHourlyItem` (T-004)
 - ✅ 특보 전용 Pydantic 모델 — `WeatherWarningItem`, `weather_warning_list()` 적용 (T-005)
 - ✅ retry에 jitter 추가 — `_backoff_with_jitter()` equal jitter (T-006)
-- ⬜ 테스트 갭 보완 — CLI edge case, pagination 독립 테스트, timeline edge case, async generated endpoint (T-007, `_http` retry는 T-006에서 완료)
+- ✅ 테스트 갭 보완 — pagination/async generated/CLI/timeline edge case (T-007, `_http` retry는 T-006)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
-`docs/tasks.md#T-007`: 테스트 갭 보완 — CLI edge case, `pagination.py` 독립 테스트, `timeline.py` edge case, async generated endpoint 테스트를 추가한다. (`_http.py` retry 단위 테스트는 T-006에서 `tests/test_http.py`로 완료.)
+`docs/tasks.md#T-009`: `ApiCatalogEntry`에 중복/대체 경로 메타 추가 — `has_apihub_equivalent: bool` 등 필드로 UI에서 대체 경로를 안내한다.
 
 ## 작업 시작 전 확인할 것
 
