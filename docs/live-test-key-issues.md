@@ -28,5 +28,6 @@ Remove-Item Env:\KMA_RUN_LIVE
 | data.go.kr | `VilageFcstInfoService_2.0/getUltraSrtNcst` | 초단기실황, 정상 |
 | APIHub | `fct_shrt_reg`, `fct_medm_reg`, `wrn_reg`, `ifs_fct_pstt` | text/table 응답, 정상 |
 | APIHub | `FcstZoneInfoService/getFcstZoneCd` | JSON 응답, 정상 |
+| data.go.kr | `WthrWrnInfoService/getWthrWrnList` | 구독됨. **조회 기간은 현재 기준 최대 6일** (초과 시 resultCode 99), 활성 특보가 없으면 resultCode 03 `NO_DATA` 반환 |
 
 > 참고: HTTP 403이 아니라 응답 본문에 `SERVICE_KEY_IS_NOT_REGISTERED_ERROR`(resultCode 30) 등이 오는 경우는 인코딩/이중 인코딩 문제일 수 있다. `params=`로 보낼 때는 **Decoding 키**를 사용한다 (`docs/resume.md`의 "알려진 함정" 참고).

@@ -10,6 +10,7 @@ from kma import (
     AsosDailyItem,
     AsosHourlyItem,
     WeatherCategory,
+    WeatherWarningItem,
     api_catalog,
     api_key_for_gateway,
     env_names_for_gateway,
@@ -520,7 +521,16 @@ def test_datagokr_asos_helpers_build_requests() -> None:
 
 
 def test_datagokr_raw_weather_warning_and_message_helpers() -> None:
-    warning_session = FakeSession(_payload({"title": "warning"}))
+    warning_session = FakeSession(
+        _payload(
+            {
+                "stnId": "108",
+                "tmFc": "202605010600",
+                "tmSeq": "1",
+                "title": "[기상특보] 서울 강풍주의보",
+            }
+        )
+    )
     message_session = FakeSession(_payload({"wfSv1": "summary"}))
 
     warning = DataGoKrClient("decoded-key", session=warning_session).weather_warning_list(
@@ -536,7 +546,13 @@ def test_datagokr_raw_weather_warning_and_message_helpers() -> None:
         "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
     )
     assert warning_session.calls[0]["params"]["fromTmFc"] == "20260501"
-    assert warning[0].service == "WthrWrnInfoService"
+    assert isinstance(warning[0], WeatherWarningItem)
+    assert warning[0].stn_id == "108"
+    assert warning[0].tm_fc == "202605010600"
+    assert warning[0].seq == "1"
+    assert warning[0].title == "[기상특보] 서울 강풍주의보"
+    assert warning[0].metadata is not None
+    assert "serviceKey" not in warning[0].metadata.request_params
     assert message_session.calls[0]["url"] == (
         "http://apis.data.go.kr/1360000/VilageFcstMsgService/getLandFcst"
     )

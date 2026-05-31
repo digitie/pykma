@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 from collections.abc import Mapping
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -15,8 +16,9 @@ from kma import (
     AsosHourlyItem,
     DataGoKrClient,
     KmaClient,
+    WeatherWarningItem,
 )
-from kma.exceptions import KmaAuthError
+from kma.exceptions import KmaAuthError, KmaRequestError
 from kma.time_utils import latest_ultra_srt_ncst_base
 
 pytestmark = pytest.mark.integration
@@ -250,6 +252,40 @@ def test_live_data_gokr_asos_hourly_typed_model_shape() -> None:
     assert rows[0].stn_id == "108"
     assert rows[0].observed_at
     assert rows[0].metadata is not None
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_data_gokr_weather_warning_typed_model_shape() -> None:
+    client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
+
+    # getWthrWrnList 는 현재 시각 기준 최근 6일 이내만 조회 가능하므로 실시간으로 범위를 잡는다.
+    now = datetime.now()
+    from_tm_fc = (now - timedelta(days=3)).strftime("%Y%m%d")
+    to_tm_fc = now.strftime("%Y%m%d")
+
+    try:
+        rows = client.weather_warning_list(
+            stn_id=108,
+            from_tm_fc=from_tm_fc,
+            to_tm_fc=to_tm_fc,
+            num_of_rows=10,
+        )
+    except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
+        pytest.skip(f"WthrWrnInfoService not authorized for this service key: {exc}")
+    except KmaRequestError as exc:
+        if exc.result_code == "03":  # NO_DATA: 해당 기간 활성 특보 없음 (정상)
+            rows = []
+        else:
+            raise
+
+    assert all(isinstance(row, WeatherWarningItem) for row in rows)
+    for row in rows:
+        assert row.metadata is not None
+        assert "serviceKey" not in row.metadata.request_params
 
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")

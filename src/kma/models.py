@@ -270,6 +270,21 @@ class MidForecastItem(kmaModel):
     metadata: ResponseMetadata | None = None
 
 
+class WeatherWarningItem(kmaModel):
+    """기상청 `WthrWrnInfoService/getWthrWrnList` 기상특보 목록 row.
+
+    발표관서/발표시각/발표번호/특보 본문을 타입화하고, 나머지 원본 필드는
+    `raw`에 보존합니다. 빈 문자열로 오는 값은 `None`으로 정규화됩니다.
+    """
+
+    stn_id: str | None = None
+    tm_fc: str | None = None
+    seq: str | None = None
+    title: str | None = None
+    raw: dict[str, Any]
+    metadata: ResponseMetadata | None = None
+
+
 class AsosDailyItem(kmaModel):
     """기상청 `AsosDalyInfoService/getWthrDataList` 일자료 row.
 

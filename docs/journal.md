@@ -2,6 +2,27 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-005 특보 전용 Pydantic 모델)
+
+**작업**: `weather_warning_list()`(getWthrWrnList)가 범용 `DataGoKrItem` 대신 전용 타입 모델 `WeatherWarningItem`를 반환하도록 변경.
+
+**구현 상세**:
+- `models.py`에 `WeatherWarningItem`(stn_id/tm_fc/seq/title + raw + metadata) 추가. 빈 문자열 `None` 정규화.
+- `datagokr.py`에 `_weather_warning_item` 빌더 추가, `weather_warning_list()`가 `_items_with_metadata` + 빌더로 타입 리스트 반환.
+- 범용 dispatcher인 `weather_warning(operation, ...)`는 operation별 shape가 제각각이라 `DataGoKrItem` 유지(잘 정의된 list helper에만 타입 모델 적용).
+- `__init__.py` export, 기존 mock 테스트를 신규 타입 필드 검증으로 갱신.
+
+**라이브 검증 / 발견**:
+- WthrWrnInfoService는 현재 service key로 **구독 확인됨**(ASOS와 달리 403 아님).
+- 단, `getWthrWrnList`는 **조회 기간 최대 6일**(초과 시 resultCode 99) 및 활성 특보 없을 때 resultCode 03 `NO_DATA` 반환. 라이브 테스트는 현재 시각 기준 최근 3일로 조회하고 `NO_DATA`를 빈 결과로 정상 처리.
+- `docs/live-test-key-issues.md`의 정상 엔드포인트 표에 WthrWrnInfoService와 제약을 기록.
+
+**검증**:
+- mock 99 passed, `ruff`/`mypy` 통과.
+- 라이브 9개 중 7 passed / 2 skipped(ASOS 미구독).
+
+**다음 작업**: T-006 — retry에 jitter 추가.
+
 ## 2026-05-31 (claude, T-004 ASOS 전용 Pydantic 모델 + 라이브 서비스키 이슈 문서화)
 
 **작업**: `asos_daily_weather()`/`asos_hourly_weather()`가 범용 `DataGoKrItem` 대신 전용 타입 모델을 반환하도록 변경하고, 라이브 검증 중 발견한 서비스키 구독 이슈를 문서화.
