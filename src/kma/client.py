@@ -17,15 +17,16 @@ from ._http import (
     get_with_retries,
     raise_for_kma_http_error,
     raise_for_kma_network_error,
+    raise_for_kma_result_code,
 )
 from ._parsing import float_or_none as _float_or_none
 from ._parsing import int_or_none as _int_or_none
 from .codes import label_for, normalize_value, parse_amount
 from .enums import KmaEndpoint, WeatherCategory, coerce_category, enum_value
-from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
+from .exceptions import KmaParseError
 from .grid import validate_grid
 from .locations import LocationInput, normalize_location
-from .metadata import ResponseMetadata, make_response_metadata, redact_credentials_in_text
+from .metadata import ResponseMetadata, make_response_metadata
 from .models import ForecastItem, WeatherSnapshot
 from .time_utils import (
     as_kst,
@@ -905,41 +906,12 @@ def _forecast_item(
 
 
 def _raise_for_result_code(code: str, message: str, *, endpoint: str) -> None:
-    text = f"KMA API returned {code}: {redact_credentials_in_text(message)}"
-    if code in {"20", "30", "31"}:
-        raise KmaAuthError(
-            text,
-            provider="data.go.kr",
-            endpoint=endpoint,
-            result_code=code,
-            failure_kind="auth",
-            retryable=False,
-        )
-    if code in {"04", "99"}:
-        raise KmaServerError(
-            text,
-            provider="data.go.kr",
-            endpoint=endpoint,
-            result_code=code,
-            failure_kind="server",
-            retryable=True,
-        )
-    if code == "22":
-        raise KmaRequestError(
-            text,
-            provider="data.go.kr",
-            endpoint=endpoint,
-            result_code=code,
-            failure_kind="quota",
-            retryable=True,
-        )
-    raise KmaRequestError(
-        text,
+    raise_for_kma_result_code(
+        code,
+        message,
         provider="data.go.kr",
         endpoint=endpoint,
-        result_code=code,
-        failure_kind="request",
-        retryable=False,
+        label="KMA",
     )
 
 

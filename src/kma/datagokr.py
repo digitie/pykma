@@ -17,6 +17,7 @@ from ._http import (
     get_with_retries,
     raise_for_kma_http_error,
     raise_for_kma_network_error,
+    raise_for_kma_result_code,
 )
 from ._parsing import float_or_none as _float_or_none
 from ._parsing import int_or_none as _int_or_none
@@ -29,8 +30,8 @@ from .datagokr_catalog import (
     DataGoKrDatasetSpec,
 )
 from .enums import coerce_category
-from .exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
-from .metadata import ResponseMetadata, make_response_metadata, redact_credentials_in_text
+from .exceptions import KmaParseError
+from .metadata import ResponseMetadata, make_response_metadata
 from .models import (
     BeachForecastItem,
     BeachSunTime,
@@ -1706,39 +1707,10 @@ def _unwrap_data_gokr_payload(
 
 
 def _raise_for_data_gokr_result_code(code: str, message: str, *, endpoint: str) -> None:
-    text = f"data.go.kr API returned {code}: {redact_credentials_in_text(message)}"
-    if code in {"20", "30", "31"}:
-        raise KmaAuthError(
-            text,
-            provider="data.go.kr",
-            endpoint=endpoint,
-            result_code=code,
-            failure_kind="auth",
-            retryable=False,
-        )
-    if code in {"04", "99"}:
-        raise KmaServerError(
-            text,
-            provider="data.go.kr",
-            endpoint=endpoint,
-            result_code=code,
-            failure_kind="server",
-            retryable=True,
-        )
-    if code == "22":
-        raise KmaRequestError(
-            text,
-            provider="data.go.kr",
-            endpoint=endpoint,
-            result_code=code,
-            failure_kind="quota",
-            retryable=True,
-        )
-    raise KmaRequestError(
-        text,
+    raise_for_kma_result_code(
+        code,
+        message,
         provider="data.go.kr",
         endpoint=endpoint,
-        result_code=code,
-        failure_kind="request",
-        retryable=False,
+        label="data.go.kr",
     )

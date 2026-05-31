@@ -2,6 +2,22 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-002 result code 핸들링 통합)
+
+**작업**: `client.py`의 `_raise_for_result_code()`와 `datagokr.py`의 `_raise_for_data_gokr_result_code()`에 중복돼 있던 result code → 예외 매핑을 `_http.py`의 공통 함수로 통합.
+
+**구현 상세**:
+- `_http.py`에 `raise_for_kma_result_code(code, message, *, provider, endpoint, label)` 추가. resultCode 매핑 정책({20,30,31} → auth, {04,99} → server/retryable, 22 → quota/retryable, 그 외 → request)을 단일 함수로 통합.
+- `redact_credentials_in_text`를 헬퍼 내부에서 호출하므로 `_http.py`가 `.metadata`를 import (순환 없음 — metadata는 내부 import 없음).
+- 두 클라이언트의 기존 private wrapper는 label/provider만 넘기는 얇은 호출로 축소, 호출부 시그니처 보존.
+- client.py·datagokr.py의 미사용 예외/`redact_credentials_in_text` import 정리.
+
+**검증**:
+- `pytest -m "not integration"` 97 passed, `ruff` / `mypy` 통과.
+- 라이브 테스트 4 passed (실서버 회귀 없음).
+
+**다음 작업**: T-003 — async 패턴 일관화.
+
 ## 2026-05-31 (claude, T-001 HTTP 에러 핸들링 공통 추출)
 
 **작업**: `client.py`, `datagokr.py`, `apihub.py`의 sync/async 6개 호출부에 중복돼 있던 HTTP status → 예외 매핑 코드를 `_http.py`의 공통 함수로 추출.
