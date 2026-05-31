@@ -24,13 +24,13 @@
 - ✅ 에이전트 고정 워크트리(`python-kma-api-*`) 실제 생성 및 CodeGraph 색인(`codegraph init -i`) 완료
 - ✅ HTTP 에러 핸들링 공통 추출 — `raise_for_kma_http_error()` / `raise_for_kma_network_error()` (T-001, 6곳 통합)
 - ✅ result code 핸들링 통합 — `raise_for_kma_result_code()` (T-002)
-- ⬜ async 패턴 일관화 (`DataGoKrClient.aio()`, `ApiHubClient.aio()`)
+- ✅ async 패턴 일관화 — `AsyncDataGoKrClient`/`AsyncApiHubClient` facade, `aio()` 반환 변경 (T-003)
 - ⬜ ASOS/특보 등 자주 쓰는 helper에 전용 Pydantic 모델 추가
 - ⬜ 테스트 갭 보완 (CLI, pagination, retry, async generated endpoints)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
-`docs/tasks.md#T-003`: async 패턴 일관화 — `DataGoKrClient.aio()`와 `ApiHubClient.aio()`가 `KmaClient.aio()`처럼 별도 async facade를 반환하도록 변경한다.
+`docs/tasks.md#T-004`: ASOS 전용 Pydantic 모델 추가 — `asos_daily_weather()`, `asos_hourly_weather()` 반환에 `DataGoKrItem` 대신 전용 타입 모델을 적용한다.
 
 - `client.py`, `datagokr.py`, `apihub.py`의 동일한 HTTP status → 예외 매핑 코드 6곳을 `raise_for_kma_http_error(exc, provider, endpoint)` 하나로 통합한다.
 - 각 클라이언트의 sync/async 메서드에서 공통 함수를 호출하도록 변경한다.

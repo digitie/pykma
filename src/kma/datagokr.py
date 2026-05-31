@@ -119,16 +119,18 @@ class DataGoKrClient:
         return cls(service_key, **kwargs)
 
     @classmethod
-    def aio(cls, service_key: str, **kwargs: Any) -> DataGoKrClient:
-        """Create a client intended for async use."""
+    def aio(cls, service_key: str, **kwargs: Any) -> AsyncDataGoKrClient:
+        """Create an async facade for the data.go.kr gateway."""
 
-        return cls(service_key, **kwargs)
+        return AsyncDataGoKrClient(service_key, **kwargs)
 
     @classmethod
-    def aio_from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> DataGoKrClient:
-        """Create an async-capable client from environment credentials."""
+    def aio_from_env(
+        cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any
+    ) -> AsyncDataGoKrClient:
+        """Create an async facade from environment credentials."""
 
-        return cls.from_env(name=name, **kwargs)
+        return AsyncDataGoKrClient.from_env(name=name, **kwargs)
 
     def close(self) -> None:
         close = getattr(self.session, "close", None)
@@ -1353,6 +1355,135 @@ class DataGoKrClient:
         if self._async_session is None:
             self._async_session = build_async_client()
         return self._async_session
+
+
+class AsyncDataGoKrClient:
+    """Asynchronous facade for the data.go.kr KMA gateway.
+
+    Mirrors :class:`AsyncKmaClient`: ``DataGoKrClient.aio()`` returns one of
+    these, exposing the same method names as the synchronous client but as
+    coroutines (delegating to the ``a``-prefixed methods underneath).
+    """
+
+    def __init__(self, service_key: str, **kwargs: Any) -> None:
+        self._client = DataGoKrClient(service_key, **kwargs)
+        self.service_key = self._client.service_key
+        self.config = {
+            "base_url": self._client.base_url,
+            "timeout": self._client.timeout,
+            "retries": self._client.retries,
+        }
+        self.closed = False
+
+    @classmethod
+    def from_env(cls, name: str = "DATA_GO_KR_SERVICE_KEY", **kwargs: Any) -> AsyncDataGoKrClient:
+        names = (
+            DATA_GOKR_ENV_NAMES
+            if name == "DATA_GO_KR_SERVICE_KEY"
+            else (name, *DATA_GOKR_ENV_NAMES)
+        )
+        service_key = first_env_value(names)
+        return cls(service_key, **kwargs)
+
+    async def __aenter__(self) -> AsyncDataGoKrClient:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+        self._client.close()
+        self.closed = True
+
+    async def request(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> Mapping[str, Any]:
+        return await self._client.arequest(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    async def request_with_metadata(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> tuple[Mapping[str, Any], ResponseMetadata]:
+        return await self._client.arequest_with_metadata(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    async def items(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> list[Mapping[str, Any]]:
+        return await self._client.aitems(service, operation, params, **kwargs)
+
+    async def dataset_items(
+        self,
+        dataset_id: str | int,
+        params: Mapping[str, Any] | None = None,
+        *,
+        operation: str | None = None,
+        data_type: str = "JSON",
+        page_no: int = 1,
+        num_of_rows: int = 10,
+    ) -> list[DataGoKrItem]:
+        return await self._client.adataset_items(
+            dataset_id,
+            params,
+            operation=operation,
+            data_type=data_type,
+            page_no=page_no,
+            num_of_rows=num_of_rows,
+        )
+
+    def iter_pages(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        start_page: int = 1,
+        num_of_rows: int = 10,
+        max_pages: int = 100,
+        max_items: int | None = None,
+    ) -> AsyncIterator[Mapping[str, Any]]:
+        return self._client.aiter_pages(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            start_page=start_page,
+            num_of_rows=num_of_rows,
+            max_pages=max_pages,
+            max_items=max_items,
+        )
 
 
 def _resolve_base_date_time(

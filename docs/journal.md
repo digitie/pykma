@@ -2,6 +2,25 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-003 async 패턴 일관화)
+
+**작업**: `DataGoKrClient.aio()`/`ApiHubClient.aio()`가 `KmaClient.aio()`처럼 전용 async facade를 반환하도록 통일.
+
+**구현 상세**:
+- `datagokr.py`에 `AsyncDataGoKrClient`, `apihub.py`에 `AsyncApiHubClient` facade 클래스 추가. 동기 클라이언트를 감싸고 동기 메서드와 같은 이름(`request`/`items`/`open_api` 등)의 코루틴을 노출하며 내부적으로 `a`-prefixed 메서드에 위임.
+- `aio()`/`aio_from_env()`가 raw 클라이언트 대신 facade를 반환하도록 변경. `__aenter__`/`__aexit__`/`aclose`/`from_env`와 `service_key`/`auth_key`·`config`·`closed` 속성 제공.
+- `aiter_pages`는 async generator이므로 facade의 `iter_pages`는 `async def`가 아니라 underlying async generator를 그대로 반환.
+- 기존 `a`-prefixed 메서드는 동기 클라이언트에 그대로 유지(직접 호출하는 기존 테스트/사용자 호환).
+- `__init__.py`에 두 facade를 export하고 `__all__`에 추가.
+
+**결정**: facade 생성자는 `**kwargs` 위임으로 기본값 drift를 피함. `aio()` 반환 타입 변경은 공개 API 변경이지만 T-003의 명시적 목표이며, datagokr/apihub `aio()`는 테스트/내부에서 사용되지 않아 회귀 위험 없음.
+
+**검증**:
+- mock 99 passed(facade 단위 테스트 2개 추가), `ruff`/`mypy` 통과.
+- 라이브 테스트 6 passed — `DataGoKrClient.aio().items()`와 `ApiHubClient.aio().open_api()` 실서버 검증 2개 추가.
+
+**다음 작업**: T-004 — ASOS 전용 Pydantic 모델 추가.
+
 ## 2026-05-31 (claude, T-002 result code 핸들링 통합)
 
 **작업**: `client.py`의 `_raise_for_result_code()`와 `datagokr.py`의 `_raise_for_data_gokr_result_code()`에 중복돼 있던 result code → 예외 매핑을 `_http.py`의 공통 함수로 통합.

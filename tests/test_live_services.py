@@ -167,3 +167,51 @@ def test_live_async_kma_forecast_facade_shape() -> None:
         assert snapshot.raw["items"]
 
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_async_data_gokr_facade_shape() -> None:
+    async def run() -> None:
+        base_date, base_time = latest_ultra_srt_ncst_base()
+        async with DataGoKrClient.aio(_data_gokr_key() or "", timeout=30, retries=1) as client:
+            items = await client.items(
+                "VilageFcstInfoService_2.0",
+                "getUltraSrtNcst",
+                {
+                    "base_date": base_date,
+                    "base_time": base_time,
+                    "nx": 60,
+                    "ny": 127,
+                },
+                num_of_rows=100,
+            )
+
+        assert items
+        assert any(item.get("category") == "T1H" for item in items)
+
+    asyncio.run(run())
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(not _apihub_key(), reason="KMA_APIHUB_AUTH_KEY is not set")
+def test_live_async_apihub_facade_shape() -> None:
+    async def run() -> None:
+        async with ApiHubClient.aio(_apihub_key() or "", timeout=30, retries=1) as client:
+            response = await client.open_api(
+                "FcstZoneInfoService",
+                "getFcstZoneCd",
+                {"regId": "11A00101"},
+                data_type="JSON",
+                num_of_rows=10,
+            )
+
+        payload = response.json()
+        assert response.status_code == 200
+        _assert_apihub_response_is_sanitized(response)
+        assert payload["response"]["header"]["resultCode"] == "00"
+
+    asyncio.run(run())
