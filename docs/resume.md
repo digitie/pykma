@@ -17,7 +17,7 @@
 - ✅ `ForecastTimepoint` 피벗 + `pivot_forecast_items()` 시계열 helper
 - ✅ 예외 계층 (`KmaError` → `Auth`/`Request`/`Server`/`Parse`)
 - ✅ 인증값 보안 (redaction, sanitize, `.env` 로딩)
-- ✅ 138개 테스트 (129 mock + 9 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
+- ✅ 142개 테스트 (130 mock + 12 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
 - ✅ httpx async facade (`build_session`, `build_async_client`, sync/async retry)
 - ✅ `_parsing.py` 공유 파싱 도우미 추출 (PR #3)
 - ✅ `maplibre-vworld-js` 에이전트 스타일, 고정 worktree 규칙, AI용 가이드 문서, MCP 설정 도입 및 PR 머지 완료
@@ -30,12 +30,13 @@
 - ✅ retry에 jitter 추가 — `_backoff_with_jitter()` equal jitter (T-006)
 - ✅ 테스트 갭 보완 — pagination/async generated/CLI/timeline edge case (T-007, `_http` retry는 T-006)
 - ✅ `ApiCatalogEntry` 대체 경로 메타 — `has_apihub_equivalent`/`apihub_equivalent_path` (T-009)
+- ✅ 라이브 테스트 확대(중기예보/통보문/단기예보) + 서비스키 구독 상태 실측 문서화 (`docs/live-test-key-issues.md`)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
 `docs/tasks.md`의 백로그가 모두 비었다(T-001~T-009 완료). 다음 후보:
-- ASOS 서비스키 활용신청 후 `docs/live-test-key-issues.md`의 ASOS 라이브 테스트 재검증.
-- 라이브 테스트 커버리지 추가 확대(중기예보/통보문 등) 및 서비스키 이슈 지속 기록.
+- ASOS·통보문(VilageFcstMsgService) 서비스키 활용신청 후 `docs/live-test-key-issues.md`의 skip 테스트 재검증.
+- 라이브 커버리지 추가 확대(지진/태풍/생활기상지수 등) 및 서비스키 이슈 지속 기록.
 - HTTP 에러/parse 핸들링의 추가 통합 여지 검토.
 
 ## 작업 시작 전 확인할 것

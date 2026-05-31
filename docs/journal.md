@@ -2,6 +2,19 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, 라이브 테스트 확대 + 서비스키 이슈 재정리)
+
+**작업**: 구독된 주요 서비스로 라이브 커버리지를 넓히고, 각 서비스의 키 구독 상태를 실측해 문서화.
+
+**구현 상세 / 발견**:
+- 라이브 테스트 3개 추가: 중기육상예보(`mid_land_forecast`), 단기예보 통보문(`land_forecast_message`), 단기예보(`KmaClient.forecast_short`). 각각 `KmaAuthError`(미구독)와 `NO_DATA`(resultCode 03)를 graceful 처리.
+- 실측 결과 — **구독됨**: `VilageFcstInfoService_2.0`(단기/초단기), `MidFcstInfoService`(중기), `WthrWrnInfoService`(특보), APIHub 전반. **미구독(HTTP 403)**: `AsosDalyInfoService`, `AsosHourlyInfoService`, `VilageFcstMsgService`(통보문).
+- `docs/live-test-key-issues.md`의 미구독/정상 표를 실측에 맞게 갱신.
+
+**검증**: mock 130 passed, `ruff`/`mypy` 통과. 라이브 12개 중 9 passed / 3 skipped(ASOS 일·시간, 통보문 — 모두 미구독).
+
+**상태**: `docs/tasks.md` 백로그(T-001~T-009)와 라이브 테스트 확대 작업 모두 완료.
+
 ## 2026-05-31 (claude, T-009 ApiCatalogEntry 대체 경로 메타)
 
 **작업**: `ApiCatalogEntry`에 data.go.kr↔APIHub 대체 경로 안내 필드를 추가.
