@@ -7,6 +7,8 @@ from typing import Any, Callable
 from kma import (
     KMA_DATA_GOKR_DATASETS,
     ApiCatalogEntry,
+    AsosDailyItem,
+    AsosHourlyItem,
     WeatherCategory,
     api_catalog,
     api_key_for_gateway,
@@ -443,8 +445,37 @@ def test_datagokr_mid_sea_forecast_helper() -> None:
 
 
 def test_datagokr_asos_helpers_build_requests() -> None:
-    daily_session = FakeSession(_payload({"stnId": "108", "tm": "2026-05-01"}))
-    hourly_session = FakeSession(_payload({"stnId": "108", "tm": "2026-05-01 03:00"}))
+    daily_session = FakeSession(
+        _payload(
+            {
+                "stnId": "108",
+                "stnNm": "서울",
+                "tm": "2026-05-01",
+                "avgTa": "18.3",
+                "minTa": "12.1",
+                "maxTa": "24.5",
+                "sumRn": "",
+                "avgWs": "2.4",
+                "avgRhm": "55.0",
+            }
+        )
+    )
+    hourly_session = FakeSession(
+        _payload(
+            {
+                "stnId": "108",
+                "stnNm": "서울",
+                "tm": "2026-05-01 03:00",
+                "ta": "14.2",
+                "rn": "",
+                "ws": "1.8",
+                "wd": "270",
+                "hm": "62",
+                "pa": "1009.3",
+                "ps": "1013.1",
+            }
+        )
+    )
 
     daily = DataGoKrClient("decoded-key", session=daily_session).asos_daily_weather(
         start_dt="20260501",
@@ -465,12 +496,27 @@ def test_datagokr_asos_helpers_build_requests() -> None:
     assert daily_session.calls[0]["params"]["dataCd"] == "ASOS"
     assert daily_session.calls[0]["params"]["dateCd"] == "DAY"
     assert daily_session.calls[0]["params"]["stnIds"] == "108"
-    assert daily[0].service == "AsosDalyInfoService"
+    assert isinstance(daily[0], AsosDailyItem)
+    assert daily[0].stn_id == "108"
+    assert daily[0].stn_name == "서울"
+    assert daily[0].date == "2026-05-01"
+    assert daily[0].avg_temperature == 18.3
+    assert daily[0].max_temperature == 24.5
+    assert daily[0].precipitation is None  # 빈 문자열 -> None
+    assert daily[0].avg_humidity == 55.0
+    assert daily[0].raw["stnNm"] == "서울"
     assert daily[0].metadata is not None
     assert "serviceKey" not in daily[0].metadata.request_params
+
     assert hourly_session.calls[0]["params"]["startHh"] == "03"
     assert hourly_session.calls[0]["params"]["endHh"] == "05"
-    assert hourly[0].operation == "getWthrDataList"
+    assert isinstance(hourly[0], AsosHourlyItem)
+    assert hourly[0].observed_at == "2026-05-01 03:00"
+    assert hourly[0].temperature == 14.2
+    assert hourly[0].precipitation is None
+    assert hourly[0].wind_direction == 270.0
+    assert hourly[0].humidity == 62.0
+    assert hourly[0].sea_level_pressure == 1013.1
 
 
 def test_datagokr_raw_weather_warning_and_message_helpers() -> None:

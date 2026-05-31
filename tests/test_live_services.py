@@ -11,9 +11,12 @@ from kma import (
     ApiHubClient,
     ApiHubGeneratedClient,
     ApiHubResponse,
+    AsosDailyItem,
+    AsosHourlyItem,
     DataGoKrClient,
     KmaClient,
 )
+from kma.exceptions import KmaAuthError
 from kma.time_utils import latest_ultra_srt_ncst_base
 
 pytestmark = pytest.mark.integration
@@ -194,6 +197,59 @@ def test_live_async_data_gokr_facade_shape() -> None:
         assert any(item.get("category") == "T1H" for item in items)
 
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_data_gokr_asos_daily_typed_model_shape() -> None:
+    client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
+
+    try:
+        rows = client.asos_daily_weather(
+            start_dt="20240101",
+            end_dt="20240102",
+            stn_ids=108,
+            num_of_rows=10,
+        )
+    except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
+        pytest.skip(f"AsosDalyInfoService not authorized for this service key: {exc}")
+
+    assert rows
+    assert all(isinstance(row, AsosDailyItem) for row in rows)
+    assert rows[0].stn_id == "108"
+    assert rows[0].date
+    assert rows[0].metadata is not None
+    assert "serviceKey" not in rows[0].metadata.request_params
+
+
+@pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")
+@pytest.mark.skipif(
+    not _data_gokr_key(),
+    reason="DATA_GO_KR_SERVICE_KEY is not set",
+)
+def test_live_data_gokr_asos_hourly_typed_model_shape() -> None:
+    client = DataGoKrClient(_data_gokr_key() or "", timeout=30, retries=1)
+
+    try:
+        rows = client.asos_hourly_weather(
+            start_dt="20240101",
+            start_hh=0,
+            end_dt="20240101",
+            end_hh=3,
+            stn_ids=108,
+            num_of_rows=10,
+        )
+    except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
+        pytest.skip(f"AsosHourlyInfoService not authorized for this service key: {exc}")
+
+    assert rows
+    assert all(isinstance(row, AsosHourlyItem) for row in rows)
+    assert rows[0].stn_id == "108"
+    assert rows[0].observed_at
+    assert rows[0].metadata is not None
 
 
 @pytest.mark.skipif(not RUN_LIVE, reason="set KMA_RUN_LIVE=1 to call real servers")

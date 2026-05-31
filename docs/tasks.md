@@ -8,7 +8,6 @@
 
 ## 대기 (우선순위 순)
 
-- [ ] **T-004** ASOS 전용 Pydantic 모델 추가 — `asos_daily_weather()`, `asos_hourly_weather()` 반환에 `DataGoKrItem` 대신 전용 타입 모델 적용.
 - [ ] **T-005** 특보 전용 Pydantic 모델 추가 — `weather_warning()` 계열 반환에 전용 타입 모델 적용.
 - [ ] **T-006** retry에 jitter 추가 — `_http.py`의 exponential backoff에 `random.uniform()` 기반 jitter 적용. thundering herd 방지.
 - [ ] **T-007** 테스트 갭 보완 — CLI edge case, `pagination.py` 독립 테스트, `timeline.py` edge case, async generated endpoint 테스트, `_http.py` retry 단위 테스트.
@@ -16,6 +15,7 @@
 
 ## 완료
 
+- [x] **T-004** ASOS 전용 Pydantic 모델 추가 — `asos_daily_weather()`/`asos_hourly_weather()`가 `AsosDailyItem`/`AsosHourlyItem`를 반환. 라이브 검증 시 해당 서비스키가 ASOS 미구독(HTTP 403)이라 skip 처리하고 `docs/live-test-key-issues.md`에 기록. (2026-05-31)
 - [x] **T-003** async 패턴 일관화 — `DataGoKrClient.aio()`/`ApiHubClient.aio()`가 전용 async facade(`AsyncDataGoKrClient`/`AsyncApiHubClient`)를 반환. 동기 메서드명과 동일한 코루틴 노출, `async with` 지원, public export 추가. 라이브 facade 테스트 2개 추가. (2026-05-31)
 - [x] **T-002** result code 핸들링 통합 — `_raise_for_result_code()`(client)와 `_raise_for_data_gokr_result_code()`(datagokr)의 매핑을 `_http.py`의 `raise_for_kma_result_code()`로 통합. (2026-05-31)
 - [x] **T-001** HTTP 에러 핸들링 공통 추출 — 6개 호출부(3 클라이언트 × sync/async)의 HTTP status → 예외 매핑을 `_http.py`의 `raise_for_kma_http_error()` / `raise_for_kma_network_error()`로 통합. 순 98줄 절감, 라이브 테스트 통과. (2026-05-31)

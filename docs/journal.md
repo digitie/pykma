@@ -2,6 +2,28 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (claude, T-004 ASOS 전용 Pydantic 모델 + 라이브 서비스키 이슈 문서화)
+
+**작업**: `asos_daily_weather()`/`asos_hourly_weather()`가 범용 `DataGoKrItem` 대신 전용 타입 모델을 반환하도록 변경하고, 라이브 검증 중 발견한 서비스키 구독 이슈를 문서화.
+
+**구현 상세**:
+- `models.py`에 `AsosDailyItem`(stn_id/stn_name/date/avg·min·max_temperature/precipitation/avg_wind_speed/avg_humidity)와 `AsosHourlyItem`(stn_id/stn_name/observed_at/temperature/precipitation/wind_speed/wind_direction/humidity/pressure/sea_level_pressure) 추가. 빈 문자열은 `_float_or_none`/`_str_or_none`으로 `None` 정규화, 원본은 `raw` 보존.
+- `datagokr.py`에 `_asos_daily_item`/`_asos_hourly_item` 빌더 추가, 두 helper가 `_items_with_metadata` + 빌더로 타입 리스트 반환.
+- `__init__.py` export 및 기존 mock 테스트를 신규 타입 필드 검증으로 갱신.
+
+**라이브 검증 / 서비스키 이슈**:
+- 실서버 라이브 테스트 추가(`asos_daily`/`asos_hourly`). 현재 `DATA_GO_KR_SERVICE_KEY`로 호출 시 **HTTP 403 KmaAuthError** — ASOS 일/시간자료 서비스에 활용신청(구독) 미승인.
+- 코드 결함이 아니므로 라이브 테스트는 `KmaAuthError`를 잡아 `pytest.skip` 처리(라이브 스위트 green 유지).
+- `docs/live-test-key-issues.md` 신설: 게이트웨이별 서비스키 이슈/정상 엔드포인트 표와 갱신 절차 기록.
+
+**결정**: ASOS는 모든 KMA 원본 컬럼을 타입화하지 않고 자주 쓰는 측정값만 노출 + `raw` 보존(MidForecastItem/Beach 모델과 동일 정책). 반환 타입 변경은 공개 API 변경이라 CHANGELOG에 기록.
+
+**검증**:
+- mock 99 passed, `ruff`/`mypy` 통과.
+- 라이브 8개 중 6 passed / 2 skipped(ASOS 키 미구독).
+
+**다음 작업**: T-005 — 특보 전용 Pydantic 모델 추가.
+
 ## 2026-05-31 (claude, T-003 async 패턴 일관화)
 
 **작업**: `DataGoKrClient.aio()`/`ApiHubClient.aio()`가 `KmaClient.aio()`처럼 전용 async facade를 반환하도록 통일.

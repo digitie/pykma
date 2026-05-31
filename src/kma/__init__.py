@@ -33,6 +33,8 @@ from .grid import kma_grid_to_wgs84, to_grid, to_latlon, wgs84_to_kma_grid
 from .locations import GridPoint, LatLon, normalize_location
 from .metadata import ResponseMetadata, make_cache_key, sanitize_request_params
 from .models import (
+    AsosDailyItem,
+    AsosHourlyItem,
     BeachForecastItem,
     BeachSunTime,
     BeachTideItem,
@@ -63,6 +65,8 @@ __all__ = [
     "ApiHubResponse",
     "ApiHubService",
     "ApiCatalogEntry",
+    "AsosDailyItem",
+    "AsosHourlyItem",
     "AsyncApiHubClient",
     "AsyncDataGoKrClient",
     "AsyncForecastService",
