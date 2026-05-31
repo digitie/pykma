@@ -45,6 +45,7 @@ from .models import (
     ForecastTimepoint,
     MidForecastItem,
     WeatherSnapshot,
+    WeatherWarningItem,
 )
 from .pagination import has_next_page, iter_pages, next_page_no
 from .time_utils import (
@@ -99,6 +100,7 @@ __all__ = [
     "SkyCode",
     "WeatherCategory",
     "WeatherSnapshot",
+    "WeatherWarningItem",
     "api_key_for_gateway",
     "has_next_page",
     "api_catalog",

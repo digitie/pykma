@@ -42,6 +42,7 @@ from .models import (
     BeachWaveHeight,
     DataGoKrItem,
     MidForecastItem,
+    WeatherWarningItem,
 )
 from .pagination import has_next_page as _has_next_page
 from .pagination import iter_pages as _iter_pages
@@ -742,15 +743,17 @@ class DataGoKrClient:
         to_tm_fc: str | date | datetime,
         page_no: int = 1,
         num_of_rows: int = 10,
-    ) -> list[DataGoKrItem]:
-        """`WthrWrnInfoService/getWthrWrnList`를 호출합니다."""
+    ) -> list[WeatherWarningItem]:
+        """`WthrWrnInfoService/getWthrWrnList`를 호출하고 타입 row를 반환합니다."""
 
-        return self.weather_warning(
+        fetched = self._items_with_metadata(
+            WTHR_WRN_SERVICE,
             "getWthrWrnList",
             _date_range_params(stn_id=stn_id, from_tm_fc=from_tm_fc, to_tm_fc=to_tm_fc),
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
+        return [_weather_warning_item(row, fetched.metadata) for row in fetched.items]
 
     def forecast_message(
         self,
@@ -1781,6 +1784,20 @@ def _mid_forecast_item(
         tm_fc=_str_or_none(row.get("tmFc")),
         reg_id=_str_or_none(row.get("regId")),
         stn_id=_str_or_none(row.get("stnId")),
+        raw=dict(row),
+        metadata=metadata,
+    )
+
+
+def _weather_warning_item(
+    row: Mapping[str, Any],
+    metadata: ResponseMetadata,
+) -> WeatherWarningItem:
+    return WeatherWarningItem(
+        stn_id=_str_or_none(row.get("stnId")),
+        tm_fc=_str_or_none(row.get("tmFc")),
+        seq=_str_or_none(row.get("tmSeq")),
+        title=_str_or_none(row.get("title")),
         raw=dict(row),
         metadata=metadata,
     )
