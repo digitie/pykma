@@ -4,6 +4,10 @@
 
 ## 0.1.0 - 미배포
 
+### 변경
+
+- Windows 기준 고정 worktree 경로 운용에서 `.codegraph/` 로컬 산출물이 Git 상태에 나타나지 않도록 루트 `.gitignore`를 정리.
+
 ### 추가
 
 - `getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`, `getFcstVersion`을 다루는 초기 `KmaClient`.

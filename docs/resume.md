@@ -4,6 +4,7 @@
 
 ## 현재 진척도 (2026-05-27 갱신)
 
+- ✅ Windows 기준 고정 worktree alias 복구 및 `.codegraph/` Git 상태 노이즈 제거
 - ✅ `KmaClient` 타입화 단기예보 4개 endpoint (`getUltraSrtNcst`, `getUltraSrtFcst`, `getVilageFcst`, `getFcstVersion`)
 - ✅ `DataGoKrClient` data.go.kr 범용 `{service}/{operation}` 호출 + 86개 dataset 카탈로그
 - ✅ `DataGoKrClient` 주요 서비스 helper 20개+ (중기예보, ASOS, 특보, 통보문, 관광, 생활기상지수, 지진/쓰나미)

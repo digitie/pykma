@@ -2,6 +2,21 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-05-31 (codex, Windows worktree alias 복구 및 CodeGraph ignore 정리)
+
+**작업**: Windows 기준 고정 worktree 경로 alias를 실제 checkout과 다시 맞추고, `.codegraph/`가 Git 상태에 나타나지 않도록 ignore 규칙을 정리.
+
+**구현 상세**:
+- Windows에서 기대하는 `F:\dev\kma-codex`, `F:\dev\kma-claude`, `F:\dev\kma-antigravity` 경로가 실제 worktree를 가리키도록 junction을 복구.
+- `F:\dev\kma-codex` worktree를 detached HEAD에서 `codex/windows-path-fix` 브랜치로 재연결해 작업 기준 경로를 정상화.
+- 루트 `.gitignore`에 `.codegraph/`를 추가해 로컬 CodeGraph 산출물이 `git status`를 오염시키지 않도록 정리.
+
+**검증**:
+- `C:\Program Files\Git\cmd\git.exe -C F:/dev/kma-codex status --short --branch` 확인.
+- `C:\Program Files\Git\cmd\git.exe -C F:/dev/kma-codex check-ignore -v .codegraph .codegraph/codegraph.db` 확인.
+
+**다음 작업**: T-001 — HTTP 에러 핸들링 공통 추출.
+
 ## 2026-05-31 (antigravity, 에이전트 고정 worktree prefix 변경 및 CodeGraph 초기화)
 
 **작업**: 에이전트 고정 worktree의 경로 prefix를 `kma-*`에서 프로젝트 명칭인 `python-kma-api-*`로 전면 개편하고, 로컬 디렉토리에 각 에이전트 전용 worktree 생성 및 `codegraph init -i`를 완료함.
