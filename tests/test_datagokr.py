@@ -21,7 +21,7 @@ from kma import (
     sanitize_request_params,
 )
 from kma.datagokr import AsyncDataGoKrClient, DataGoKrClient
-from kma.exceptions import KmaAuthError, KmaParseError
+from kma.exceptions import KmaAuthError, KmaParseError, KmaServerError
 from kma.metadata import redact_credentials_in_text
 from kma.time_utils import KST
 
@@ -81,6 +81,17 @@ def _paged_payload(item: Any, *, page_no: int, total_count: int) -> dict[str, An
         {"pageNo": page_no, "numOfRows": 1, "totalCount": total_count}
     )
     return payload
+
+
+def _no_data_payload() -> dict[str, Any]:
+    # 실서버 NO_DATA 응답은 items가 빈 문자열이거나 body가 비어 있는 등
+    # 정상 응답과 다른 shape로 온다.
+    return {
+        "response": {
+            "header": {"resultCode": "03", "resultMsg": "NO_DATA"},
+            "body": {"items": "", "pageNo": 1, "numOfRows": 10, "totalCount": 0},
+        }
+    }
 
 
 def test_datagokr_generic_request_builds_service_operation_url() -> None:
@@ -766,7 +777,82 @@ def test_datagokr_result_code_mapping_and_shape_errors() -> None:
             }
         ),
     )
+    server_client = DataGoKrClient(
+        "decoded-key",
+        session=FakeSession(
+            {
+                "response": {
+                    "header": {"resultCode": "99", "resultMsg": "UNKNOWN_ERROR"},
+                    "body": {},
+                }
+            }
+        ),
+    )
     parse_client = DataGoKrClient("decoded-key", session=FakeSession({"bad": {}}))
 
     assert_raises(KmaAuthError, lambda: auth_client.request("S", "O"))
+    assert_raises(KmaServerError, lambda: server_client.request("S", "O"))
     assert_raises(KmaParseError, lambda: parse_client.request("S", "O"))
+
+
+def test_datagokr_no_data_result_code_normalizes_to_empty_body() -> None:
+    client = DataGoKrClient("decoded-key", session=FakeSession(_no_data_payload()))
+
+    body = client.request("MidFcstInfoService", "getMidFcst")
+
+    assert body["items"] == {"item": []}
+    assert body["totalCount"] == 0
+    assert body["pageNo"] == 1
+    assert has_next_page(body) is False
+
+
+def test_datagokr_no_data_weather_warning_list_returns_empty_list() -> None:
+    session = FakeSession(_no_data_payload())
+    client = DataGoKrClient("decoded-key", session=session)
+
+    warnings = client.weather_warning_list(
+        stn_id=108,
+        from_tm_fc="20260501",
+        to_tm_fc="20260504",
+    )
+
+    assert warnings == []
+    assert session.calls[0]["url"] == (
+        "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
+    )
+
+
+def test_datagokr_no_data_mid_forecast_returns_empty_list() -> None:
+    client = DataGoKrClient("decoded-key", session=FakeSession(_no_data_payload()))
+
+    assert client.mid_forecast(stn_id=108, tm_fc="202605010600") == []
+
+
+def test_datagokr_no_data_iter_pages_stops_after_first_page() -> None:
+    session = FakeSession(_no_data_payload())
+    client = DataGoKrClient("decoded-key", session=session)
+
+    pages = list(client.iter_pages("WthrWrnInfoService", "getWthrWrnList"))
+
+    assert len(pages) == 1
+    assert pages[0]["items"] == {"item": []}
+    assert len(session.calls) == 1
+
+
+def test_datagokr_no_data_without_body_returns_empty_items() -> None:
+    payload = {"response": {"header": {"resultCode": "03", "resultMsg": "NO_DATA"}}}
+    client = DataGoKrClient("decoded-key", session=FakeSession(payload))
+
+    assert client.items("WthrWrnInfoService", "getWthrWrnList") == []
+
+
+def test_datagokr_no_data_async_items_returns_empty_list() -> None:
+    async def run() -> None:
+        session = AsyncFakeSession(_no_data_payload())
+        client = DataGoKrClient("decoded-key", async_session=session)
+
+        items = await client.aitems("WthrWrnInfoService", "getWthrWrnList")
+
+        assert items == []
+
+    asyncio.run(run())

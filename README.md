@@ -548,7 +548,7 @@ KMA 단기예보 API의 `nx`, `ny`는 위도/경도가 아니라 LCC DFS 격자 
 ```text
 KmaError
 ├── KmaAuthError      # 인증키 오류, 승인 안 됨, 만료
-├── KmaRequestError   # 잘못된 요청, 4xx, NODATA 등
+├── KmaRequestError   # 잘못된 요청, 4xx, 호출 한도 초과 등
 ├── KmaServerError    # 5xx, 일시적 API 장애
 └── KmaParseError     # 예상과 다른 응답 구조
 ```
@@ -558,7 +558,7 @@ KmaError
 | 코드 | 의미 | 예외 |
 |---|---|---|
 | `00` | 정상 | 없음 |
-| `03` | 데이터 없음 | `KmaRequestError` |
+| `03` | 데이터 없음 (NO_DATA) | 없음 — 빈 결과로 정규화 |
 | `20` | 서비스 접근 거부 | `KmaAuthError` |
 | `22` | 호출 제한 초과 | `KmaRequestError` |
 | `30` | 등록되지 않은 서비스키 | `KmaAuthError` |

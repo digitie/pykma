@@ -11,9 +11,11 @@ import httpx
 
 from ._credentials import DATA_GOKR_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import (
+    NO_DATA_RESULT_CODE,
     async_get_with_retries,
     build_async_client,
     build_session,
+    empty_kma_body,
     get_with_retries,
     raise_for_kma_http_error,
     raise_for_kma_network_error,
@@ -1883,6 +1885,9 @@ def _unwrap_data_gokr_payload(
 
     code = str(header.get("resultCode", ""))
     message = str(header.get("resultMsg", ""))
+    if code == NO_DATA_RESULT_CODE:
+        # NO_DATA는 "조회 결과 없음" — 오류가 아니라 정상적인 빈 결과다.
+        return empty_kma_body(body if isinstance(body, Mapping) else None)
     if code != "00":
         _raise_for_data_gokr_result_code(code, message, endpoint=endpoint)
     if not isinstance(body, Mapping):

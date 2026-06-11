@@ -92,7 +92,8 @@ async with KmaClient.aio_from_env() as kma:
   ```text
   KmaError
   ├── KmaAuthError      # 인증키 오류, 미승인, 만료
-  ├── KmaRequestError   # 잘못된 요청 파라미터, 호출 한도 초과(Quota), 데이터 없음(NODATA)
+  ├── KmaRequestError   # 잘못된 요청 파라미터, 호출 한도 초과(Quota)
+  │                     #  (데이터 없음 NODATA `03`은 예외가 아니라 빈 결과로 정규화)
   ├── KmaServerError    # 기상청 서버 장애 (500, 502 등)
   └── KmaParseError     # 예상과 다른 이상 응답 포맷
   ```
