@@ -4,6 +4,10 @@
 
 ## 0.1.0 - 미배포
 
+### 수정
+
+- data.go.kr result code `03`(NODATA_ERROR)을 `KmaRequestError` 대신 **정상적인 빈 결과**로 정규화 (#18). `DataGoKrClient`(특보 `weather_warning_list`, 중기예보 등)와 `KmaClient`(단기예보) 공통 unwrap 단계에서 `body.items.item = []`, `totalCount = 0`으로 반환하므로 특보 없는 평시 구간 rolling-window 조회가 빈 list로 떨어진다. 인증(`20`/`30`/`31`)·서버(`04`/`99`)·기타 오류 코드 정책은 기존과 동일.
+
 ### 변경
 
 - Windows 기준 고정 worktree 경로 운용에서 `.codegraph/` 로컬 산출물이 Git 상태에 나타나지 않도록 루트 `.gitignore`를 정리.

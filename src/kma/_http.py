@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import random
 import time
+from collections.abc import Mapping
 from typing import Any, NoReturn
 
 import httpx
@@ -13,6 +14,24 @@ from .exceptions import KmaAuthError, KmaRequestError, KmaServerError
 from .metadata import redact_credentials_in_text
 
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+#: data.go.kr 표준 result code ``03``(NODATA_ERROR) — 조회 결과 없음.
+#: 인증/서버 오류와 달리 정상적인 빈 결과이므로 예외 대신 빈 body로 정규화한다.
+NO_DATA_RESULT_CODE = "03"
+
+
+def empty_kma_body(body: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """data.go.kr NO_DATA(``03``) 응답을 빈 결과 body로 정규화합니다.
+
+    item 추출(`body.items.item`)이 빈 list가 되고 pagination metadata가
+    ``totalCount == 0``으로 해석되도록 강제해, 호출자가 빈 page/list를
+    그대로 받게 합니다. 원본 ``body``의 다른 키(``pageNo`` 등)는 보존합니다.
+    """
+
+    normalized: dict[str, Any] = dict(body) if body is not None else {}
+    normalized["items"] = {"item": []}
+    normalized["totalCount"] = 0
+    return normalized
 
 
 def _backoff_with_jitter(backoff_factor: float, attempt: int) -> float:
@@ -43,6 +62,9 @@ def raise_for_kma_result_code(
     place. ``label`` is the human-facing prefix in the message (e.g. ``"KMA"``,
     ``"data.go.kr"``) while ``provider`` is the machine value stored on the
     exception. ``message`` is redacted before it reaches the exception text.
+
+    ``03``(NO_DATA)은 정상적인 빈 결과이므로 호출자가 이 함수에 도달하기
+    전에 :func:`empty_kma_body`로 정규화해야 합니다 (unwrap 단계에서 처리).
     """
 
     text = f"{label} API returned {code}: {redact_credentials_in_text(message)}"

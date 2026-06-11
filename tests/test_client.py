@@ -365,7 +365,7 @@ def test_coordinate_validation_rejects_partial_mixed_and_out_of_range_inputs() -
 def test_result_codes_raise_typed_exceptions() -> None:
     auth_codes = {"20", "30", "31"}
     server_codes = {"04", "99"}
-    request_codes = {"03", "12", "22"}
+    request_codes = {"12", "22"}
 
     for code in auth_codes:
         client = KmaClient("bad-key", session=FakeSession(_error_payload(code)))
@@ -385,6 +385,28 @@ def test_result_codes_raise_typed_exceptions() -> None:
         error = assert_raises(KmaRequestError, lambda client=client: client.now(nx=60, ny=127))
         assert error.provider == "data.go.kr"
         assert error.endpoint == "getUltraSrtNcst"
+
+
+def test_no_data_result_code_returns_empty_forecast() -> None:
+    client = KmaClient("decoded-key", session=FakeSession(_error_payload("03", "NO_DATA")))
+
+    items = client.forecast_short(
+        nx=60,
+        ny=127,
+        when=datetime(2026, 4, 30, 14, 50, tzinfo=KST),
+    )
+
+    assert items == []
+
+
+def test_no_data_result_code_returns_empty_snapshot() -> None:
+    client = KmaClient("decoded-key", session=FakeSession(_error_payload("03", "NO_DATA")))
+
+    snapshot = client.now(nx=60, ny=127, when=datetime(2026, 4, 30, 14, 45, tzinfo=KST))
+
+    assert snapshot.temperature is None
+    assert snapshot.humidity is None
+    assert snapshot.raw["items"] == []
 
 
 def test_malformed_envelope_raises_parse_error() -> None:

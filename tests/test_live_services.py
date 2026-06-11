@@ -20,7 +20,7 @@ from kma import (
     MidForecastItem,
     WeatherWarningItem,
 )
-from kma.exceptions import KmaAuthError, KmaRequestError
+from kma.exceptions import KmaAuthError
 from kma.time_utils import latest_ultra_srt_ncst_base
 
 pytestmark = pytest.mark.integration
@@ -270,6 +270,7 @@ def test_live_data_gokr_weather_warning_typed_model_shape() -> None:
     to_tm_fc = now.strftime("%Y%m%d")
 
     try:
+        # NO_DATA(resultCode 03)는 예외 대신 빈 list로 정규화된다 (#18).
         rows = client.weather_warning_list(
             stn_id=108,
             from_tm_fc=from_tm_fc,
@@ -278,11 +279,6 @@ def test_live_data_gokr_weather_warning_typed_model_shape() -> None:
         )
     except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
         pytest.skip(f"WthrWrnInfoService not authorized for this service key: {exc}")
-    except KmaRequestError as exc:
-        if exc.result_code == "03":  # NO_DATA: 해당 기간 활성 특보 없음 (정상)
-            rows = []
-        else:
-            raise
 
     assert all(isinstance(row, WeatherWarningItem) for row in rows)
     for row in rows:
@@ -323,10 +319,9 @@ def test_live_data_gokr_mid_land_forecast_shape() -> None:
         rows = client.mid_land_forecast(reg_id="11B00000", num_of_rows=10)
     except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
         pytest.skip(f"MidFcstInfoService not authorized for this service key: {exc}")
-    except KmaRequestError as exc:
-        if exc.result_code == "03":  # NO_DATA: 발표시각 데이터 아직 없음 (정상)
-            pytest.skip("MidFcstInfoService returned NO_DATA for the chosen tmFc")
-        raise
+
+    if not rows:  # NO_DATA(03)는 빈 결과로 정규화된다 — 발표시각 데이터 아직 없음 (정상)
+        pytest.skip("MidFcstInfoService returned NO_DATA for the chosen tmFc")
 
     assert rows
     assert all(isinstance(row, MidForecastItem) for row in rows)
@@ -347,10 +342,9 @@ def test_live_data_gokr_land_forecast_message_shape() -> None:
         rows = client.land_forecast_message(reg_id="11B10101", num_of_rows=10)
     except KmaAuthError as exc:  # 서비스키 미구독 — docs/live-test-key-issues.md 참고
         pytest.skip(f"VilageFcstMsgService not authorized for this service key: {exc}")
-    except KmaRequestError as exc:
-        if exc.result_code == "03":  # NO_DATA
-            pytest.skip("VilageFcstMsgService returned NO_DATA")
-        raise
+
+    if not rows:  # NO_DATA(03)는 빈 결과로 정규화된다
+        pytest.skip("VilageFcstMsgService returned NO_DATA")
 
     assert rows
     assert rows[0].operation == "getLandFcst"

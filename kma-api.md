@@ -314,7 +314,10 @@ label_for(WeatherCategory.PRECIPITATION_TYPE, "4", endpoint=KmaEndpoint.VILAGE_F
 
 구현 규칙:
 
-- `header.resultCode != "00"`이면 typed exception을 raise합니다.
+- `header.resultCode`가 `00`(정상)·`03`(NO_DATA, 빈 결과) 외이면 typed
+  exception을 raise합니다.
+- `resultCode == "03"`(NO_DATA)은 오류가 아니라 "조회 결과 없음"이므로 빈
+  결과(body.items.item = `[]`, totalCount = 0)로 정규화합니다.
 - `items.item`이 dict 하나로 오면 list로 감쌉니다.
 - `items.item`이 없거나 예상과 다르면 `KmaParseError`입니다.
 
@@ -323,7 +326,7 @@ label_for(WeatherCategory.PRECIPITATION_TYPE, "4", endpoint=KmaEndpoint.VILAGE_F
 | 코드 | 의미 | 처리 |
 |---|---|---|
 | `00` | NORMAL_SERVICE | 성공 |
-| `03` | NODATA_ERROR | `KmaRequestError` |
+| `03` | NODATA_ERROR | 빈 결과로 정규화 (items 없음, totalCount=0) |
 | `04` | HTTP_ERROR | `KmaServerError` |
 | `12` | NO_OPENAPI_SERVICE_ERROR | `KmaRequestError` |
 | `20` | SERVICE_ACCESS_DENIED_ERROR | `KmaAuthError` |
