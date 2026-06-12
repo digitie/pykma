@@ -157,6 +157,8 @@ client.mid_sea_forecast(reg_id="12A20000", tm_fc="202605010600")
 
 각 row는 `MidForecastItem`이며 `operation`, `tm_fc`, `reg_id`, `stn_id`, `raw`, `metadata`를 제공합니다.
 
+실서버 `MidFcstInfoService` 응답 row는 요청의 `tmFc`를 에코하지 않습니다. `MidForecastItem.tm_fc`는 응답 row에 `tmFc`가 있으면 그 값을 우선하고, 없거나 빈 문자열이면 요청에 실제로 사용한(자동 선택 포함) `tmFc`로 폴백해 항상 발표시각을 식별할 수 있습니다. `raw`에는 폴백 값을 주입하지 않고 응답 원본을 그대로 보존합니다.
+
 ## 주요 서비스 helper
 
 2026-05-07에 공공데이터포털 `기상청` 오픈 API 검색에서 확인한 주요 data.go.kr 서비스는 전용 helper를 제공합니다. endpoint별 안정적인 도메인 모델을 확정하기 어려운 서비스는 `DataGoKrItem`으로 감싸며, 각 row의 `raw`와 인증키가 제거된 `metadata`를 보존합니다.

@@ -326,6 +326,9 @@ def test_live_data_gokr_mid_land_forecast_shape() -> None:
     assert rows
     assert all(isinstance(row, MidForecastItem) for row in rows)
     assert rows[0].operation == "getMidLandFcst"
+    # 실서버 row는 tmFc를 에코하지 않는다 — 요청 tmFc 폴백이 채워져야 한다 (#20).
+    assert rows[0].tm_fc is not None
+    assert len(rows[0].tm_fc) == 12 and rows[0].tm_fc.isdigit()
     assert rows[0].metadata is not None
     assert "serviceKey" not in rows[0].metadata.request_params
 

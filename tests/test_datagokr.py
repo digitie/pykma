@@ -483,6 +483,93 @@ def test_datagokr_mid_sea_forecast_helper() -> None:
     assert session.calls[0]["url"] == "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidSeaFcst"
 
 
+def test_mid_forecast_tm_fc_falls_back_to_request_value_when_row_omits_it() -> None:
+    # 실서버 MidFcstInfoService 응답 row는 요청의 tmFc를 에코하지 않는다 (#20).
+    # 응답에 tmFc가 없으면 요청에 실제로 사용한 tmFc로 폴백해야 한다.
+    calls: list[tuple[Callable[[DataGoKrClient], Any], str, dict[str, Any]]] = [
+        (
+            lambda c: c.mid_forecast(stn_id=108, tm_fc="202606120600"),
+            "getMidFcst",
+            {"stnId": "108", "wfSv": "맑음"},
+        ),
+        (
+            lambda c: c.mid_land_forecast(reg_id="11B00000", tm_fc="202606120600"),
+            "getMidLandFcst",
+            {"regId": "11B00000", "wf3Am": "맑음"},
+        ),
+        (
+            lambda c: c.mid_temperature_forecast(reg_id="11B10101", tm_fc="202606120600"),
+            "getMidTa",
+            {"regId": "11B10101", "taMin3": "12"},
+        ),
+        (
+            lambda c: c.mid_sea_forecast(reg_id="12A20000", tm_fc="202606120600"),
+            "getMidSeaFcst",
+            {"regId": "12A20000", "wf3Am": "맑음"},
+        ),
+    ]
+    for call, operation, row in calls:
+        session = FakeSession(_payload(dict(row)))
+        client = DataGoKrClient("decoded-key", session=session)
+
+        rows = call(client)
+
+        assert session.calls[0]["params"]["tmFc"] == "202606120600", operation
+        assert rows[0].operation == operation
+        assert rows[0].tm_fc == "202606120600", operation
+        # raw는 원본 그대로 보존 — 폴백 값을 주입하지 않는다.
+        assert "tmFc" not in rows[0].raw, operation
+
+
+def test_mid_forecast_tm_fc_prefers_response_row_value_over_request() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "regId": "11B00000",
+                "tmFc": "202606111800",
+                "wf3Am": "맑음",
+            }
+        )
+    )
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.mid_land_forecast(reg_id="11B00000", tm_fc="202606120600")
+
+    assert session.calls[0]["params"]["tmFc"] == "202606120600"
+    assert rows[0].tm_fc == "202606111800"
+
+
+def test_mid_forecast_tm_fc_fallback_handles_empty_row_value() -> None:
+    session = FakeSession(
+        _payload(
+            {
+                "regId": "11B00000",
+                "tmFc": "",
+                "wf3Am": "맑음",
+            }
+        )
+    )
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.mid_land_forecast(reg_id="11B00000", tm_fc="202606120600")
+
+    assert rows[0].tm_fc == "202606120600"
+
+
+def test_mid_forecast_tm_fc_fallback_matches_auto_resolved_request_value() -> None:
+    # when= 자동 해석(tm_fc 생략) 경로에서도 요청 param과 item 폴백이 같은 값을 본다.
+    session = FakeSession(_payload({"regId": "11B00000", "wf3Am": "맑음"}))
+    client = DataGoKrClient("decoded-key", session=session)
+
+    rows = client.mid_land_forecast(
+        reg_id="11B00000",
+        when=datetime(2026, 6, 12, 6, 5, tzinfo=KST),
+    )
+
+    assert session.calls[0]["params"]["tmFc"] == "202606111800"
+    assert rows[0].tm_fc == "202606111800"
+
+
 def test_datagokr_asos_helpers_build_requests() -> None:
     daily_session = FakeSession(
         _payload(

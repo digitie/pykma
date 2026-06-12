@@ -31,6 +31,8 @@
 - ✅ 테스트 갭 보완 — pagination/async generated/CLI/timeline edge case (T-007, `_http` retry는 T-006)
 - ✅ `ApiCatalogEntry` 대체 경로 메타 — `has_apihub_equivalent`/`apihub_equivalent_path` (T-009)
 - ✅ 라이브 테스트 확대(중기예보/통보문/단기예보) + 서비스키 구독 상태 실측 문서화 (`docs/live-test-key-issues.md`)
+- ✅ data.go.kr NO_DATA(03)를 빈 결과로 정규화 (#18, PR #19)
+- ✅ 중기예보 `MidForecastItem.tm_fc` live 결측 수정 — 요청 `tmFc` 폴백 (#20)
 
 ## 다음 한 작업 (1시간 이내 분량)
 
