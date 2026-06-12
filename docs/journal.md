@@ -2,6 +2,22 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-06-12 (claude, 중기예보 tm_fc 결측 폴백 — #20)
+
+**작업**: 실서버 `MidFcstInfoService` 응답 row가 요청 `tmFc`를 에코하지 않아 `MidForecastItem.tm_fc`가 live에서 항상 `None`이 되던 결함 수정.
+
+**구현 상세**:
+- `_mid_items()`가 요청 params에 실제로 들어간 해석된 `tmFc`(`_resolve_tm_fc` 결과, 한 번만 계산되어 dict에 저장된 값)를 꺼내 `_mid_forecast_item(..., request_tm_fc=...)`로 전달.
+- `_mid_forecast_item()`은 `tm_fc = 응답 row의 tmFc(있으면 우선) or request_tm_fc(폴백)`. 빈 문자열은 `str_or_none`이 `None`으로 정규화하므로 폴백 대상. `raw`에는 폴백 값을 주입하지 않고 원본 보존.
+- `_mid_items`를 타는 4개 operation(`getMidFcst`/`getMidLandFcst`/`getMidTa`/`getMidSeaFcst`) 전부 일관 적용. mid helper는 동기 경로만 존재(async facade `AsyncDataGoKrClient`는 범용 `request`/`items`만 노출)하므로 seam 한 곳으로 전체 커버.
+- 문서: `docs/datagokr.md` 중기예보 helper 절에 tmFc 비에코/폴백 규칙 추가, `CHANGELOG.md` 수정 항목 추가.
+
+**테스트**:
+- `tests/test_datagokr.py`에 회귀 4개: 4개 operation 모두 응답에 `tmFc` 없으면 요청값 폴백(+`raw` 미오염), 응답 `tmFc` 있으면 응답값 우선, 빈 문자열 `tmFc` 폴백, `when=` 자동 해석 경로에서 요청 param과 item 값 일치.
+- 라이브 `test_live_data_gokr_mid_land_forecast_shape`에 `tm_fc` 12자리 보장 assert 추가.
+
+**발견 경로**: python-krtour-map T-212e live full reload — dagster run `f044b091`이 `ValueError: 중기예보 tm_fc 형식 오류 — '' (12자리 필요)`로 실패. mock fixture가 `tmFc`를 항상 포함해 결측이 가려져 있었다.
+
 ## 2026-05-31 (claude, 라이브 테스트 확대 + 서비스키 이슈 재정리)
 
 **작업**: 구독된 주요 서비스로 라이브 커버리지를 넓히고, 각 서비스의 키 구독 상태를 실측해 문서화.

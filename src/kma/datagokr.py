@@ -1358,7 +1358,13 @@ class DataGoKrClient:
             page_no=page_no,
             num_of_rows=num_of_rows,
         )
-        return [_mid_forecast_item(row, operation, fetched.metadata) for row in fetched.items]
+        # 실서버 MidFcstInfoService 응답 row는 요청의 tmFc를 에코하지 않으므로,
+        # 요청에 실제로 사용한 해석된 tmFc를 item 폴백으로 전달한다.
+        request_tm_fc = _str_or_none(params.get("tmFc"))
+        return [
+            _mid_forecast_item(row, operation, fetched.metadata, request_tm_fc=request_tm_fc)
+            for row in fetched.items
+        ]
 
     def _get_async_session(self) -> Any:
         if self._async_session is None:
@@ -1780,10 +1786,14 @@ def _mid_forecast_item(
     row: Mapping[str, Any],
     operation: str,
     metadata: ResponseMetadata,
+    *,
+    request_tm_fc: str | None = None,
 ) -> MidForecastItem:
+    # 응답 row가 tmFc를 에코하면 그 값을 우선하고, 없거나 빈 문자열이면
+    # 요청에 사용한 해석된 tmFc로 폴백한다. raw는 원본 그대로 보존한다.
     return MidForecastItem(
         operation=operation,
-        tm_fc=_str_or_none(row.get("tmFc")),
+        tm_fc=_str_or_none(row.get("tmFc")) or request_tm_fc,
         reg_id=_str_or_none(row.get("regId")),
         stn_id=_str_or_none(row.get("stnId")),
         raw=dict(row),
