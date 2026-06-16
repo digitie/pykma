@@ -1,0 +1,4 @@
+interface:
+  display_name: "Postgres Expert"
+  short_description: "PostgreSQL design, search, and migration guide"
+  default_prompt: "Use $postgres to choose the right PostgreSQL reference for schema, search, PostGIS, pgvector, or TimescaleDB work."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Postgres Hybrid Text Search"
+  short_description: "Combine BM25 and semantic search"
+  default_prompt: "Use $postgres-hybrid-text-search to design hybrid PostgreSQL search with BM25, vectors, and RRF."
