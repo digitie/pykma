@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Postgres Tables"
+  short_description: "PostgreSQL schema and table design"
+  default_prompt: "Use $design-postgres-tables to design a PostgreSQL schema with suitable types, constraints, and indexes."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Setup TimescaleDB Hypertables"
+  short_description: "Create TimescaleDB hypertables and policies"
+  default_prompt: "Use $setup-timescaledb-hypertables to design TimescaleDB hypertables, compression, retention, and continuous aggregates."

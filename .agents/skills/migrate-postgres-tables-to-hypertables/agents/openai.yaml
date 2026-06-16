@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate Tables To Hypertables"
+  short_description: "Plan PostgreSQL to hypertable migrations"
+  default_prompt: "Use $migrate-postgres-tables-to-hypertables to plan a safe PostgreSQL table migration to TimescaleDB hypertables."

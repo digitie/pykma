@@ -1,0 +1,4 @@
+interface:
+  display_name: "pgvector Semantic Search"
+  short_description: "Design pgvector similarity search"
+  default_prompt: "Use $pgvector-semantic-search to design PostgreSQL vector search with pgvector indexes and query patterns."

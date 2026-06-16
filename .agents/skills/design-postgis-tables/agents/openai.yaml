@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design PostGIS Tables"
+  short_description: "PostGIS table and spatial index design"
+  default_prompt: "Use $design-postgis-tables to design a PostGIS table and spatial indexing strategy."

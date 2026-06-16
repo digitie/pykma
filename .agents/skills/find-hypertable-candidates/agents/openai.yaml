@@ -1,0 +1,4 @@
+interface:
+  display_name: "Find Hypertable Candidates"
+  short_description: "Assess tables for Timescale hypertables"
+  default_prompt: "Use $find-hypertable-candidates to assess which PostgreSQL tables should become TimescaleDB hypertables."
