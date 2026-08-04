@@ -38,7 +38,7 @@ from .time_utils import (
     parse_kma_datetime,
 )
 
-DEFAULT_BASE_URL = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
+DEFAULT_BASE_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
 SERVICE_NAME = "VilageFcstInfoService_2.0"
 
 
