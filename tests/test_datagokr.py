@@ -105,7 +105,7 @@ def test_datagokr_generic_request_builds_service_operation_url() -> None:
     )
 
     assert body["items"]["item"][0]["wfSv"] == "맑음"
-    assert session.calls[0]["url"] == "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
+    assert session.calls[0]["url"] == "https://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
     assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
     assert session.calls[0]["params"]["dataType"] == "JSON"
     assert session.calls[0]["params"]["pageNo"] == 1
@@ -125,7 +125,7 @@ def test_datagokr_async_request_builds_service_operation_url() -> None:
 
         assert body["items"]["item"][0]["wfSv"] == "맑음"
         assert session.calls[0]["url"] == (
-            "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
+            "https://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
         )
         assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
 
@@ -326,7 +326,7 @@ def test_datagokr_dataset_catalog_request_by_id() -> None:
 
     assert client.dataset("15059093").service == "AsosDalyInfoService"
     assert session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
+        "https://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
     )
     assert rows[0].service == "AsosDalyInfoService"
     assert rows[0].operation == "getWthrDataList"
@@ -346,7 +346,7 @@ def test_datagokr_dataset_catalog_multi_operation_requires_selection() -> None:
     )
 
     assert session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/BeachInfoservice/getWhBuoyBeach"
+        "https://apis.data.go.kr/1360000/BeachInfoservice/getWhBuoyBeach"
     )
     assert rows[0].service == "BeachInfoservice"
     assert rows[0].operation == "getWhBuoyBeach"
@@ -480,7 +480,7 @@ def test_datagokr_mid_sea_forecast_helper() -> None:
 
     assert rows[0].operation == "getMidSeaFcst"
     assert rows[0].reg_id == "12A20000"
-    assert session.calls[0]["url"] == "http://apis.data.go.kr/1360000/MidFcstInfoService/getMidSeaFcst"
+    assert session.calls[0]["url"] == "https://apis.data.go.kr/1360000/MidFcstInfoService/getMidSeaFcst"
 
 
 def test_mid_forecast_tm_fc_falls_back_to_request_value_when_row_omits_it() -> None:
@@ -617,7 +617,7 @@ def test_datagokr_asos_helpers_build_requests() -> None:
     )
 
     assert daily_session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
+        "https://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
     )
     assert daily_session.calls[0]["params"]["dataCd"] == "ASOS"
     assert daily_session.calls[0]["params"]["dateCd"] == "DAY"
@@ -668,7 +668,7 @@ def test_datagokr_raw_weather_warning_and_message_helpers() -> None:
     )
 
     assert warning_session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
+        "https://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
     )
     assert warning_session.calls[0]["params"]["fromTmFc"] == "20260501"
     assert isinstance(warning[0], WeatherWarningItem)
@@ -679,7 +679,7 @@ def test_datagokr_raw_weather_warning_and_message_helpers() -> None:
     assert warning[0].metadata is not None
     assert "serviceKey" not in warning[0].metadata.request_params
     assert message_session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/VilageFcstMsgService/getLandFcst"
+        "https://apis.data.go.kr/1360000/VilageFcstMsgService/getLandFcst"
     )
     assert message_session.calls[0]["params"]["regId"] == "11B10101"
     assert land[0].operation == "getLandFcst"
@@ -710,7 +710,7 @@ def test_datagokr_beach_forecast_helper_builds_request_and_models_rows() -> None
     )
 
     assert session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/BeachInfoservice/getUltraSrtFcstBeach"
+        "https://apis.data.go.kr/1360000/BeachInfoservice/getUltraSrtFcstBeach"
     )
     assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
     assert session.calls[0]["params"]["dataType"] == "JSON"
@@ -836,17 +836,17 @@ def test_datagokr_tour_living_and_earthquake_helpers() -> None:
     )
 
     assert tour_session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/TourStnInfoService1/getTourStnVilageFcst1"
+        "https://apis.data.go.kr/1360000/TourStnInfoService1/getTourStnVilageFcst1"
     )
     assert tour_session.calls[0]["params"]["HOUR"] == "09"
     assert tour[0].service == "TourStnInfoService1"
     assert living_session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/LivingWthrIdxServiceV4/getUVIdxV4"
+        "https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4/getUVIdxV4"
     )
     assert living_session.calls[0]["params"]["time"] == "2026050106"
     assert uv[0].operation == "getUVIdxV4"
     assert quake_session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/EqkInfoService/getEqkMsgList"
+        "https://apis.data.go.kr/1360000/EqkInfoService/getEqkMsgList"
     )
     assert quake_session.calls[0]["params"]["toTmFc"] == "20260502"
     assert quake[0].operation == "getEqkMsgList"
@@ -905,7 +905,7 @@ def test_datagokr_no_data_weather_warning_list_returns_empty_list() -> None:
 
     assert warnings == []
     assert session.calls[0]["url"] == (
-        "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
+        "https://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
     )
 
 

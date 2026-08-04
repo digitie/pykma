@@ -57,7 +57,7 @@ from .time_utils import (
     parse_kma_datetime,
 )
 
-DATA_GOKR_BASE_URL = "http://apis.data.go.kr/1360000"
+DATA_GOKR_BASE_URL = "https://apis.data.go.kr/1360000"
 MID_FCST_SERVICE = "MidFcstInfoService"
 ASOS_DAILY_SERVICE = "AsosDalyInfoService"
 ASOS_HOURLY_SERVICE = "AsosHourlyInfoService"
