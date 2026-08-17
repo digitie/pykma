@@ -87,13 +87,18 @@ def raise_for_kma_result_code(
             retryable=True,
         )
     if code == "22":
+        # 일일 요청 한도 초과. 한도는 **자정에 리셋**되므로 같은 날 재시도는 몇 번을
+        # 해도 같은 코드를 받는다. 이 축(`retryable`)은 위 분기들이 정한 대로
+        # "즉시 재시도가 성공할 만한가"이지 "언젠가 성공할 수 있는가"가 아니다 —
+        # auth(20/30/31)가 False이고 server(04/99)가 True인 것이 그 기준이다.
+        # True로 두면 호출자가 성공할 수 없는 것에 retry budget을 태운다.
         raise KmaRequestError(
             text,
             provider=provider,
             endpoint=endpoint,
             result_code=code,
             failure_kind="quota",
-            retryable=True,
+            retryable=False,
         )
     raise KmaRequestError(
         text,

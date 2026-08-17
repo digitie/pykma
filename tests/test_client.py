@@ -365,7 +365,10 @@ def test_coordinate_validation_rejects_partial_mixed_and_out_of_range_inputs() -
 def test_result_codes_raise_typed_exceptions() -> None:
     auth_codes = {"20", "30", "31"}
     server_codes = {"04", "99"}
-    request_codes = {"12", "22"}
+    # `22`는 quota라 아래에서 따로 본다. 예전에는 `12`와 한 묶음이었고
+    # `failure_kind`도 `retryable`도 단언하지 않아, `22`가 `retryable=True`로
+    # 잘못 분류된 채 이 테스트를 통과했다.
+    request_codes = {"12"}
 
     for code in auth_codes:
         client = KmaClient("bad-key", session=FakeSession(_error_payload(code)))
@@ -385,6 +388,18 @@ def test_result_codes_raise_typed_exceptions() -> None:
         error = assert_raises(KmaRequestError, lambda client=client: client.now(nx=60, ny=127))
         assert error.provider == "data.go.kr"
         assert error.endpoint == "getUltraSrtNcst"
+        assert error.failure_kind == "request"
+        assert error.retryable is False
+
+    # 일일 quota 초과. 한도는 자정에 리셋되므로 **당일 재시도는 성공할 수 없다** —
+    # `retryable=True`면 호출자가 성공 못 할 것에 retry budget을 태운다.
+    quota_client = KmaClient("decoded-key", session=FakeSession(_error_payload("22")))
+    quota_error = assert_raises(
+        KmaRequestError, lambda: quota_client.now(nx=60, ny=127)
+    )
+    assert quota_error.result_code == "22"
+    assert quota_error.failure_kind == "quota"
+    assert quota_error.retryable is False
 
 
 def test_no_data_result_code_returns_empty_forecast() -> None:
