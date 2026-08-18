@@ -314,12 +314,13 @@ class DataGoKrClient:
         try:
             payload = response.json()
         except ValueError as exc:
-            raise_for_kma_xml_error_body(
+            if raise_for_kma_xml_error_body(
                 response.text,
                 provider="data.go.kr",
                 endpoint=endpoint,
                 label="data.go.kr",
-            )
+            ):
+                return _DataGoKrBody(empty_kma_body(), metadata)
             raise KmaParseError(
                 "data.go.kr response was not JSON",
                 provider="data.go.kr",
@@ -390,12 +391,13 @@ class DataGoKrClient:
         try:
             payload = response.json()
         except ValueError as exc:
-            raise_for_kma_xml_error_body(
+            if raise_for_kma_xml_error_body(
                 response.text,
                 provider="data.go.kr",
                 endpoint=endpoint,
                 label="data.go.kr",
-            )
+            ):
+                return _DataGoKrBody(empty_kma_body(), metadata)
             raise KmaParseError(
                 "data.go.kr response was not JSON",
                 provider="data.go.kr",

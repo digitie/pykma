@@ -16,7 +16,7 @@
 - JSON·XML 양쪽 `22` 회귀 테스트가 `result_code`, `failure_kind`, `retryable`을 모두
   단언해 같은 종류의 오분류 재발을 막는다.
 
-**검증**: 전체 145 passed·12 live skipped, Ruff·mypy 통과.
+**검증**: 전체 149 passed·12 live skipped, Ruff·mypy 통과.
 
 ## 2026-06-12 (claude, 중기예보 tm_fc 결측 폴백 — #20)
 

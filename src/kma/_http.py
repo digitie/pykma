@@ -117,31 +117,47 @@ def raise_for_kma_xml_error_body(
     provider: str,
     endpoint: str,
     label: str,
-) -> None:
-    """HTTP 200의 data.go.kr XML 오류 envelope를 typed 예외로 올립니다.
+) -> bool:
+    """HTTP 200의 data.go.kr XML 오류 envelope를 분류합니다.
 
     JSON을 요청해도 gateway-level 오류는 ``OpenAPI_ServiceResponse`` XML로
     반환될 수 있습니다. XML이 아니거나 인식 가능한 오류 코드가 없으면 호출자가
-    원래 parse error를 내도록 조용히 반환합니다.
+    원래 parse error를 내도록 ``False``를 반환합니다. ``03``(NO_DATA)은 JSON
+    envelope와 같은 빈 성공 계약을 위해 ``True``를 반환하고, 나머지 오류는 typed
+    예외를 올립니다.
     """
 
     # HTTP decoder가 BOM을 보존해도 오류 envelope 판별이 무음으로 빠지지 않는다.
     stripped = text.lstrip("\ufeff \t\r\n")
     if not stripped.startswith("<"):
-        return
+        return False
     try:
         root = ElementTree.fromstring(stripped)
     except ElementTree.ParseError:
-        return
+        return False
+
+    def _local_name(tag: object) -> str:
+        return str(tag).rsplit("}", 1)[-1]
+
+    if _local_name(root.tag) != "OpenAPI_ServiceResponse":
+        return False
+    header = next(
+        (child for child in root if _local_name(child.tag) == "cmmMsgHeader"),
+        None,
+    )
+    if header is None:
+        return False
 
     values: dict[str, str] = {}
-    for element in root.iter():
-        tag = str(element.tag).rsplit("}", 1)[-1]
+    for element in header.iter():
+        tag = _local_name(element.tag)
         if element.text is not None and tag not in values:
             values[tag] = element.text.strip()
     code = values.get("returnReasonCode") or values.get("resultCode")
     if not code or code == "00":
-        return
+        return False
+    if code == NO_DATA_RESULT_CODE:
+        return True
     message = (
         values.get("returnAuthMsg")
         or values.get("resultMsg")
@@ -155,6 +171,7 @@ def raise_for_kma_xml_error_body(
         endpoint=endpoint,
         label=label,
     )
+    return False  # pragma: no cover - raise_for_kma_result_code는 항상 예외를 올린다.
 
 
 def raise_for_kma_http_error(

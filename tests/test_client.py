@@ -47,6 +47,18 @@ class XmlErrorSession:
         return XmlErrorResponse()
 
 
+class XmlNoDataResponse(XmlErrorResponse):
+    text = """<OpenAPI_ServiceResponse><cmmMsgHeader>
+<returnAuthMsg>NO_DATA</returnAuthMsg><returnReasonCode>03</returnReasonCode>
+</cmmMsgHeader></OpenAPI_ServiceResponse>"""
+
+
+class XmlNoDataSession(XmlErrorSession):
+    def get(self, url: str, *, params: dict[str, Any], timeout: float) -> XmlNoDataResponse:
+        del url, params, timeout
+        return XmlNoDataResponse()
+
+
 class FakeSession:
     def __init__(self, payload: dict[str, Any]) -> None:
         self.payload = payload
@@ -436,6 +448,18 @@ def test_http_200_xml_quota_envelope_preserves_nonretryable_classification() -> 
     assert error.result_code == "22"
     assert error.failure_kind == "quota"
     assert error.retryable is False
+
+
+def test_http_200_xml_no_data_envelope_returns_empty_forecast() -> None:
+    client = KmaClient("decoded-key", session=XmlNoDataSession())
+
+    items = client.forecast_short(
+        nx=60,
+        ny=127,
+        when=datetime(2026, 4, 30, 14, 50, tzinfo=KST),
+    )
+
+    assert items == []
 
 
 def test_no_data_result_code_returns_empty_forecast() -> None:

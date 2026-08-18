@@ -46,7 +46,10 @@ except KmaError as exc:
 분류 기준:
 
 - `auth`: 인증키 오류, 승인 안 됨, 만료. 보통 재시도하지 않습니다.
-- `quota` 또는 `rate_limit`: 호출 한도나 HTTP 429. 시간 간격을 두고 재시도할 수 있습니다.
+- `quota`: data.go.kr 일일 한도 초과(`resultCode=22`). 같은 날 즉시 재시도해도
+  성공하지 않으므로 `retryable=False`이며, 자정 리셋 또는 한도 증설 뒤 다시 호출합니다.
+- `rate_limit`: HTTP 429 같은 단기 제한. 응답의 `Retry-After`나 provider 정책에
+  맞춰 시간 간격을 두고 재시도할 수 있습니다.
 - `request`: 4xx 요청 오류나 잘못된 파라미터. 요청을 고쳐야 합니다.
 - `server`: 5xx 또는 upstream 서버 장애. 재시도 가능성이 있습니다.
 - `parse`: JSON이 아니거나 예상 schema가 바뀐 경우. raw 응답과 문서를 확인합니다.

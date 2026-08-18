@@ -263,6 +263,15 @@ DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
 DATA_GO_KR_SERVICE_KEY=<data.go.kr decoded service key>
 ```
 
+## HTTP 200 XML 오류 envelope
+
+`dataType=JSON` 요청이어도 data.go.kr gateway는 quota·인증 오류를 HTTP 200
+`OpenAPI_ServiceResponse` XML로 반환할 수 있습니다. `DataGoKrClient`의 동기·비동기
+호출은 JSON parse 실패 때 XML의 `returnReasonCode`/`resultCode`를 공통 result-code
+정책으로 분류합니다. `03`은 빈 `items`/`totalCount=0`, `22`는
+`KmaRequestError(failure_kind="quota", retryable=False)`이며, XML이 아니거나 코드가
+없으면 `KmaParseError`입니다.
+
 ## data.go.kr 검색에서 확인한 예시
 
 공식 data.go.kr 페이지에서 확인한 KMA REST 서비스 예시는 다음과 같습니다.

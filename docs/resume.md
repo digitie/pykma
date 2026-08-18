@@ -17,7 +17,7 @@
 - ✅ `ForecastTimepoint` 피벗 + `pivot_forecast_items()` 시계열 helper
 - ✅ 예외 계층 (`KmaError` → `Auth`/`Request`/`Server`/`Parse`)
 - ✅ 인증값 보안 (redaction, sanitize, `.env` 로딩)
-- ✅ 157개 테스트 (145 mock + 12 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
+- ✅ 161개 테스트 (149 mock + 12 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
 - ✅ httpx async facade (`build_session`, `build_async_client`, sync/async retry)
 - ✅ `_parsing.py` 공유 파싱 도우미 추출 (PR #3)
 - ✅ `maplibre-vworld-js` 에이전트 스타일, 고정 worktree 규칙, AI용 가이드 문서, MCP 설정 도입 및 PR 머지 완료
