@@ -2,6 +2,22 @@
 
 새 항목은 항상 파일 맨 위에 추가(역시간순). 기존 항목은 절대 수정하지 않는다 — 잘못된 결정조차 기록으로 남는 것이 가치다.
 
+## 2026-08-18 (codex, quota 22 비재시도 분류 + XML 200-body 경로)
+
+**작업**: 일일 한도 초과 `resultCode=22`를 `failure_kind="quota"`,
+`retryable=False`로 바로잡고, JSON 요청에 XML 오류 envelope가 오는 경로도 같은 공통
+분류로 연결했다.
+
+**구현 상세**:
+- `_http.raise_for_kma_xml_error_body()`가 namespace 유무와 무관하게
+  `returnReasonCode`/`resultCode`와 메시지를 읽고 `raise_for_kma_result_code()`에 위임한다.
+- `KmaClient`와 sync/async `DataGoKrClient`의 JSON parse 실패 직전에만 검사한다. XML이
+  아니거나 코드가 없으면 기존 `KmaParseError`를 유지한다.
+- JSON·XML 양쪽 `22` 회귀 테스트가 `result_code`, `failure_kind`, `retryable`을 모두
+  단언해 같은 종류의 오분류 재발을 막는다.
+
+**검증**: 전체 149 passed·12 live skipped, Ruff·mypy 통과.
+
 ## 2026-06-12 (claude, 중기예보 tm_fc 결측 폴백 — #20)
 
 **작업**: 실서버 `MidFcstInfoService` 응답 row가 요청 `tmFc`를 에코하지 않아 `MidForecastItem.tm_fc`가 live에서 항상 `None`이 되던 결함 수정.

@@ -91,6 +91,20 @@
 
 **방지 테스트:** 잘못된 envelope, 누락된 `items`, 잘못된 forecast item, 단일 dict 응답, result code 매핑을 테스트합니다.
 
+## JSON 요청의 HTTP 200 본문도 항상 JSON이라고 가정하지 않기
+
+**실수:** `dataType=JSON` 요청의 HTTP status가 200이면 곧바로 `response.json()`만 호출함.
+
+**증상:** data.go.kr gateway가 quota·인증 오류를 `OpenAPI_ServiceResponse` XML로
+반환하면 원래 `resultCode`가 사라지고 일반 `KmaParseError`로 오분류됩니다.
+
+**규칙:** JSON parse가 실패하면 XML 오류 envelope의 `returnReasonCode`/`resultCode`를
+먼저 확인해 공통 result-code 분류를 거칩니다. XML도 아니면 원래 parse error를 냅니다.
+
+**방지 테스트:** `tests/test_client.py`와 `tests/test_datagokr.py`의 sync/async 경로가
+HTTP 200 XML `returnReasonCode=22`를 `quota`, `retryable=False`로 고정합니다.
+namespace와 선행 BOM이 있어도 같은 분류를 유지합니다.
+
 ## 예보 row를 시간축 데이터로 착각하지 않기
 
 **실수:** `ForecastItem` 배열을 이미 시간대별 객체라고 가정하고 프론트엔드에 그대로 넘김.

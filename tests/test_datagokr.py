@@ -21,7 +21,7 @@ from kma import (
     sanitize_request_params,
 )
 from kma.datagokr import AsyncDataGoKrClient, DataGoKrClient
-from kma.exceptions import KmaAuthError, KmaParseError, KmaServerError
+from kma.exceptions import KmaAuthError, KmaParseError, KmaRequestError, KmaServerError
 from kma.metadata import redact_credentials_in_text
 from kma.time_utils import KST
 
@@ -36,6 +36,69 @@ class FakeResponse:
 
     def json(self) -> dict[str, Any]:
         return self.payload
+
+
+class XmlErrorResponse:
+    status_code = 200
+    text = """\ufeff<ns:OpenAPI_ServiceResponse xmlns:ns="urn:kma-error">
+<ns:cmmMsgHeader>
+<ns:returnAuthMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</ns:returnAuthMsg>
+<ns:returnReasonCode>22</ns:returnReasonCode>
+</ns:cmmMsgHeader></ns:OpenAPI_ServiceResponse>"""
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        raise ValueError("XML body")
+
+
+class XmlErrorSession:
+    def get(self, url: str, *, params: dict[str, Any], timeout: float) -> XmlErrorResponse:
+        del url, params, timeout
+        return XmlErrorResponse()
+
+
+class AsyncXmlErrorSession:
+    async def get(
+        self, url: str, *, params: dict[str, Any], timeout: float
+    ) -> XmlErrorResponse:
+        del url, params, timeout
+        return XmlErrorResponse()
+
+
+class XmlNoDataResponse(XmlErrorResponse):
+    text = """<OpenAPI_ServiceResponse><cmmMsgHeader>
+<resultMsg>NO_DATA</resultMsg><resultCode>03</resultCode>
+</cmmMsgHeader></OpenAPI_ServiceResponse>"""
+
+
+class XmlNoDataSession(XmlErrorSession):
+    def get(self, url: str, *, params: dict[str, Any], timeout: float) -> XmlNoDataResponse:
+        del url, params, timeout
+        return XmlNoDataResponse()
+
+
+class AsyncXmlNoDataSession(AsyncXmlErrorSession):
+    async def get(
+        self, url: str, *, params: dict[str, Any], timeout: float
+    ) -> XmlNoDataResponse:
+        del url, params, timeout
+        return XmlNoDataResponse()
+
+
+class ArbitraryXmlResponse(XmlErrorResponse):
+    def __init__(self, code: str) -> None:
+        self.text = f"<weather><resultCode>{code}</resultCode></weather>"
+
+
+class ArbitraryXmlSession(XmlErrorSession):
+    def __init__(self, code: str) -> None:
+        self.code = code
+
+    def get(self, url: str, *, params: dict[str, Any], timeout: float) -> ArbitraryXmlResponse:
+        del url, params, timeout
+        return ArbitraryXmlResponse(self.code)
 
 
 class FakeSession:
@@ -112,6 +175,40 @@ def test_datagokr_generic_request_builds_service_operation_url() -> None:
     assert session.calls[0]["params"]["numOfRows"] == 10
 
 
+def test_datagokr_http_200_xml_quota_is_nonretryable() -> None:
+    client = DataGoKrClient("decoded-key", session=XmlErrorSession())
+
+    try:
+        client.request("MidFcstInfoService", "getMidFcst")
+    except KmaRequestError as error:
+        assert error.result_code == "22"
+        assert error.failure_kind == "quota"
+        assert error.retryable is False
+    else:  # pragma: no cover - 실패 메시지 명확화
+        raise AssertionError("expected KmaRequestError")
+
+
+def test_datagokr_http_200_xml_no_data_is_empty_success() -> None:
+    client = DataGoKrClient("decoded-key", session=XmlNoDataSession())
+
+    body = client.request("MidFcstInfoService", "getMidFcst")
+
+    assert body["items"]["item"] == []
+    assert body["totalCount"] == 0
+
+
+def test_datagokr_unrelated_xml_never_becomes_empty_or_typed_success() -> None:
+    for code in ("03", "22"):
+        client = DataGoKrClient("decoded-key", session=ArbitraryXmlSession(code))
+
+        try:
+            client.request("MidFcstInfoService", "getMidFcst")
+        except KmaParseError:
+            pass
+        else:  # pragma: no cover - 실패 메시지 명확화
+            raise AssertionError(f"unrelated XML code {code} must remain a parse error")
+
+
 def test_datagokr_async_request_builds_service_operation_url() -> None:
     async def run() -> None:
         session = AsyncFakeSession(_payload([{"wfSv": "맑음"}]))
@@ -128,6 +225,34 @@ def test_datagokr_async_request_builds_service_operation_url() -> None:
             "https://apis.data.go.kr/1360000/MidFcstInfoService/getMidFcst"
         )
         assert session.calls[0]["params"]["serviceKey"] == "decoded-key"
+
+    asyncio.run(run())
+
+
+def test_datagokr_async_http_200_xml_quota_is_nonretryable() -> None:
+    async def run() -> None:
+        client = DataGoKrClient("decoded-key", async_session=AsyncXmlErrorSession())
+
+        try:
+            await client.arequest("MidFcstInfoService", "getMidFcst")
+        except KmaRequestError as error:
+            assert error.result_code == "22"
+            assert error.failure_kind == "quota"
+            assert error.retryable is False
+        else:  # pragma: no cover - 실패 메시지 명확화
+            raise AssertionError("expected KmaRequestError")
+
+    asyncio.run(run())
+
+
+def test_datagokr_async_http_200_xml_no_data_is_empty_success() -> None:
+    async def run() -> None:
+        client = DataGoKrClient("decoded-key", async_session=AsyncXmlNoDataSession())
+
+        body = await client.arequest("MidFcstInfoService", "getMidFcst")
+
+        assert body["items"]["item"] == []
+        assert body["totalCount"] == 0
 
     asyncio.run(run())
 

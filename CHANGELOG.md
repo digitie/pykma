@@ -6,6 +6,9 @@
 
 ### 수정
 
+- data.go.kr 일일 quota 초과 `resultCode=22`를 즉시 재시도 불가한
+  `KmaRequestError(failure_kind="quota", retryable=False)`로 분류. JSON 응답뿐 아니라
+  HTTP 200 `OpenAPI_ServiceResponse` XML 오류 envelope도 같은 분류를 사용한다.
 - 중기예보 `MidForecastItem.tm_fc`가 live에서 항상 `None`이 되던 결함 수정 (#20). 실서버 `MidFcstInfoService` 응답 row는 요청의 `tmFc`를 에코하지 않으므로, 응답 row에 `tmFc`가 없거나 빈 문자열이면 요청에 실제로 사용한 해석된 `tmFc`(자동 선택 포함)로 폴백한다. 응답 row에 `tmFc`가 있으면 그 값을 우선하고, `raw`에는 폴백 값을 주입하지 않는다. `_mid_items`를 타는 `getMidFcst`/`getMidLandFcst`/`getMidTa`/`getMidSeaFcst` 전부에 적용.
 - data.go.kr result code `03`(NODATA_ERROR)을 `KmaRequestError` 대신 **정상적인 빈 결과**로 정규화 (#18). `DataGoKrClient`(특보 `weather_warning_list`, 중기예보 등)와 `KmaClient`(단기예보) 공통 unwrap 단계에서 `body.items.item = []`, `totalCount = 0`으로 반환하므로 특보 없는 평시 구간 rolling-window 조회가 빈 list로 떨어진다. 인증(`20`/`30`/`31`)·서버(`04`/`99`)·기타 오류 코드 정책은 기존과 동일.
 

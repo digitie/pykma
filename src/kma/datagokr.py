@@ -20,6 +20,7 @@ from ._http import (
     raise_for_kma_http_error,
     raise_for_kma_network_error,
     raise_for_kma_result_code,
+    raise_for_kma_xml_error_body,
 )
 from ._parsing import float_or_none as _float_or_none
 from ._parsing import int_or_none as _int_or_none
@@ -313,6 +314,13 @@ class DataGoKrClient:
         try:
             payload = response.json()
         except ValueError as exc:
+            if raise_for_kma_xml_error_body(
+                response.text,
+                provider="data.go.kr",
+                endpoint=endpoint,
+                label="data.go.kr",
+            ):
+                return _DataGoKrBody(empty_kma_body(), metadata)
             raise KmaParseError(
                 "data.go.kr response was not JSON",
                 provider="data.go.kr",
@@ -383,6 +391,13 @@ class DataGoKrClient:
         try:
             payload = response.json()
         except ValueError as exc:
+            if raise_for_kma_xml_error_body(
+                response.text,
+                provider="data.go.kr",
+                endpoint=endpoint,
+                label="data.go.kr",
+            ):
+                return _DataGoKrBody(empty_kma_body(), metadata)
             raise KmaParseError(
                 "data.go.kr response was not JSON",
                 provider="data.go.kr",

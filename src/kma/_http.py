@@ -7,6 +7,7 @@ import random
 import time
 from collections.abc import Mapping
 from typing import Any, NoReturn
+from xml.etree import ElementTree
 
 import httpx
 
@@ -87,13 +88,18 @@ def raise_for_kma_result_code(
             retryable=True,
         )
     if code == "22":
+        # 일일 요청 한도 초과. 한도는 **자정에 리셋**되므로 같은 날 재시도는 몇 번을
+        # 해도 같은 코드를 받는다. 이 축(`retryable`)은 위 분기들이 정한 대로
+        # "즉시 재시도가 성공할 만한가"이지 "언젠가 성공할 수 있는가"가 아니다 —
+        # auth(20/30/31)가 False이고 server(04/99)가 True인 것이 그 기준이다.
+        # True로 두면 호출자가 성공할 수 없는 것에 retry budget을 태운다.
         raise KmaRequestError(
             text,
             provider=provider,
             endpoint=endpoint,
             result_code=code,
             failure_kind="quota",
-            retryable=True,
+            retryable=False,
         )
     raise KmaRequestError(
         text,
@@ -103,6 +109,69 @@ def raise_for_kma_result_code(
         failure_kind="request",
         retryable=False,
     )
+
+
+def raise_for_kma_xml_error_body(
+    text: str,
+    *,
+    provider: str,
+    endpoint: str,
+    label: str,
+) -> bool:
+    """HTTP 200의 data.go.kr XML 오류 envelope를 분류합니다.
+
+    JSON을 요청해도 gateway-level 오류는 ``OpenAPI_ServiceResponse`` XML로
+    반환될 수 있습니다. XML이 아니거나 인식 가능한 오류 코드가 없으면 호출자가
+    원래 parse error를 내도록 ``False``를 반환합니다. ``03``(NO_DATA)은 JSON
+    envelope와 같은 빈 성공 계약을 위해 ``True``를 반환하고, 나머지 오류는 typed
+    예외를 올립니다.
+    """
+
+    # HTTP decoder가 BOM을 보존해도 오류 envelope 판별이 무음으로 빠지지 않는다.
+    stripped = text.lstrip("\ufeff \t\r\n")
+    if not stripped.startswith("<"):
+        return False
+    try:
+        root = ElementTree.fromstring(stripped)
+    except ElementTree.ParseError:
+        return False
+
+    def _local_name(tag: object) -> str:
+        return str(tag).rsplit("}", 1)[-1]
+
+    if _local_name(root.tag) != "OpenAPI_ServiceResponse":
+        return False
+    header = next(
+        (child for child in root if _local_name(child.tag) == "cmmMsgHeader"),
+        None,
+    )
+    if header is None:
+        return False
+
+    values: dict[str, str] = {}
+    for element in header.iter():
+        tag = _local_name(element.tag)
+        if element.text is not None and tag not in values:
+            values[tag] = element.text.strip()
+    code = values.get("returnReasonCode") or values.get("resultCode")
+    if not code or code == "00":
+        return False
+    if code == NO_DATA_RESULT_CODE:
+        return True
+    message = (
+        values.get("returnAuthMsg")
+        or values.get("resultMsg")
+        or values.get("errMsg")
+        or "XML error response"
+    )
+    raise_for_kma_result_code(
+        code,
+        message,
+        provider=provider,
+        endpoint=endpoint,
+        label=label,
+    )
+    return False  # pragma: no cover - raise_for_kma_result_code는 항상 예외를 올린다.
 
 
 def raise_for_kma_http_error(

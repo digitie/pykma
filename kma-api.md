@@ -318,6 +318,9 @@ label_for(WeatherCategory.PRECIPITATION_TYPE, "4", endpoint=KmaEndpoint.VILAGE_F
   exception을 raise합니다.
 - `resultCode == "03"`(NO_DATA)은 오류가 아니라 "조회 결과 없음"이므로 빈
   결과(body.items.item = `[]`, totalCount = 0)로 정규화합니다.
+- JSON을 요청해도 HTTP 200 본문이 `OpenAPI_ServiceResponse` XML 오류 envelope로
+  올 수 있습니다. 이때 `returnReasonCode` 또는 `resultCode`를 같은 표로 분류하며,
+  XML의 `03`도 JSON과 동일한 빈 결과입니다.
 - `items.item`이 dict 하나로 오면 list로 감쌉니다.
 - `items.item`이 없거나 예상과 다르면 `KmaParseError`입니다.
 
@@ -330,7 +333,7 @@ label_for(WeatherCategory.PRECIPITATION_TYPE, "4", endpoint=KmaEndpoint.VILAGE_F
 | `04` | HTTP_ERROR | `KmaServerError` |
 | `12` | NO_OPENAPI_SERVICE_ERROR | `KmaRequestError` |
 | `20` | SERVICE_ACCESS_DENIED_ERROR | `KmaAuthError` |
-| `22` | LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR | `KmaRequestError` |
+| `22` | LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR | `KmaRequestError(failure_kind="quota", retryable=False)` |
 | `30` | SERVICE_KEY_IS_NOT_REGISTERED_ERROR | `KmaAuthError` |
 | `31` | DEADLINE_HAS_EXPIRED_ERROR | `KmaAuthError` |
 | `99` | UNKNOWN_ERROR | `KmaServerError` |
