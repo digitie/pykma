@@ -20,6 +20,7 @@ from ._http import (
     raise_for_kma_http_error,
     raise_for_kma_network_error,
     raise_for_kma_result_code,
+    raise_for_kma_xml_error_body,
 )
 from ._parsing import float_or_none as _float_or_none
 from ._parsing import int_or_none as _int_or_none
@@ -849,6 +850,12 @@ def _parse_kma_body(response: Any, endpoint_name: str, metadata: ResponseMetadat
         header = envelope["header"]
         body = envelope.get("body", {})
     except (ValueError, KeyError, TypeError) as exc:
+        raise_for_kma_xml_error_body(
+            str(getattr(response, "text", "")),
+            provider="data.go.kr",
+            endpoint=endpoint_name,
+            label="KMA",
+        )
         raise KmaParseError(
             "KMA response was not valid JSON in the expected shape",
             provider="data.go.kr",
@@ -918,5 +925,4 @@ def _raise_for_result_code(code: str, message: str, *, endpoint: str) -> None:
         endpoint=endpoint,
         label="KMA",
     )
-
 

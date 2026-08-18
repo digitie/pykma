@@ -25,6 +25,28 @@ class FakeResponse:
         return self._payload
 
 
+class XmlErrorResponse:
+    status_code = 200
+    text = """<?xml version="1.0" encoding="UTF-8"?>
+<OpenAPI_ServiceResponse><cmmMsgHeader>
+<errMsg>SERVICE ERROR</errMsg>
+<returnAuthMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</returnAuthMsg>
+<returnReasonCode>22</returnReasonCode>
+</cmmMsgHeader></OpenAPI_ServiceResponse>"""
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        raise ValueError("XML body")
+
+
+class XmlErrorSession:
+    def get(self, url: str, *, params: dict[str, Any], timeout: float) -> XmlErrorResponse:
+        del url, params, timeout
+        return XmlErrorResponse()
+
+
 class FakeSession:
     def __init__(self, payload: dict[str, Any]) -> None:
         self.payload = payload
@@ -400,6 +422,20 @@ def test_result_codes_raise_typed_exceptions() -> None:
     assert quota_error.result_code == "22"
     assert quota_error.failure_kind == "quota"
     assert quota_error.retryable is False
+
+
+def test_http_200_xml_quota_envelope_preserves_nonretryable_classification() -> None:
+    """JSON 요청에도 gateway 오류는 XML 200으로 와서 JSON 분류를 우회할 수 있다."""
+
+    client = KmaClient("decoded-key", session=XmlErrorSession())
+    error = assert_raises(
+        KmaRequestError,
+        lambda: client.now(nx=60, ny=127),
+    )
+
+    assert error.result_code == "22"
+    assert error.failure_kind == "quota"
+    assert error.retryable is False
 
 
 def test_no_data_result_code_returns_empty_forecast() -> None:

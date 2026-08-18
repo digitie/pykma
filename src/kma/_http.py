@@ -7,6 +7,7 @@ import random
 import time
 from collections.abc import Mapping
 from typing import Any, NoReturn
+from xml.etree import ElementTree
 
 import httpx
 
@@ -107,6 +108,52 @@ def raise_for_kma_result_code(
         result_code=code,
         failure_kind="request",
         retryable=False,
+    )
+
+
+def raise_for_kma_xml_error_body(
+    text: str,
+    *,
+    provider: str,
+    endpoint: str,
+    label: str,
+) -> None:
+    """HTTP 200의 data.go.kr XML 오류 envelope를 typed 예외로 올립니다.
+
+    JSON을 요청해도 gateway-level 오류는 ``OpenAPI_ServiceResponse`` XML로
+    반환될 수 있습니다. XML이 아니거나 인식 가능한 오류 코드가 없으면 호출자가
+    원래 parse error를 내도록 조용히 반환합니다.
+    """
+
+    # HTTP decoder가 BOM을 보존해도 오류 envelope 판별이 무음으로 빠지지 않는다.
+    stripped = text.lstrip("\ufeff \t\r\n")
+    if not stripped.startswith("<"):
+        return
+    try:
+        root = ElementTree.fromstring(stripped)
+    except ElementTree.ParseError:
+        return
+
+    values: dict[str, str] = {}
+    for element in root.iter():
+        tag = str(element.tag).rsplit("}", 1)[-1]
+        if element.text is not None and tag not in values:
+            values[tag] = element.text.strip()
+    code = values.get("returnReasonCode") or values.get("resultCode")
+    if not code or code == "00":
+        return
+    message = (
+        values.get("returnAuthMsg")
+        or values.get("resultMsg")
+        or values.get("errMsg")
+        or "XML error response"
+    )
+    raise_for_kma_result_code(
+        code,
+        message,
+        provider=provider,
+        endpoint=endpoint,
+        label=label,
     )
 
 

@@ -17,7 +17,7 @@
 - ✅ `ForecastTimepoint` 피벗 + `pivot_forecast_items()` 시계열 helper
 - ✅ 예외 계층 (`KmaError` → `Auth`/`Request`/`Server`/`Parse`)
 - ✅ 인증값 보안 (redaction, sanitize, `.env` 로딩)
-- ✅ 142개 테스트 (130 mock + 12 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
+- ✅ 157개 테스트 (145 mock + 12 live, 라이브는 키 구독에 따라 일부 skip), ruff/mypy 통과
 - ✅ httpx async facade (`build_session`, `build_async_client`, sync/async retry)
 - ✅ `_parsing.py` 공유 파싱 도우미 추출 (PR #3)
 - ✅ `maplibre-vworld-js` 에이전트 스타일, 고정 worktree 규칙, AI용 가이드 문서, MCP 설정 도입 및 PR 머지 완료
@@ -33,6 +33,7 @@
 - ✅ 라이브 테스트 확대(중기예보/통보문/단기예보) + 서비스키 구독 상태 실측 문서화 (`docs/live-test-key-issues.md`)
 - ✅ data.go.kr NO_DATA(03)를 빈 결과로 정규화 (#18, PR #19)
 - ✅ 중기예보 `MidForecastItem.tm_fc` live 결측 수정 — 요청 `tmFc` 폴백 (#20)
+- ✅ `resultCode=22` 일일 quota 비재시도 분류 + HTTP 200 XML 오류 envelope 경로 고정
 
 ## 다음 한 작업 (1시간 이내 분량)
 
