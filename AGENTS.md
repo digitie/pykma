@@ -14,7 +14,7 @@
 2. 이 `AGENTS.md`
 3. `SKILL.md`
 4. `kma-api.md`, `docs/decisions.md`, `docs/api-coverage.md`
-5. `README.md` 및 나머지 `docs/`
+5. `README.md`, `AI_AGENT_GUIDE.md` 및 나머지 `docs/`
 6. 기존 코드와 테스트
 7. 최소한의 되돌릴 수 있는 가정
 
@@ -36,7 +36,7 @@
 - data.go.kr의 다른 KMA REST 서비스는 `DataGoKrClient`로 범용 호출합니다.
 - APIHub는 `ApiHubClient`로 `authKey` 기반 path 호출과 탐색 기능을 제공하고, `ApiHubGeneratedClient`로 공식 목록 endpoint의 함수형 래퍼를 제공합니다.
 - Python 지원 기준은 3.10 이상입니다.
-- 런타임 의존성은 `requests`입니다.
+- 런타임 의존성은 `httpx`입니다 (ADR-001).
 - 기본 테스트는 실제 KMA 네트워크 호출 없이 동작해야 합니다.
 
 ## 개발 환경 및 에이전트 정책
@@ -74,6 +74,7 @@ PC 개발은 Windows 호스트에서 직접 진행합니다. 본 저장소는 Py
 ## 문서 구성
 
 - `README.md`: 사용자용 개요, 설치, 예제, 모델 요약.
+- `AI_AGENT_GUIDE.md`: 이 라이브러리를 사용하는 외부 소비자 앱(TripMate 등)을 위한 AI 에이전트 가이드.
 - `kma-api.md`: 단기예보 endpoint 세부 사항과 KMA 응답 규칙.
 - `docs/apihub.md`: APIHub 인증키, 범용 호출, 탐색 기능, 응답 형식 규칙.
 - `docs/apihub-endpoints.md`: APIHub 함수형 endpoint 목록.

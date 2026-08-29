@@ -1,10 +1,43 @@
 # python-kma-api
 
+![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
+![GPL-3.0-or-later 라이선스](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)
+![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)
+
 Korea Meteorological Administration(KMA, 기상청) 공공데이터포털과 APIHub를 Python에서 편하게 쓰기 위한 공용 클라이언트 라이브러리입니다.
 
 `python-kma-api`는 `kma`라는 import package를 제공합니다. 특정 앱의 adapter나 DB 스키마를 전제로 하지 않고, `VilageFcstInfoService_2.0`의 초단기실황, 초단기예보, 단기예보 API를 한 인터페이스로 감싸며, 위도/경도와 KMA 격자 좌표 변환, 발표시각 계산, enum 기반 코드 라벨 매핑, provenance metadata, 예외 처리를 함께 제공합니다.
 
 > 이 저장소는 라이브러리 구현과 유지보수를 위한 명세가 함께 들어 있는 초기 패키지입니다. 세부 API 규칙은 [kma-api.md](kma-api.md), 에이전트 구현 규칙은 [SKILL.md](SKILL.md), 작업 운영 규칙은 [AGENTS.md](AGENTS.md)를 참고하세요.
+
+---
+
+## 먼저 읽을 문서
+
+| 필요 정보 | 문서 |
+|---|---|
+| 빠른 시작, 설치, 사용 예제 | 이 문서(README.md) |
+| 단기예보 API 세부 명세와 구현 주의사항 | [kma-api.md](kma-api.md) |
+| 구현자/에이전트용 프로젝트 불변조건 | [SKILL.md](SKILL.md) |
+| 작업 운영 규칙과 모듈 소유권 | [AGENTS.md](AGENTS.md) |
+| 이 라이브러리를 사용하는 외부 소비자 앱을 위한 AI 에이전트 가이드 | [AI_AGENT_GUIDE.md](AI_AGENT_GUIDE.md) |
+| 현재 구현 범위와 API 개수 | [docs/api-coverage.md](docs/api-coverage.md) |
+| APIHub 470개 함수형 endpoint 목록 | [docs/apihub-endpoints.md](docs/apihub-endpoints.md) |
+| APIHub 범용 클라이언트와 탐색 | [docs/apihub.md](docs/apihub.md) |
+| data.go.kr 범용 클라이언트 | [docs/datagokr.md](docs/datagokr.md) |
+| data.go.kr/APIHub 중복 표 | [docs/datagokr-apihub-overlap.md](docs/datagokr-apihub-overlap.md) |
+| 구조적 의사결정 기록(ADR) | [docs/decisions.md](docs/decisions.md) |
+| 테스트 작성과 live test 기준 | [docs/testing.md](docs/testing.md) |
+| 흔한 오류 증상과 해결책 | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| 반복 실수 방지 로그 | [docs/repeated-mistakes.md](docs/repeated-mistakes.md) |
+| 에이전트 작업/문서화 표준 | [docs/agent-guide.md](docs/agent-guide.md) |
+| 현재 진척도와 다음 작업 | [docs/resume.md](docs/resume.md) |
+| 최근 작업 일지 | [docs/journal.md](docs/journal.md) |
+| 백로그 | [docs/tasks.md](docs/tasks.md) |
+| 라이브 테스트 서비스키 이슈 | [docs/live-test-key-issues.md](docs/live-test-key-issues.md) |
+| 로컬 인증키 env 파일 예시 | [.env.example](.env.example) |
+| 기여 절차 | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| 변경 이력 | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
 
@@ -686,23 +719,7 @@ tools/
 └── debug_streamlit.py
 ```
 
-문서:
-
-- [.env.example](.env.example): 로컬 인증키 env 파일 예시
-- [README.md](README.md): 사용자용 가이드
-- [kma-api.md](kma-api.md): API 세부 명세와 구현 주의사항
-- [SKILL.md](SKILL.md): 에이전트/구현자용 불변조건
-- [AGENTS.md](AGENTS.md): 작업 운영 규칙과 모듈 소유권
-- [docs/api-coverage.md](docs/api-coverage.md): 현재 구현 범위와 API 개수
-- [docs/apihub-endpoints.md](docs/apihub-endpoints.md): APIHub 470개 함수형 endpoint 목록
-- [docs/repeated-mistakes.md](docs/repeated-mistakes.md): 반복 실수 방지 로그
-- [docs/apihub.md](docs/apihub.md): APIHub 범용 클라이언트와 탐색
-- [docs/datagokr.md](docs/datagokr.md): data.go.kr 범용 클라이언트
-- [docs/datagokr-apihub-overlap.md](docs/datagokr-apihub-overlap.md): data.go.kr/APIHub 중복 표
-- [docs/testing.md](docs/testing.md): 테스트 작성과 live test 기준
-- [docs/troubleshooting.md](docs/troubleshooting.md): 흔한 오류 증상과 해결책
-- [CONTRIBUTING.md](CONTRIBUTING.md): 기여 절차
-- [CHANGELOG.md](CHANGELOG.md): 변경 이력
+문서 지도는 상단의 [먼저 읽을 문서](#먼저-읽을-문서) 표를 참고하세요.
 
 ---
 
