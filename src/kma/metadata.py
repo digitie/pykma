@@ -22,7 +22,7 @@ _CREDENTIAL_PARAM_NAMES = {
     "service_key",
 }
 _CREDENTIAL_TEXT_RE = re.compile(
-    r"(?i)\b(api_key|auth_key|authKey|key|service_key|serviceKey)=([^&\s]+)"
+    r"(?i)\b(api_key|apiKey|auth_key|authKey|key|service_key|serviceKey)=([^&\s]+)"
 )
 
 

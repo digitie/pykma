@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
+FailureKind = Literal[
+    "auth",
+    "server",
+    "quota",
+    "request",
+    "parse",
+    "network",
+    "rate_limit",
+]
+
 
 class KmaError(Exception):
     """모든 `kma` 예외의 기본 클래스."""
@@ -14,7 +26,7 @@ class KmaError(Exception):
         endpoint: str | None = None,
         status_code: int | None = None,
         result_code: str | None = None,
-        failure_kind: str | None = None,
+        failure_kind: FailureKind | None = None,
         retryable: bool | None = None,
     ) -> None:
         super().__init__(message)
@@ -54,3 +66,7 @@ class KmaServerError(KmaError):
 
 class KmaParseError(KmaError):
     """API 응답을 기대한 구조로 파싱할 수 없을 때 발생합니다."""
+
+
+class KmaValidationError(KmaError):
+    """grid 좌표, 날짜/시간 형식, dataset/operation 등 잘못된 입력값을 전달했을 때 발생합니다."""

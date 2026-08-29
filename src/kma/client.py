@@ -31,6 +31,7 @@ from .grid import validate_grid
 from .locations import LocationInput, normalize_location
 from .metadata import ResponseMetadata, make_response_metadata
 from .models import ForecastItem, WeatherSnapshot
+from .pagination import has_next_page
 from .time_utils import (
     as_kst,
     latest_ultra_srt_fcst_base,
@@ -72,7 +73,7 @@ class KmaClient:
         self.timeout = timeout
         self.retries = retries
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
-        self.session = session or build_session(retries)
+        self._session = session
         self._owns_session = session is None
         self._async_session = async_session
         self._owns_async_session = async_session is None
@@ -107,10 +108,17 @@ class KmaClient:
         service_key = first_env_value(names)
         return AsyncKmaClient(service_key=service_key, **kwargs)
 
+    @property
+    def session(self) -> Any:
+        if self._session is None:
+            self._session = build_session(self.retries)
+        return self._session
+
     def close(self) -> None:
-        close = getattr(self.session, "close", None)
-        if self._owns_session and close is not None:
-            close()
+        if self._owns_session and self._session is not None:
+            close = getattr(self._session, "close", None)
+            if close is not None:
+                close()
         self.closed = True
 
     async def aclose(self) -> None:
@@ -438,6 +446,14 @@ class KmaClient:
                 "ny": ny,
             },
         )
+        if has_next_page(response.body):
+            raise KmaParseError(
+                "KMA response has more items than the requested page size",
+                provider="data.go.kr",
+                endpoint=enum_value(endpoint),
+                failure_kind="parse",
+                retryable=False,
+            )
         try:
             items = response.body["items"]["item"]
         except (KeyError, TypeError) as exc:
@@ -478,6 +494,14 @@ class KmaClient:
                 "ny": ny,
             },
         )
+        if has_next_page(response.body):
+            raise KmaParseError(
+                "KMA response has more items than the requested page size",
+                provider="data.go.kr",
+                endpoint=enum_value(endpoint),
+                failure_kind="parse",
+                retryable=False,
+            )
         try:
             items = response.body["items"]["item"]
         except (KeyError, TypeError) as exc:
@@ -866,6 +890,15 @@ def _parse_kma_body(response: Any, endpoint_name: str, metadata: ResponseMetadat
             retryable=False,
         ) from exc
 
+    if not isinstance(header, Mapping):
+        raise KmaParseError(
+            "KMA response header was not an object",
+            provider="data.go.kr",
+            endpoint=endpoint_name,
+            status_code=response.status_code,
+            failure_kind="parse",
+            retryable=False,
+        )
     code = str(header.get("resultCode", ""))
     message = str(header.get("resultMsg", ""))
     if code == NO_DATA_RESULT_CODE:

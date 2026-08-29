@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from dataclasses import asdict, is_dataclass
 from typing import Any
@@ -16,7 +17,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kma")
     parser.add_argument(
         "--service-key",
-        help="KMA decoded service key. Defaults to DATA_GO_KR_SERVICE_KEY.",
+        help=(
+            "KMA decoded service key. Defaults to DATA_GO_KR_SERVICE_KEY. "
+            "Insecure on shared hosts/CI (visible in process listings and shell "
+            "history); prefer the env var."
+        ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -31,7 +36,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     apihub_parser.add_argument("path", help="APIHub /api/... path")
     apihub_parser.add_argument(
         "--auth-key",
-        help="APIHub authKey. Defaults to KMA_APIHUB_AUTH_KEY.",
+        help=(
+            "APIHub authKey. Defaults to KMA_APIHUB_AUTH_KEY. "
+            "Insecure on shared hosts/CI (visible in process listings and shell "
+            "history); prefer the env var."
+        ),
     )
     apihub_parser.add_argument(
         "--param",
@@ -43,6 +52,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "apihub":
         params = _parse_params(args.param)
+        if args.auth_key:
+            _warn_argv_secret("--auth-key", "KMA_APIHUB_AUTH_KEY")
         apihub_client = (
             ApiHubClient(auth_key=args.auth_key)
             if args.auth_key
@@ -53,6 +64,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     location = _location_kwargs(args)
+    if args.service_key:
+        _warn_argv_secret("--service-key", "DATA_GO_KR_SERVICE_KEY")
     kma_client = (
         KmaClient(service_key=args.service_key)
         if args.service_key
@@ -77,6 +90,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(json.dumps(_jsonable(forecast), ensure_ascii=False, default=str, indent=2))
     return 0
+
+
+def _warn_argv_secret(flag: str, env_var: str) -> None:
+    print(
+        f"warning: {flag} exposes the key in process listings and shell history; "
+        f"prefer the {env_var} environment variable instead.",
+        file=sys.stderr,
+    )
 
 
 def _jsonable(value: Any) -> Any:

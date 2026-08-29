@@ -47,7 +47,7 @@ from .models import (
     MidForecastItem,
     WeatherWarningItem,
 )
-from .pagination import has_next_page as _has_next_page
+from .pagination import aiter_pages as _aiter_pages
 from .pagination import iter_pages as _iter_pages
 from .time_utils import (
     KST,
@@ -278,11 +278,14 @@ class DataGoKrClient:
         }
         if params:
             request_params.update(params)
+        metadata_params = {
+            key: value for key, value in request_params.items() if key != self.service_key_param
+        }
         metadata = make_response_metadata(
             provider="data.go.kr",
             service_name=clean_service,
             endpoint=endpoint,
-            request_params=request_params,
+            request_params=metadata_params,
             base_date=_metadata_param(request_params, "base_date", "Base_date"),
             base_time=str(request_params.get("base_time"))
             if request_params.get("base_time") is not None
@@ -355,11 +358,14 @@ class DataGoKrClient:
         }
         if params:
             request_params.update(params)
+        metadata_params = {
+            key: value for key, value in request_params.items() if key != self.service_key_param
+        }
         metadata = make_response_metadata(
             provider="data.go.kr",
             service_name=clean_service,
             endpoint=endpoint,
-            request_params=request_params,
+            request_params=metadata_params,
             base_date=_metadata_param(request_params, "base_date", "Base_date"),
             base_time=str(request_params.get("base_time"))
             if request_params.get("base_time") is not None
@@ -567,23 +573,20 @@ class DataGoKrClient:
     ) -> AsyncIterator[Mapping[str, Any]]:
         """Asynchronously iterate paginated data.go.kr response bodies."""
 
-        items_seen = 0
-        for offset in range(max_pages):
-            page_no = start_page + offset
-            body = await self.arequest(
+        async for body in _aiter_pages(
+            lambda page_no: self.arequest(
                 service,
                 operation,
                 params,
                 data_type=data_type,
                 page_no=page_no,
                 num_of_rows=num_of_rows,
-            )
+            ),
+            start_page=start_page,
+            max_pages=max_pages,
+            max_items=max_items,
+        ):
             yield body
-            items_seen += _body_item_count(body)
-            if max_items is not None and items_seen >= max_items:
-                return
-            if not _has_next_page(body):
-                return
 
     def mid_forecast(
         self,
@@ -1783,18 +1786,6 @@ def _items_from_body(body: Mapping[str, Any], *, endpoint: str) -> list[Mapping[
         failure_kind="parse",
         retryable=False,
     )
-
-
-def _body_item_count(body: Mapping[str, Any]) -> int:
-    items = body.get("items")
-    if not isinstance(items, Mapping):
-        return 0
-    raw = items.get("item")
-    if isinstance(raw, list):
-        return len(raw)
-    if isinstance(raw, Mapping):
-        return 1
-    return 0
 
 
 def _mid_forecast_item(

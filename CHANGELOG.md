@@ -6,6 +6,17 @@
 
 ### 수정
 
+- 4인 전문 리뷰어 서브에이전트의 적대적 코드 리뷰로 발견·검증된 버그 수정: `iter_pages()`가 응답
+  body의 `pageNo`를 그대로 신뢰해 다음 페이지를 계산하다가 그 값이 없거나 항상 고정값이면 같은
+  페이지를 최대 `max_pages`번 중복 재요청하며 서로 다른 페이지인 것처럼 반환하던 문제, `pageNo`/
+  `numOfRows`/`totalCount`가 `"10.0"` 같은 소수점 형태로 오면 파싱에 실패해 `has_next_page()`가
+  더 가져올 페이지가 있는데도 조용히 순회를 멈추던 문제, `header: null` 같은 비정상 JSON envelope가
+  `KmaParseError` 대신 처리되지 않은 `AttributeError`를 던지던 문제, `ApiHubResponse.text`가 실제
+  응답 `Content-Type`의 charset이 아니라 httpx 기본 추정치로 디코딩되던 문제, `ApiHubClient`의
+  `open_api`/`aopen_api`가 결과 코드를 확인하지 않고 오류 응답을 성공으로 반환하던 문제,
+  `base_url`을 검증 없이 받아들이던 문제(APIHub 호스트 allowlist 추가) 등. `iter_pages`/`aiter_pages`
+  가 `max_pages`에 도달했는데 더 가져올 페이지가 남아있으면 `PaginationLimitWarning`을 발생시키도록
+  개선. GitHub Actions CI(`lint`/`typecheck`/`test`) 추가.
 - data.go.kr 일일 quota 초과 `resultCode=22`를 즉시 재시도 불가한
   `KmaRequestError(failure_kind="quota", retryable=False)`로 분류. JSON 응답뿐 아니라
   HTTP 200 `OpenAPI_ServiceResponse` XML 오류 envelope도 같은 분류를 사용한다.
