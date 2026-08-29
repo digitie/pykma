@@ -4,22 +4,16 @@
 프로젝트 규칙은 `AGENTS.md`에, 아키텍처는 `docs/decisions.md`에 있습니다.
 이 파일은 **현재 상태**와 **세션 간 연속성**에 집중합니다.
 
-## 프로젝트 현황 (2026-05-31)
+## 프로젝트 개요
 
 기상청(KMA) 공공데이터포털(`VilageFcstInfoService_2.0`)과 APIHub를 Python에서 편하게 사용하기 위한 공용 클라이언트 라이브러리(`kma`).
-현재 동기/비동기 통합 호출(`httpx` 기반) 및 `LatLon`/`GridPoint`/mapping 좌표 변환, 발표시각 자동 계산, Pydantic v2 frozen 모델을 기반으로 안정적인 public surface를 제공합니다. 또한 data.go.kr 86개 dataset 카탈로그 및 20개 이상의 helper, APIHub 470개 generated wrapper가 완비되어 있고 100개가 넘는 견고한 mock 테스트 게이트를 지니고 있습니다.
+동기/비동기 통합 호출(`httpx` 기반) 및 `LatLon`/`GridPoint`/mapping 좌표 변환, 발표시각 자동 계산, Pydantic v2 frozen 모델을 기반으로 안정적인 public surface를 제공합니다. 또한 data.go.kr 86개 dataset 카탈로그 및 20개 이상의 helper, APIHub 470개 generated wrapper가 완비되어 있고 100개가 넘는 견고한 mock 테스트 게이트를 지니고 있습니다.
 
-### 현재 작업
+현재 진척도와 다음 작업은 `docs/resume.md`, 최근 작업 이력은 `docs/journal.md`, 남은 백로그는 `docs/tasks.md`를 참고하세요. 이 파일에 진척도를 하드코딩하지 않습니다 — 오래된 상태 정보가 남는 것을 막기 위함입니다.
 
-- maplibre-vworld-js 프로젝트의 뛰어난 에이전트 개발 스타일, 고정 worktree 정책, AI용 가이드 문서, 그리고 MCP 설정을 가져와서 본 프로젝트에 적합하게 적용 중입니다 (`feat/style-and-mcp-settings` 브랜치).
+## 에이전트 worktree
 
-### 잔존 기술 부채
-
-- `docs/resume.md`의 백로그를 참고합니다. 주요 부채는 HTTP 에러 핸들링 공통화 및 result code 예외 처리 통합입니다.
-
-## 에이전트 worktree + CodeGraph
-
-ChatGPT Codex는 `F:\dev\python-kma-api-codex`, Claude Code는 `F:\dev\python-kma-api-claude`, Google Antigravity 2.0은 `F:\dev\python-kma-api-antigravity`를 고정 worktree로 사용합니다. 새 작업은 해당 worktree에서 `git fetch` 후 `git switch -c agent/<topic> main`으로 브랜치를 생성하여 작업합니다. CodeGraph는 worktree마다 1회 `codegraph init -i`로 초기화하고 이후에는 `codegraph sync`를 통해 상태를 유지합니다. `.codegraph/`는 gitignore 대상입니다.
+에이전트별 고정 worktree 경로와 CodeGraph 초기화 절차는 `AGENTS.md`의 "개발 환경 및 에이전트 정책"을 따릅니다. 여기서 중복 서술하지 않습니다.
 
 ## 로컬 개발 환경
 
@@ -52,17 +46,10 @@ python -m mypy src/kma
 codegraph sync && codegraph status
 ```
 
-## 주요 결정 사항 (ADR 요약)
+## 주요 결정 사항
 
-- **ADR-001: httpx 기반 HTTP 클라이언트**: 동기/비동기 호출의 일관성과 `params=` 인코딩 최적화를 위함.
-- **ADR-002: Pydantic v2 frozen 모델**: 응답 모델의 불변성과 비교/직렬화의 예측 가능성을 보장.
-- **ADR-003: 인증값 보안 정책**: 로그, 캐시 키, Pydantic repr에 `serviceKey` / `authKey` 유출 원천 차단.
-- **ADR-004: data.go.kr/APIHub 이중 gateway 분리**: 인증 방식 및 동작이 다른 두 gateway의 결합도 최소화.
+아키텍처 ADR은 `docs/decisions.md`에 원본으로 누적됩니다. 여기서 요약을 따로 유지하지 않습니다 — 요약은 ADR이 추가될 때마다 갱신을 잊기 쉬워 실제 내용과 어긋나기 쉽습니다.
 
 ## 작업 후 의무사항
 
-1. `docs/journal.md`에 항목 추가 (날짜·요약·관련 파일·결정·다음 작업, 역시간순)
-2. `docs/resume.md`의 진척도 및 다음 작업 업데이트
-3. 결정 변경이 있었다면 `docs/decisions.md`에 ADR 추가
-4. 사용자 가시 변경이면 `CHANGELOG.md` 갱신
-5. `pytest`, `ruff`, `mypy` 검증 무사 통과 확인
+`AGENTS.md`의 "작업 후 체크리스트"를 따릅니다.
