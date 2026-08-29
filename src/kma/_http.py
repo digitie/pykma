@@ -6,6 +6,8 @@ import asyncio
 import random
 import time
 from collections.abc import Mapping
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, NoReturn
 from xml.etree import ElementTree
 
@@ -15,6 +17,19 @@ from .exceptions import KmaAuthError, KmaRequestError, KmaServerError
 from .metadata import redact_credentials_in_text
 
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+#: httpx.RequestError subtypes worth retrying — transient connection/timeout
+#: conditions. Non-transient errors (e.g. httpx.UnsupportedProtocol,
+#: httpx.InvalidURL) are deliberately excluded so a permanently broken client
+#: configuration fails on the first attempt instead of burning the retry budget.
+TRANSIENT_REQUEST_ERRORS = (
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+    httpx.ReadTimeout,
+    httpx.WriteTimeout,
+    httpx.PoolTimeout,
+    httpx.RemoteProtocolError,
+)
 
 #: data.go.kr 표준 result code ``03``(NODATA_ERROR) — 조회 결과 없음.
 #: 인증/서버 오류와 달리 정상적인 빈 결과이므로 예외 대신 빈 body로 정규화한다.
@@ -49,6 +64,29 @@ def _backoff_with_jitter(backoff_factor: float, attempt: int) -> float:
     return float(half + random.uniform(0, half))
 
 
+def _retry_after_seconds(response: httpx.Response) -> float | None:
+    """Parse a ``Retry-After`` header (delay-seconds or HTTP-date) into seconds.
+
+    Returns ``None`` if the header is absent or unparseable.
+    """
+
+    value = response.headers.get("Retry-After")
+    if value is None:
+        return None
+    value = value.strip()
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        retry_date = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if retry_date.tzinfo is None:
+        retry_date = retry_date.replace(tzinfo=timezone.utc)
+    return max(0.0, (retry_date - datetime.now(timezone.utc)).total_seconds())
+
+
 def raise_for_kma_result_code(
     code: str,
     message: str,
@@ -69,7 +107,7 @@ def raise_for_kma_result_code(
     """
 
     text = f"{label} API returned {code}: {redact_credentials_in_text(message)}"
-    if code in {"20", "30", "31"}:
+    if code in {"20", "21", "30", "31", "32", "33"}:
         raise KmaAuthError(
             text,
             provider=provider,
@@ -280,6 +318,7 @@ def get_with_retries(
     attempts = max(1, retries + 1)
     last_exc: httpx.HTTPError | None = None
     for attempt in range(attempts):
+        retry_after: float | None = None
         try:
             response = client.get(url, params=params, timeout=timeout)
             response.raise_for_status()
@@ -288,11 +327,16 @@ def get_with_retries(
             if not _should_retry_status(exc) or attempt >= attempts - 1:
                 raise
             last_exc = exc
-        except httpx.RequestError as exc:
+            if exc.response.status_code == 429:
+                retry_after = _retry_after_seconds(exc.response)
+        except TRANSIENT_REQUEST_ERRORS as exc:
             if attempt >= attempts - 1:
                 raise
             last_exc = exc
-        time.sleep(_backoff_with_jitter(backoff_factor, attempt))
+        sleep_seconds = _backoff_with_jitter(backoff_factor, attempt)
+        if retry_after is not None:
+            sleep_seconds = max(sleep_seconds, retry_after)
+        time.sleep(sleep_seconds)
     if last_exc is not None:  # pragma: no cover - defensive fallback
         raise last_exc
     raise RuntimeError("HTTP request failed before it could be attempted")
@@ -312,6 +356,7 @@ async def async_get_with_retries(
     attempts = max(1, retries + 1)
     last_exc: httpx.HTTPError | None = None
     for attempt in range(attempts):
+        retry_after: float | None = None
         try:
             response = await client.get(url, params=params, timeout=timeout)
             response.raise_for_status()
@@ -320,11 +365,16 @@ async def async_get_with_retries(
             if not _should_retry_status(exc) or attempt >= attempts - 1:
                 raise
             last_exc = exc
-        except httpx.RequestError as exc:
+            if exc.response.status_code == 429:
+                retry_after = _retry_after_seconds(exc.response)
+        except TRANSIENT_REQUEST_ERRORS as exc:
             if attempt >= attempts - 1:
                 raise
             last_exc = exc
-        await asyncio.sleep(_backoff_with_jitter(backoff_factor, attempt))
+        sleep_seconds = _backoff_with_jitter(backoff_factor, attempt)
+        if retry_after is not None:
+            sleep_seconds = max(sleep_seconds, retry_after)
+        await asyncio.sleep(sleep_seconds)
     if last_exc is not None:  # pragma: no cover - defensive fallback
         raise last_exc
     raise RuntimeError("HTTP request failed before it could be attempted")

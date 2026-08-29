@@ -7,8 +7,9 @@ import html
 import io
 import json
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import AsyncIterator, Iterable, Iterator, Mapping
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any
 from urllib.parse import quote_plus, unquote_plus, urlsplit, urlunsplit
 
@@ -16,12 +17,15 @@ import httpx
 
 from ._credentials import APIHUB_ENV_NAMES, first_env_value, normalize_api_key
 from ._http import (
+    NO_DATA_RESULT_CODE,
     async_get_with_retries,
     build_async_client,
     build_session,
     get_with_retries,
     raise_for_kma_http_error,
     raise_for_kma_network_error,
+    raise_for_kma_result_code,
+    raise_for_kma_xml_error_body,
 )
 from .exceptions import KmaParseError
 from .metadata import (
@@ -31,8 +35,11 @@ from .metadata import (
     redact_credentials_in_text,
     request_params_from_url,
 )
+from .pagination import has_next_page as _has_next_page
+from .pagination import iter_pages as _iter_pages
 
 APIHUB_BASE_URL = "https://apihub.kma.go.kr"
+_APIHUB_ALLOWED_HOSTS = frozenset({"apihub.kma.go.kr"})
 APIHUB_CATEGORY_IDS = (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15)
 
 APIHUB_CATEGORIES: dict[int, str] = {
@@ -119,9 +126,12 @@ class ApiHubResponse:
     url: str
     status_code: int
     content_type: str
-    text: str
     content: bytes
     metadata: ResponseMetadata | None = None
+
+    @cached_property
+    def text(self) -> str:
+        return self.content.decode(_charset_from_content_type(self.content_type), errors="replace")
 
     def json(self) -> Any:
         try:
@@ -171,7 +181,7 @@ class ApiHubClient:
         self.auth_key = normalize_api_key(auth_key, field_name="auth_key")
         self.timeout = timeout
         self.retries = retries
-        self.base_url = base_url.rstrip("/")
+        self.base_url = _validate_apihub_base_url(base_url)
         self.session = session or build_session(retries)
         self._owns_session = session is None
         self._async_session = async_session
@@ -327,10 +337,10 @@ class ApiHubClient:
         }
         if params:
             request_params.update(params)
-        return self.request_path(
-            f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}",
-            request_params,
-        )
+        endpoint = f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}"
+        response = self.request_path(endpoint, request_params)
+        _check_apihub_result_code(response, endpoint=endpoint)
+        return response
 
     async def aopen_api(
         self,
@@ -351,10 +361,10 @@ class ApiHubClient:
         }
         if params:
             request_params.update(params)
-        return await self.arequest_path(
-            f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}",
-            request_params,
-        )
+        endpoint = f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}"
+        response = await self.arequest_path(endpoint, request_params)
+        _check_apihub_result_code(response, endpoint=endpoint)
+        return response
 
     def discover_services(
         self,
@@ -401,6 +411,72 @@ class ApiHubClient:
             {"seqApi": category_id, "seqApiSub": service_id},
         )
         return extract_apihub_endpoints(response.text)
+
+    def iter_pages(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        start_page: int = 1,
+        num_of_rows: int = 10,
+        max_pages: int = 100,
+        max_items: int | None = None,
+    ) -> Iterator[Mapping[str, Any]]:
+        """명시적 안전장치와 함께 APIHub `open_api` 페이지네이션 응답 body를 순회합니다."""
+
+        endpoint = f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}"
+        return _iter_pages(
+            lambda page_no: _apihub_open_api_body(
+                self.open_api(
+                    service,
+                    operation,
+                    params,
+                    data_type=data_type,
+                    page_no=page_no,
+                    num_of_rows=num_of_rows,
+                ),
+                endpoint=endpoint,
+            ),
+            start_page=start_page,
+            max_pages=max_pages,
+            max_items=max_items,
+        )
+
+    async def aiter_pages(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        start_page: int = 1,
+        num_of_rows: int = 10,
+        max_pages: int = 100,
+        max_items: int | None = None,
+    ) -> AsyncIterator[Mapping[str, Any]]:
+        """Asynchronously iterate paginated APIHub `open_api` response bodies."""
+
+        endpoint = f"/api/typ02/openApi/{service.strip('/')}/{operation.strip('/')}"
+        items_seen = 0
+        for offset in range(max_pages):
+            page_no = start_page + offset
+            response = await self.aopen_api(
+                service,
+                operation,
+                params,
+                data_type=data_type,
+                page_no=page_no,
+                num_of_rows=num_of_rows,
+            )
+            body = _apihub_open_api_body(response, endpoint=endpoint)
+            yield body
+            items_seen += _body_item_count(body)
+            if max_items is not None and items_seen >= max_items:
+                return
+            if not _has_next_page(body):
+                return
 
     def _portal_get(self, path: str, params: Mapping[str, Any]) -> ApiHubResponse:
         return self._get(path, params)
@@ -462,7 +538,6 @@ class ApiHubClient:
             url=redact_url_credentials(str(response.url)),
             status_code=response.status_code,
             content_type=content_type,
-            text=response.text,
             content=response.content,
             metadata=metadata,
         )
@@ -503,7 +578,6 @@ class ApiHubClient:
             url=redact_url_credentials(str(response.url)),
             status_code=response.status_code,
             content_type=content_type,
-            text=response.text,
             content=response.content,
             metadata=metadata,
         )
@@ -595,6 +669,29 @@ class AsyncApiHubClient:
     ) -> list[ApiHubEndpoint]:
         return await self._client.adiscover_endpoints(category_id, service_id)
 
+    def iter_pages(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        data_type: str = "JSON",
+        start_page: int = 1,
+        num_of_rows: int = 10,
+        max_pages: int = 100,
+        max_items: int | None = None,
+    ) -> AsyncIterator[Mapping[str, Any]]:
+        return self._client.aiter_pages(
+            service,
+            operation,
+            params,
+            data_type=data_type,
+            start_page=start_page,
+            num_of_rows=num_of_rows,
+            max_pages=max_pages,
+            max_items=max_items,
+        )
+
 
 def parse_apihub_services(html_text: str, category_id: int) -> list[ApiHubService]:
     """APIHub의 `const apiList = [...]` service 목록을 파싱합니다."""
@@ -605,7 +702,13 @@ def parse_apihub_services(html_text: str, category_id: int) -> list[ApiHubServic
     try:
         raw_services = json.loads(match.group(1))
     except ValueError as exc:
-        raise KmaParseError("Could not parse APIHub apiList JSON") from exc
+        raise KmaParseError(
+            "Could not parse APIHub apiList JSON",
+            provider="apihub",
+            endpoint="/apiList.do",
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
 
     category_name = APIHUB_CATEGORIES.get(category_id, str(category_id))
     services: list[ApiHubService] = []
@@ -620,7 +723,13 @@ def parse_apihub_services(html_text: str, category_id: int) -> list[ApiHubServic
                 )
             )
         except (KeyError, TypeError, ValueError) as exc:
-            raise KmaParseError(f"Malformed APIHub service entry: {raw!r}") from exc
+            raise KmaParseError(
+                f"Malformed APIHub service entry: {raw!r}",
+                provider="apihub",
+                endpoint="/apiList.do",
+                failure_kind="parse",
+                retryable=False,
+            ) from exc
     return services
 
 
@@ -756,6 +865,89 @@ def _response_error_message(response: Any) -> str:
             if isinstance(header, Mapping) and header.get("resultMsg"):
                 return redact_credentials_in_text(str(header["resultMsg"]))
     return ""
+
+
+def _validate_apihub_base_url(base_url: str) -> str:
+    clean = base_url.rstrip("/")
+    parts = urlsplit(clean)
+    if parts.scheme != "https" or parts.hostname not in _APIHUB_ALLOWED_HOSTS:
+        raise ValueError(f"base_url must be https://apihub.kma.go.kr, got {base_url!r}")
+    return clean
+
+
+def _charset_from_content_type(content_type: str) -> str:
+    match = re.search(r"charset=([^\s;]+)", content_type, re.I)
+    if not match:
+        return "utf-8"
+    return match.group(1).strip("\"'")
+
+
+def _check_apihub_result_code(response: ApiHubResponse, *, endpoint: str) -> None:
+    try:
+        payload = json.loads(response.text)
+    except ValueError:
+        raise_for_kma_xml_error_body(
+            response.text,
+            provider="apihub",
+            endpoint=endpoint,
+            label="APIHub",
+        )
+        return
+    if not isinstance(payload, Mapping):
+        return
+    envelope = payload.get("response")
+    if not isinstance(envelope, Mapping):
+        return
+    header = envelope.get("header")
+    if not isinstance(header, Mapping):
+        return
+    code = str(header.get("resultCode", ""))
+    if not code or code in ("00", NO_DATA_RESULT_CODE):
+        return
+    raise_for_kma_result_code(
+        code,
+        str(header.get("resultMsg", "")),
+        provider="apihub",
+        endpoint=endpoint,
+        label="APIHub",
+    )
+
+
+def _apihub_open_api_body(response: ApiHubResponse, *, endpoint: str) -> Mapping[str, Any]:
+    payload = response.json()
+    try:
+        body = payload["response"]["body"]
+    except (KeyError, TypeError) as exc:
+        raise KmaParseError(
+            "APIHub response was not in the expected response/header/body shape",
+            provider="apihub",
+            endpoint=endpoint,
+            status_code=response.status_code,
+            failure_kind="parse",
+            retryable=False,
+        ) from exc
+    if not isinstance(body, Mapping):
+        raise KmaParseError(
+            "APIHub response body was not an object",
+            provider="apihub",
+            endpoint=endpoint,
+            status_code=response.status_code,
+            failure_kind="parse",
+            retryable=False,
+        )
+    return body
+
+
+def _body_item_count(body: Mapping[str, Any]) -> int:
+    items = body.get("items")
+    if not isinstance(items, Mapping):
+        return 0
+    raw = items.get("item")
+    if isinstance(raw, list):
+        return len(raw)
+    if isinstance(raw, Mapping):
+        return 1
+    return 0
 
 
 def _normalize_apihub_path(path: str) -> str:

@@ -72,6 +72,7 @@ def to_grid(lat: float, lon: float) -> tuple[int, int]:
     theta *= sn
     nx = int(ra * math.sin(theta) + XO + 0.5)
     ny = int(ro - ra * math.cos(theta) + YO + 0.5)
+    validate_grid(nx, ny)
     return nx, ny
 
 

@@ -79,7 +79,12 @@ def _candidate_env_dirs(start: str | Path) -> tuple[Path, ...]:
     path = Path(start).resolve()
     if path.is_file():
         path = path.parent
-    return tuple(reversed((path, *path.parents)))
+    candidates = [path]
+    for parent in path.parents:
+        if (parent / ".git").exists():
+            candidates.append(parent)
+            break
+    return tuple(reversed(candidates))
 
 
 def _parse_env_file(path: Path) -> dict[str, str]:

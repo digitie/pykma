@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
+import warnings
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 from typing import Any
+
+
+class PaginationLimitWarning(RuntimeWarning):
+    """다음 페이지가 남아있는 상태로 `max_pages`에 도달했을 때 발생합니다."""
 
 
 def has_next_page(body: Mapping[str, Any]) -> bool:
@@ -48,7 +53,7 @@ def iter_pages(
     page_no = start_page
     pages_seen = 0
     items_seen = 0
-    while pages_seen < max_pages:
+    while True:
         body = fetch_page(page_no)
         yield body
 
@@ -57,15 +62,72 @@ def iter_pages(
         if max_items is not None and items_seen >= max_items:
             return
 
-        next_page = next_page_no(body)
-        if next_page is None:
+        if not has_next_page(body):
             return
-        page_no = next_page
+        if pages_seen >= max_pages:
+            warnings.warn(
+                f"iter_pages stopped after max_pages={max_pages} pages while "
+                "more pages were still available; results may be incomplete",
+                PaginationLimitWarning,
+                stacklevel=2,
+            )
+            return
+        page_no += 1
+
+
+async def aiter_pages(
+    fetch_page: Callable[[int], Awaitable[Mapping[str, Any]]],
+    *,
+    start_page: int = 1,
+    max_pages: int = 100,
+    max_items: int | None = None,
+) -> AsyncIterator[Mapping[str, Any]]:
+    """`pageNo` metadata를 따라 data.go.kr 응답 body를 비동기로 순회합니다.
+
+    `max_pages`와 `max_items`는 upstream API가 일관되지 않은 페이지네이션
+    metadata를 반환할 때 무한 루프를 막는 명시적 안전장치입니다.
+    """
+
+    if start_page < 1:
+        raise ValueError("start_page must be >= 1")
+    if max_pages < 1:
+        raise ValueError("max_pages must be >= 1")
+    if max_items is not None and max_items < 1:
+        raise ValueError("max_items must be >= 1")
+
+    page_no = start_page
+    pages_seen = 0
+    items_seen = 0
+    while True:
+        body = await fetch_page(page_no)
+        yield body
+
+        pages_seen += 1
+        items_seen += _item_count(body)
+        if max_items is not None and items_seen >= max_items:
+            return
+
+        if not has_next_page(body):
+            return
+        if pages_seen >= max_pages:
+            warnings.warn(
+                f"aiter_pages stopped after max_pages={max_pages} pages while "
+                "more pages were still available; results may be incomplete",
+                PaginationLimitWarning,
+                stacklevel=2,
+            )
+            return
+        page_no += 1
 
 
 def _int_from_body(body: Mapping[str, Any], key: str, *, default: int) -> int:
+    raw = str(body.get(key, default)).strip()
     try:
-        return int(str(body.get(key, default)).strip())
+        return int(raw)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return int(float(raw))
     except (TypeError, ValueError):
         return default
 
