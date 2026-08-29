@@ -36,6 +36,7 @@ dev = [
   "mypy>=1.10",
 ]
 debug-ui = [
+  "pandas>=2",
   "streamlit>=1.36",
 ]
 

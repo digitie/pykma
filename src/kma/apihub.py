@@ -7,6 +7,7 @@ import html
 import io
 import json
 import re
+import time
 from collections.abc import AsyncIterator, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cached_property
@@ -27,6 +28,7 @@ from ._http import (
     raise_for_kma_result_code,
     raise_for_kma_xml_error_body,
 )
+from .debug import DebugRun, debug_error, redact_sensitive
 from .exceptions import KmaParseError
 from .metadata import (
     ResponseMetadata,
@@ -411,6 +413,92 @@ class ApiHubClient:
             {"seqApi": category_id, "seqApiSub": service_id},
         )
         return extract_apihub_endpoints(response.text)
+
+    def debug_fetch_endpoint(
+        self,
+        spec: ApiHubEndpointSpec,
+        params: Mapping[str, Any] | None = None,
+        *,
+        use_sample: bool = False,
+    ) -> DebugRun:
+        """디버그 UI/fixture 생성을 위해 APIHub endpoint 하나를 호출합니다.
+
+        `spec`은 카탈로그(`apihub_endpoint_catalog()`)나
+        `ApiHubGeneratedClient.endpoint(name)`에서 얻은 `ApiHubEndpointSpec`
+        입니다. 여기서는 어떤 endpoint인지에 따라 분기하지 않고, `spec`이 담은
+        `path`/`query_parts`/`response_kind` 메타데이터로만 요청을 만들고 결과를
+        해석합니다 — 470개 endpoint 전부가 같은 경로를 지납니다.
+
+        일부 legacy endpoint는 이름 없는 query 조각(``query_parts``에
+        ``"bare"`` 항목)을 쓰므로, 그 경우에만 `request_query_parts`로,
+        나머지는 `request_path`로 호출을 위임합니다(``ApiHubGeneratedClient
+        .call_endpoint``와 같은 판정 규칙).
+        """
+
+        request_params: dict[str, Any] = {}
+        if use_sample:
+            request_params.update(spec.sample_params)
+        if params:
+            request_params.update(params)
+
+        input_data = redact_sensitive(
+            {
+                "endpoint": spec.name,
+                "params": request_params,
+                "use_sample": use_sample,
+            }
+        )
+        trace = [
+            f"APIHub {spec.name} ({spec.path}) 호출 준비",
+            f"response_kind={spec.response_kind}",
+        ]
+        request_info = redact_sensitive(
+            {
+                "method": "GET",
+                "url": f"{self.base_url}{spec.path}",
+                "query": request_params,
+            }
+        )
+
+        started_at = time.monotonic()
+        try:
+            if any(kind == "bare" for kind, _name in spec.query_parts):
+                response = self.request_query_parts(spec.path, spec.query_parts, request_params)
+            else:
+                response = self.request_path(spec.path, request_params)
+        except Exception as exc:
+            elapsed_ms = (time.monotonic() - started_at) * 1000
+            trace.append(f"요청 실패: {exc.__class__.__name__} ({elapsed_ms:.0f}ms)")
+            return DebugRun(
+                function=spec.name,
+                input=input_data,
+                request=request_info,
+                response={},
+                parsed=None,
+                processed=None,
+                trace=trace,
+                error=debug_error(exc),
+            )
+
+        elapsed_ms = (time.monotonic() - started_at) * 1000
+        trace.append(
+            f"응답 수신: HTTP {response.status_code}, {len(response.content)} bytes "
+            f"({elapsed_ms:.0f}ms)"
+        )
+        parsed, processed = _debug_parse_apihub_response(response, spec.response_kind)
+        return DebugRun(
+            function=spec.name,
+            input=input_data,
+            request=request_info,
+            response={
+                "status_code": response.status_code,
+                "content_type": response.content_type,
+                "body": parsed,
+            },
+            parsed=parsed,
+            processed=processed,
+            trace=trace,
+        )
 
     def iter_pages(
         self,
@@ -911,6 +999,43 @@ def _check_apihub_result_code(response: ApiHubResponse, *, endpoint: str) -> Non
         endpoint=endpoint,
         label="APIHub",
     )
+
+
+def _debug_parse_apihub_response(response: ApiHubResponse, response_kind: str) -> tuple[Any, Any]:
+    """`debug_fetch_endpoint`용으로 `response_kind`에 맞춰 raw/processed 값을 만듭니다.
+
+    반환값은 `(parsed, processed)`입니다. `processed`는 list 모양이면 Streamlit
+    쪽에서 dataframe으로, 아니면 단일 object로 표시됩니다.
+    """
+
+    if response_kind == "structured":
+        try:
+            parsed = response.json()
+        except KmaParseError:
+            parsed = {"text_preview": response.text[:2000]}
+        return parsed, parsed
+    if response_kind == "text":
+        table = response.text_table()
+        rows = [dict(row) for row in table.rows]
+        parsed = {
+            "headers": list(table.headers),
+            "rows": rows,
+            "comments": list(table.comments),
+        }
+        return parsed, (rows if rows else parsed)
+    if response_kind == "image":
+        image = response.image()
+        parsed = {
+            "content_type": image.content_type,
+            "format": image.format,
+            "width": image.width,
+            "height": image.height,
+            "bytes": len(image.content),
+        }
+        return parsed, parsed
+    # "file" 또는 알 수 없는 response_kind — 내용을 해석하지 않고 크기/타입만 보여준다.
+    parsed = {"content_type": response.content_type, "bytes": len(response.content)}
+    return parsed, parsed
 
 
 def _apihub_open_api_body(response: ApiHubResponse, *, endpoint: str) -> Mapping[str, Any]:
