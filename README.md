@@ -661,10 +661,18 @@ Streamlit 디버그 화면은 선택 의존성으로 실행합니다.
 
 ```bash
 pip install -e ".[debug-ui]"
-streamlit run tools/debug_streamlit.py
+streamlit run examples/streamlit_debug_ui.py
 ```
 
-Raw Response 탭에는 선택한 API의 필수/선택 파라미터 입력 폼과 인증키를 제외한 request params preview가 표시됩니다. 좌측 메뉴에서는 API 풀네임/설명, 서비스키 링크, 환경변수 키 선택, 요청 timeout, fixture 기본 디렉터리를 조정할 수 있고, 폼에 없는 provider별 파라미터는 `Extra params JSON`으로 추가할 수 있습니다. 실행 후 Pydantic Model 탭에는 row 모델 변환 결과가, Processed Result 탭에는 표 형태 row preview가 표시됩니다. Debug Trace 탭에는 현재 카탈로그 항목, 선택한 데이터셋명, gateway, operation, 인증 파라미터, 키 발급/확인 링크가 표시됩니다.
+좌측 메뉴는 Data source(`datagokr`/`apihub`) → Category → API 3단 계단식으로 구성됩니다 — `datagokr`는 `api_catalog(gateway="datagokr")`의 160개 operation을, `apihub`는 `apihub_endpoint_catalog()`의 470개 실제 호출 가능 endpoint를 다룹니다. 선택한 API의 설명 2줄, Environment(env var 사용 여부)와 Auth(실제 쿼리 파라미터명인 `serviceKey`/`authKey` 입력), 서비스키 발급 링크, timeout, fixture 저장 기본 디렉터리를 조정할 수 있습니다.
+
+메인 영역의 요청 파라미터 입력은 `st.form()`으로 감싸여 있고, 카탈로그의 `required_params`/`optional_params`/`param_defaults` 메타데이터에서 위젯을 자동 생성합니다(endpoint별 `if function_name == ...` 분기 없음). `dataType`/`type`처럼 고정 선택지가 있는 파라미터는 selectbox로, 나머지는 text input으로 렌더링되며, 폼에 없는 provider별 파라미터는 `Extra params JSON`으로 추가할 수 있습니다.
+
+고정 6개 탭(Raw Response / Pydantic Model / Processed Result / Validation Errors / Debug Trace / Fixture · Testcase)을 제공합니다. Raw Response에는 인증키를 제외한 request params preview와 raw 응답이, Pydantic Model에는 `DataGoKrItem`으로 검증한 row(또는 APIHub `response_kind`별 정리 결과)가, Processed Result에는 list 응답일 때만 표 형태 row preview가 표시됩니다. Validation Errors는 예외/검증 오류가 있을 때만 표시되고, Debug Trace에는 현재 카탈로그, 선택한 API 메타데이터, 요청 URL/파라미터(마스킹됨)/소요시간 trace가 표시됩니다. Fixture / Testcase 탭은 `save_fixture()`를 실제로 호출해 `tests/fixtures/<function>/<case>.json`에 저장합니다.
+
+`src/kma/debug.py`는 이 UI와 fixture 저장에 공통으로 쓰는 `DebugRun`/`jsonable`/`redact_sensitive`/`debug_error`/`save_fixture`를 제공합니다. `DataGoKrClient.debug_fetch()`와 `ApiHubClient.debug_fetch_endpoint()`는 endpoint별 분기 없이 카탈로그가 넘겨주는 service/operation 또는 `ApiHubEndpointSpec`만으로 요청을 라우팅하는 제네릭 메서드입니다.
+
+APIHub는 470개 endpoint 전부가 이 UI에서 실행 가능하지만, `response_kind`가 `text`/`image`/`file`인 legacy endpoint는 `parse_apihub_text_table()`이 관대하게 만든 근사 표/metadata를 보여줄 뿐 endpoint별 정확한 파싱을 보장하지 않습니다. data.go.kr의 160개 operation 중 로컬로 정리된 필수/선택 파라미터 명세가 있는 것은 10개 service(약 30개 operation)뿐이며, 나머지는 `Extra params JSON`으로 직접 파라미터를 채워야 합니다.
 
 기본 테스트는 실제 API를 호출하지 않아야 합니다. 실제 KMA 호출 테스트를 추가할 경우 `DATA_GO_KR_SERVICE_KEY`가 있을 때만 실행되도록 별도 marker를 사용하세요.
 
@@ -677,6 +685,8 @@ Raw Response 탭에는 선택한 API의 필수/선택 파라미터 입력 폼과
 이 문서와 프로젝트 문서의 파일 위치는 모두 프로젝트 루트 기준 상대 경로로 적습니다. 예를 들어 `src/kma/client.py`, `docs/testing.md`처럼 쓰고, 작업자 로컬 절대 경로는 문서에 남기지 않습니다. Python docstring과 내부 설명 문구는 한글로 작성하되, 코드 식별자와 API 파라미터 이름은 원문을 유지합니다.
 
 ```text
+examples/
+└── streamlit_debug_ui.py
 src/kma/
 ├── __init__.py
 ├── _credentials.py
@@ -689,6 +699,7 @@ src/kma/
 ├── codes.py
 ├── datagokr.py
 ├── datagokr_catalog.py
+├── debug.py
 ├── enums.py
 ├── exceptions.py
 ├── grid.py
@@ -716,7 +727,7 @@ tests/
 ├── test_time_utils.py
 └── test_timeline.py
 tools/
-└── debug_streamlit.py
+└── update_apihub_endpoints.py
 ```
 
 문서 지도는 상단의 [먼저 읽을 문서](#먼저-읽을-문서) 표를 참고하세요.

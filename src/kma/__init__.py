@@ -10,11 +10,21 @@ from .apihub import (
     AsyncApiHubClient,
 )
 from .apihub_endpoints import APIHUB_ATTACHMENTS, APIHUB_ENDPOINTS, ApiHubGeneratedClient
-from .catalog import ApiCatalogEntry, api_catalog
+from .catalog import ApiCatalogEntry, api_catalog, apihub_endpoint_catalog
 from .client import AsyncForecastService, AsyncKmaClient, ForecastService, KmaClient
 from .codes import label_for, parse_amount, unit_for
 from .datagokr import AsyncDataGoKrClient, DataGoKrClient
 from .datagokr_catalog import KMA_DATA_GOKR_DATASETS, DataGoKrDatasetSpec
+from .debug import (
+    DEFAULT_ASSERTION,
+    SENSITIVE_KEYS,
+    DebugRun,
+    debug_error,
+    jsonable,
+    redact_sensitive,
+    save_fixture,
+    slugify_case_name,
+)
 from .enums import (
     ForecastPrecipitationType,
     KmaEndpoint,
@@ -77,9 +87,11 @@ __all__ = [
     "BeachTideItem",
     "BeachWaterTemperature",
     "BeachWaveHeight",
+    "DEFAULT_ASSERTION",
     "DataGoKrClient",
     "DataGoKrDatasetSpec",
     "DataGoKrItem",
+    "DebugRun",
     "ForecastItem",
     "ForecastService",
     "ForecastTimepoint",
@@ -97,6 +109,7 @@ __all__ = [
     "MidForecastItem",
     "ObservedPrecipitationType",
     "ResponseMetadata",
+    "SENSITIVE_KEYS",
     "SkyCode",
     "WeatherCategory",
     "WeatherSnapshot",
@@ -104,7 +117,10 @@ __all__ = [
     "api_key_for_gateway",
     "has_next_page",
     "api_catalog",
+    "apihub_endpoint_catalog",
+    "debug_error",
     "iter_pages",
+    "jsonable",
     "kma_grid_to_wgs84",
     "label_for",
     "base_available_at",
@@ -118,7 +134,10 @@ __all__ = [
     "env_names_for_gateway",
     "parse_amount",
     "pivot_forecast_items",
+    "redact_sensitive",
     "sanitize_request_params",
+    "save_fixture",
+    "slugify_case_name",
     "to_grid",
     "to_latlon",
     "unit_for",

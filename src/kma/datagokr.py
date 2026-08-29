@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -32,6 +33,7 @@ from .datagokr_catalog import (
     KMA_DATA_GOKR_DATASETS_BY_ID,
     DataGoKrDatasetSpec,
 )
+from .debug import DebugRun, debug_error, jsonable, redact_sensitive
 from .enums import coerce_category
 from .exceptions import KmaParseError
 from .metadata import ResponseMetadata, make_response_metadata
@@ -256,6 +258,111 @@ class DataGoKrClient:
             num_of_rows=num_of_rows,
         )
         return response.body, response.metadata
+
+    def debug_fetch(
+        self,
+        service: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        page_no: int = 1,
+        num_of_rows: int = 10,
+        data_type: str = "JSON",
+    ) -> DebugRun:
+        """디버그 UI/fixture 생성을 위해 service operation을 호출하고 실행 정보를 반환합니다.
+
+        `service`/`operation`은 `request()`와 같은 인자이므로, 카탈로그
+        (`ApiCatalogEntry.service`/`.operation`)에서 곧바로 전달할 수 있습니다.
+        endpoint별로 분기하는 코드는 없습니다 — 모든 data.go.kr operation이
+        같은 경로를 지납니다.
+        """
+
+        clean_service = service.strip("/")
+        clean_operation = operation.strip("/")
+        endpoint = f"{clean_service}/{clean_operation}"
+        clean_params = dict(params or {})
+        input_data = redact_sensitive(
+            {
+                "service": clean_service,
+                "operation": clean_operation,
+                "params": clean_params,
+                "page_no": page_no,
+                "num_of_rows": num_of_rows,
+                "data_type": data_type,
+            }
+        )
+        trace = [
+            f"data.go.kr {endpoint} 호출 준비",
+            f"pageNo={page_no} numOfRows={num_of_rows} dataType={data_type}",
+        ]
+        request_info = redact_sensitive(
+            {
+                "method": "GET",
+                "url": f"{self.base_url}/{endpoint}",
+                "query": {
+                    **clean_params,
+                    "pageNo": page_no,
+                    "numOfRows": num_of_rows,
+                    "dataType": data_type,
+                },
+            }
+        )
+
+        started_at = time.monotonic()
+        try:
+            body, metadata = self.request_with_metadata(
+                clean_service,
+                clean_operation,
+                clean_params,
+                data_type=data_type,
+                page_no=page_no,
+                num_of_rows=num_of_rows,
+            )
+            processed = _debug_processed_rows(body)
+            # `items.item`이 list/object로 나오면 실제 `DataGoKrItem` pydantic 모델로
+            # 감싸본다 — Pydantic Model 탭이 raw body를 그대로 되풀이하지 않고, 이
+            # 시점에 진짜 검증 오류가 나면 Validation Errors 탭에 그대로 반영된다.
+            row_source = processed if isinstance(processed, list) else [processed]
+            models = [
+                DataGoKrItem(
+                    service=clean_service, operation=clean_operation, raw=dict(row)
+                ).model_dump(mode="json")
+                for row in row_source
+                if isinstance(row, Mapping)
+            ]
+        except Exception as exc:
+            elapsed_ms = (time.monotonic() - started_at) * 1000
+            trace.append(f"요청 실패: {exc.__class__.__name__} ({elapsed_ms:.0f}ms)")
+            return DebugRun(
+                function=endpoint,
+                input=input_data,
+                request=request_info,
+                response={},
+                parsed=None,
+                processed=None,
+                trace=trace,
+                error=debug_error(exc),
+            )
+
+        elapsed_ms = (time.monotonic() - started_at) * 1000
+        trace.append(f"응답 수신 ({elapsed_ms:.0f}ms), resultCode 정상")
+        trace.append(
+            f"row {len(processed)}건 추출, DataGoKrItem {len(models)}건 생성"
+            if isinstance(processed, list)
+            else "단일 object 응답 — row 추출 없음"
+        )
+        parsed_model = (
+            models if isinstance(processed, list) else (models[0] if models else jsonable(body))
+        )
+        return DebugRun(
+            function=endpoint,
+            input=input_data,
+            request={**request_info, "query": redact_sensitive(dict(metadata.request_params))},
+            response={"status_code": 200, "body": jsonable(body)},
+            parsed=parsed_model,
+            processed=processed,
+            trace=trace,
+        )
 
     def _request_with_metadata(
         self,
@@ -1786,6 +1893,25 @@ def _items_from_body(body: Mapping[str, Any], *, endpoint: str) -> list[Mapping[
         failure_kind="parse",
         retryable=False,
     )
+
+
+def _debug_processed_rows(body: Mapping[str, Any]) -> Any:
+    """디버그 UI Processed Result 탭용으로 `body.items.item`을 관대하게 추출합니다.
+
+    `_items_from_body`와 달리 shape이 예상과 다르면 예외 대신 원본 body를
+    그대로 반환합니다 — `getFcstVersion` 같은 단일 object 응답도 debug_fetch가
+    실패하지 않아야 하기 때문입니다.
+    """
+
+    try:
+        raw_items = body["items"]["item"]
+    except (KeyError, TypeError):
+        return jsonable(body)
+    if isinstance(raw_items, Mapping):
+        return [jsonable(raw_items)]
+    if isinstance(raw_items, list):
+        return [jsonable(item) for item in raw_items]
+    return jsonable(body)
 
 
 def _mid_forecast_item(
